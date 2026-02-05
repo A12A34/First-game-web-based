@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2rem;
+            z-index: 100;
+        }
+        .memory-board {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            gap: 15px;
+            margin: 20px auto;
+            perspective: 1000px;
+        }
+        
+        .memory-card {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+            cursor: pointer;
+        }
+        
+        .memory-card.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .memory-card.matched {
+            opacity: 0.7;
+            cursor: default;
+        }
+        
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 15px;
+            backface-visibility: hidden;
+            font-size: 3rem;
+        }
+        
+        .card-front {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            transform: rotateY(180deg);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.3);
+        }
+        
+        .card-back {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: #00d9ff;
+            font-size: 2rem;
+        }
+        
+        .card-back::before {
+            content: '?';
+        }
+        
+        .memory-card:hover:not(.flipped):not(.matched) .card-back {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+        
+        .difficulty-selection {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .diff-btn {
+            padding: 10px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .diff-btn.active {
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border-color: transparent;
+        }
+        
+        .memory-board.size-6 {
+            grid-template-columns: repeat(6, 80px);
+        }
+        
+        .memory-board.size-6 .memory-card {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .memory-board.size-6 .card-face {
+            font-size: 2.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">⛶</button>
+    
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🧠 Memory Match</h1>
+            
+            <div class="difficulty-selection">
+                <button class="diff-btn active" data-size="4">Easy (4x4)</button>
+                <button class="diff-btn" data-size="6">Hard (6x6)</button>
+            </div>
+            
+            <div class="game-stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="moves">0</div>
+                    <div class="stat-label">Moves</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="pairs">0</div>
+                    <div class="stat-label">Pairs Found</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="timer">00:00</div>
+                    <div class="stat-label">Time</div>
+                </div>
+            </div>
+            
+            <div class="memory-board" id="board"></div>
+            
+            <button id="restartBtn" class="btn btn-primary">New Game</button>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Click cards to flip them over.<br>
+                Match pairs of identical symbols.<br>
+                Find all pairs with minimum moves!</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="winOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2>🎉 You Won!</h2>
+            <p>Moves: <span id="finalMoves">0</span><br>
+            Time: <span id="finalTime">00:00</span></p>
+            <button id="playAgainBtn" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const EMOJIS = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑', '🍍', '🥭', '🍌', '🫐', '🍈', '🥥', '🍐', '🍏', '🌶️', '🥕'];
+        
+        let boardSize = 4;
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let totalPairs = 0;
+        let gameStarted = false;
+        let timerInterval = null;
+        let seconds = 0;
+        let canFlip = true;
+        
+        const boardEl = document.getElementById('board');
+        const movesEl = document.getElementById('moves');
+        const pairsEl = document.getElementById('pairs');
+        const timerEl = document.getElementById('timer');
+        const winOverlay = document.getElementById('winOverlay');
+        
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        function initGame() {
+            // Reset state
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            seconds = 0;
+            gameStarted = false;
+            canFlip = true;
+            
+            if (timerInterval) clearInterval(timerInterval);
+            
+            movesEl.textContent = '0';
+            pairsEl.textContent = '0';
+            timerEl.textContent = '00:00';
+            
+            // Create cards
+            totalPairs = (boardSize * boardSize) / 2;
+            const selectedEmojis = EMOJIS.slice(0, totalPairs);
+            const cardValues = shuffle([...selectedEmojis, ...selectedEmojis]);
+            
+            // Update board class
+            boardEl.className = 'memory-board';
+            if (boardSize === 6) boardEl.classList.add('size-6');
+            
+            // Render cards
+            boardEl.innerHTML = '';
+            cardValues.forEach((emoji, index) => {
+                const card = document.createElement('div');
+                card.className = 'memory-card';
+                card.dataset.index = index;
+                card.dataset.value = emoji;
+                
+                card.innerHTML = `
+                    <div class="card-face card-back"></div>
+                    <div class="card-face card-front">${emoji}</div>
+                `;
+                
+                card.addEventListener('click', handleCardClick);
+                boardEl.appendChild(card);
+                cards.push(card);
+            });
+        }
+        
+        function handleCardClick(e) {
+            const card = e.currentTarget;
+            
+            if (!canFlip || card.classList.contains('flipped') || card.classList.contains('matched')) {
+                return;
+            }
+            
+            // Start timer on first click
+            if (!gameStarted) {
+                gameStarted = true;
+                startTimer();
+            }
+            
+            // Flip card
+            card.classList.add('flipped');
+            flippedCards.push(card);
+            
+            // Check for match
+            if (flippedCards.length === 2) {
+                moves++;
+                movesEl.textContent = moves;
+                canFlip = false;
+                
+                const [card1, card2] = flippedCards;
+                
+                if (card1.dataset.value === card2.dataset.value) {
+                    // Match!
+                    matchedPairs++;
+                    pairsEl.textContent = matchedPairs;
+                    
+                    setTimeout(() => {
+                        card1.classList.add('matched');
+                        card2.classList.add('matched');
+                        flippedCards = [];
+                        canFlip = true;
+                        
+                        if (matchedPairs === totalPairs) {
+                            endGame();
+                        }
+                    }, 300);
+                } else {
+                    // No match
+                    setTimeout(() => {
+                        card1.classList.remove('flipped');
+                        card2.classList.remove('flipped');
+                        flippedCards = [];
+                        canFlip = true;
+                    }, 1000);
+                }
+            }
+        }
+        
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                timerEl.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+        
+        function endGame() {
+            clearInterval(timerInterval);
+            
+            document.getElementById('finalMoves').textContent = moves;
+            document.getElementById('finalTime').textContent = timerEl.textContent;
+            
+            winOverlay.classList.remove('hidden');
+        }
+        
+        // Event Listeners
+        document.getElementById('restartBtn').addEventListener('click', initGame);
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            winOverlay.classList.add('hidden');
+            initGame();
+        });
+        
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                boardSize = parseInt(btn.dataset.size);
+                initGame();
+            });
+        });
+        
+        // Fullscreen
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+        
+        // Initialize
+        initGame();
+    </script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>

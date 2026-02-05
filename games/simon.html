@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simon Says - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .simon-board {
+            display: grid;
+            grid-template-columns: repeat(2, 150px);
+            grid-template-rows: repeat(2, 150px);
+            gap: 10px;
+            margin: 30px auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 340px;
+            height: 340px;
+            justify-content: center;
+            align-content: center;
+        }
+        
+        .simon-btn {
+            border: none;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            border-radius: 15px;
+        }
+        
+        .simon-btn:disabled {
+            cursor: not-allowed;
+        }
+        
+        .simon-btn.green {
+            background: #00aa00;
+            border-radius: 150px 15px 15px 15px;
+        }
+        .simon-btn.green.active, .simon-btn.green:hover:not(:disabled) {
+            background: #00ff00;
+            box-shadow: 0 0 30px #00ff00;
+        }
+        
+        .simon-btn.red {
+            background: #aa0000;
+            border-radius: 15px 150px 15px 15px;
+        }
+        .simon-btn.red.active, .simon-btn.red:hover:not(:disabled) {
+            background: #ff0000;
+            box-shadow: 0 0 30px #ff0000;
+        }
+        
+        .simon-btn.yellow {
+            background: #aaaa00;
+            border-radius: 15px 15px 15px 150px;
+        }
+        .simon-btn.yellow.active, .simon-btn.yellow:hover:not(:disabled) {
+            background: #ffff00;
+            box-shadow: 0 0 30px #ffff00;
+        }
+        
+        .simon-btn.blue {
+            background: #0000aa;
+            border-radius: 15px 15px 150px 15px;
+        }
+        .simon-btn.blue.active, .simon-btn.blue:hover:not(:disabled) {
+            background: #0000ff;
+            box-shadow: 0 0 30px #0000ff;
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 15px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            min-width: 80px;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #a0a0a0;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        
+        .status-text {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin: 15px 0;
+            min-height: 30px;
+        }
+        
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .diff-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .diff-btn.active {
+            background: #00d9ff;
+            color: #1a1a2e;
+            border-color: #00d9ff;
+        }
+        
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: background 0.3s;
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🎯 Simon Says</h1>
+            
+            <div class="difficulty-selector">
+                <button class="diff-btn" data-diff="easy">Easy</button>
+                <button class="diff-btn active" data-diff="medium">Medium</button>
+                <button class="diff-btn" data-diff="hard">Hard</button>
+            </div>
+            
+            <div class="game-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Round</div>
+                    <div class="stat-value" id="round">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Best</div>
+                    <div class="stat-value" id="bestScore">0</div>
+                </div>
+            </div>
+            
+            <p class="status-text" id="status">Press Start to Play!</p>
+            
+            <div class="simon-board">
+                <button class="simon-btn green" data-color="green" disabled></button>
+                <button class="simon-btn red" data-color="red" disabled></button>
+                <button class="simon-btn yellow" data-color="yellow" disabled></button>
+                <button class="simon-btn blue" data-color="blue" disabled></button>
+            </div>
+            
+            <button id="startBtn" class="btn btn-primary">Start Game</button>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Watch the pattern light up.<br>
+                Repeat the pattern by clicking the colors.<br>
+                Each round adds one more to the sequence!</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gameOverOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2>Game Over!</h2>
+            <p>You reached round: <span id="finalRound">0</span></p>
+            <p id="newBestText" style="color: #ffaa00; display: none;">🏆 New Best!</p>
+            <button id="playAgainBtn" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Audio context for sound
+        let audioContext = null;
+        
+        const COLORS = ['green', 'red', 'yellow', 'blue'];
+        const FREQUENCIES = {
+            green: 392,   // G4
+            red: 329.63,  // E4
+            yellow: 261.63, // C4
+            blue: 220      // A3
+        };
+        
+        // Difficulty settings
+        const DIFFICULTY = {
+            easy: { showDuration: 600, pauseDuration: 300 },
+            medium: { showDuration: 400, pauseDuration: 200 },
+            hard: { showDuration: 250, pauseDuration: 150 }
+        };
+        
+        let difficulty = 'medium';
+        let settings = DIFFICULTY[difficulty];
+        
+        let sequence = [];
+        let playerIndex = 0;
+        let round = 0;
+        let gameActive = false;
+        let canClick = false;
+        let bestScore = localStorage.getItem('simonBest') || 0;
+        
+        const buttons = document.querySelectorAll('.simon-btn');
+        const statusEl = document.getElementById('status');
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playTone(frequency, duration = 200) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration/1000);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration/1000);
+        }
+        
+        function flashButton(color, duration = settings.showDuration) {
+            return new Promise(resolve => {
+                const btn = document.querySelector(`.simon-btn.${color}`);
+                btn.classList.add('active');
+                playTone(FREQUENCIES[color], duration);
+                
+                setTimeout(() => {
+                    btn.classList.remove('active');
+                    setTimeout(resolve, settings.pauseDuration);
+                }, duration);
+            });
+        }
+        
+        async function playSequence() {
+            canClick = false;
+            setButtonsEnabled(false);
+            statusEl.textContent = 'Watch the pattern...';
+            
+            await sleep(500);
+            
+            for (const color of sequence) {
+                await flashButton(color);
+            }
+            
+            canClick = true;
+            setButtonsEnabled(true);
+            playerIndex = 0;
+            statusEl.textContent = 'Your turn!';
+        }
+        
+        function addToSequence() {
+            const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            sequence.push(randomColor);
+            round = sequence.length;
+            document.getElementById('round').textContent = round;
+        }
+        
+        function setButtonsEnabled(enabled) {
+            buttons.forEach(btn => btn.disabled = !enabled);
+        }
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        async function handleButtonClick(color) {
+            if (!canClick) return;
+            
+            await flashButton(color, 200);
+            
+            if (color === sequence[playerIndex]) {
+                playerIndex++;
+                
+                if (playerIndex === sequence.length) {
+                    // Completed sequence
+                    canClick = false;
+                    setButtonsEnabled(false);
+                    statusEl.textContent = 'Correct! 🎉';
+                    
+                    await sleep(1000);
+                    addToSequence();
+                    playSequence();
+                }
+            } else {
+                // Wrong!
+                gameOver();
+            }
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            canClick = false;
+            setButtonsEnabled(false);
+            
+            // Play error sound
+            if (audioContext) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 100;
+                oscillator.type = 'sawtooth';
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }
+            
+            const newBest = round > bestScore;
+            if (newBest) {
+                bestScore = round;
+                localStorage.setItem('simonBest', bestScore);
+                document.getElementById('bestScore').textContent = bestScore;
+            }
+            
+            document.getElementById('finalRound').textContent = round;
+            document.getElementById('newBestText').style.display = newBest ? 'block' : 'none';
+            document.getElementById('gameOverOverlay').classList.remove('hidden');
+            
+            document.getElementById('startBtn').textContent = 'Start Game';
+            document.getElementById('startBtn').disabled = false;
+        }
+        
+        async function startGame() {
+            initAudio();
+            
+            settings = DIFFICULTY[difficulty];
+            sequence = [];
+            playerIndex = 0;
+            round = 0;
+            gameActive = true;
+            
+            document.getElementById('round').textContent = '0';
+            document.getElementById('startBtn').textContent = 'Playing...';
+            document.getElementById('startBtn').disabled = true;
+            
+            await sleep(500);
+            addToSequence();
+            playSequence();
+        }
+        
+        // Event listeners
+        buttons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (canClick) {
+                    handleButtonClick(btn.dataset.color);
+                }
+            });
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', e => {
+            if (!canClick) return;
+            
+            const keyMap = {
+                '1': 'green', 'q': 'green', 'Q': 'green',
+                '2': 'red', 'w': 'red', 'W': 'red',
+                '3': 'yellow', 'a': 'yellow', 'A': 'yellow',
+                '4': 'blue', 's': 'blue', 'S': 'blue'
+            };
+            
+            if (keyMap[e.key]) {
+                handleButtonClick(keyMap[e.key]);
+            }
+        });
+        
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            startGame();
+        });
+        
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (gameActive) return;
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                difficulty = btn.dataset.diff;
+            });
+        });
+        
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+        
+        // Initialize
+        document.getElementById('bestScore').textContent = bestScore;
+    </script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>

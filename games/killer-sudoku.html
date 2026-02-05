@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Killer Sudoku - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .sudoku-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .sudoku-board {
+            display: grid;
+            grid-template-columns: repeat(9, 48px);
+            grid-template-rows: repeat(9, 48px);
+            gap: 0;
+            background: #1a1a2e;
+            border: 3px solid #ff6b6b;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.3);
+        }
+        
+        .sudoku-cell {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            background: #1a1a2e;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #333;
+            position: relative;
+            box-sizing: border-box;
+        }
+        
+        .sudoku-cell:hover {
+            background: rgba(255, 107, 107, 0.2);
+        }
+        
+        .sudoku-cell.selected {
+            background: rgba(255, 107, 107, 0.4);
+        }
+        
+        .sudoku-cell.same-cage {
+            background: rgba(255, 170, 0, 0.15);
+        }
+        
+        .sudoku-cell.same-number {
+            background: rgba(0, 255, 136, 0.2);
+        }
+        
+        .sudoku-cell.user-input {
+            color: #00ff88;
+        }
+        
+        .sudoku-cell.error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.2);
+        }
+        
+        .sudoku-cell.hint {
+            color: #ffaa00;
+            animation: pulse 1s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { background: rgba(255, 170, 0, 0.3); }
+            50% { background: rgba(255, 170, 0, 0.1); }
+        }
+        
+        /* 3x3 box borders */
+        .sudoku-cell:nth-child(3n) { border-right: 2px solid #ff6b6b; }
+        .sudoku-cell:nth-child(9n) { border-right: 3px solid #ff6b6b; }
+        .sudoku-cell:nth-child(n+19):nth-child(-n+27),
+        .sudoku-cell:nth-child(n+46):nth-child(-n+54) {
+            border-bottom: 2px solid #ff6b6b;
+        }
+        .sudoku-cell:nth-child(-n+9) { border-top: 3px solid #ff6b6b; }
+        .sudoku-cell:nth-child(9n+1) { border-left: 3px solid #ff6b6b; }
+        
+        /* Cage borders - will be applied dynamically */
+        .cage-top { border-top: 2px dashed #888 !important; }
+        .cage-bottom { border-bottom: 2px dashed #888 !important; }
+        .cage-left { border-left: 2px dashed #888 !important; }
+        .cage-right { border-right: 2px dashed #888 !important; }
+        
+        .cage-sum {
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            font-size: 0.55rem;
+            color: #ffaa00;
+            font-weight: bold;
+            text-shadow: 0 0 3px #000;
+        }
+        
+        .number-pad {
+            display: grid;
+            grid-template-columns: repeat(5, 50px);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .num-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .num-btn:hover {
+            background: rgba(255, 107, 107, 0.3);
+            border-color: #ff6b6b;
+        }
+        
+        .num-btn.completed {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .game-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 107, 107, 0.3);
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 15px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #a0a0a0;
+        }
+        
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #ff6b6b;
+        }
+        
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .diff-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .diff-btn.active {
+            background: #ff6b6b;
+            color: #1a1a2e;
+            border-color: #ff6b6b;
+        }
+        
+        .notes-mode {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        .notes-mode.active {
+            background: rgba(255, 170, 0, 0.3);
+            border-color: #ffaa00;
+        }
+        
+        .cell-notes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+            font-size: 0.55rem;
+            color: #888;
+            padding-top: 10px;
+        }
+        
+        .cell-notes span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hints-remaining {
+            color: #ffaa00;
+        }
+        
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: background 0.3s;
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .info-box {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            border-radius: 10px;
+            padding: 10px 15px;
+            margin: 10px 0;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">☠️ Killer Sudoku</h1>
+            
+            <div class="difficulty-selector">
+                <button class="diff-btn active" data-diff="easy">Easy</button>
+                <button class="diff-btn" data-diff="medium">Medium</button>
+                <button class="diff-btn" data-diff="hard">Hard</button>
+            </div>
+            
+            <div class="info-box">
+                <strong>Cage Rules:</strong> Numbers in each dotted cage must sum to the small number. 
+                No repeating digits within a cage!
+            </div>
+            
+            <div class="game-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Time</div>
+                    <div class="stat-value" id="timer">00:00</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Errors</div>
+                    <div class="stat-value" id="errors">0/3</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Hints</div>
+                    <div class="stat-value hints-remaining" id="hints">3</div>
+                </div>
+            </div>
+            
+            <div class="sudoku-container">
+                <div class="sudoku-board" id="board"></div>
+                
+                <div class="game-controls">
+                    <button class="control-btn" id="undoBtn">↩️ Undo</button>
+                    <button class="control-btn" id="eraseBtn">🗑️ Erase</button>
+                    <button class="control-btn notes-mode" id="notesBtn">📝 Notes</button>
+                    <button class="control-btn" id="hintBtn">💡 Hint</button>
+                    <button class="control-btn" id="saveBtn">💾 Save</button>
+                </div>
+                
+                <div class="number-pad" id="numPad"></div>
+            </div>
+            
+            <button id="newGameBtn" class="btn btn-primary" style="margin-top: 20px;">New Game</button>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Fill each row, column, and 3x3 box with numbers 1-9.<br>
+                Numbers in each cage must add up to the sum shown.<br>
+                No number can repeat within a cage!</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gameOverOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2 id="endTitle">🎉 Puzzle Complete!</h2>
+            <p>Time: <span id="finalTime">00:00</span><br>
+            Difficulty: <span id="finalDiff">Easy</span></p>
+            <button id="playAgainBtn" class="btn btn-primary">New Puzzle</button>
+        </div>
+    </div>
+
+    <script>
+        const board = document.getElementById('board');
+        const numPad = document.getElementById('numPad');
+        
+        // Game state
+        let solution = [];
+        let userGrid = [];
+        let cages = [];
+        let notes = [];
+        let selectedCell = null;
+        let difficulty = 'easy';
+        let errors = 0;
+        let maxErrors = 3;
+        let hintsRemaining = 3;
+        let notesMode = false;
+        let history = [];
+        let timerInterval = null;
+        let seconds = 0;
+        let gameActive = false;
+        
+        const DIFFICULTY_CAGE_SIZE = {
+            easy: { min: 2, max: 3 },
+            medium: { min: 2, max: 4 },
+            hard: { min: 2, max: 5 }
+        };
+        
+        // Generate a valid Sudoku solution
+        function generateSolution() {
+            const grid = Array(9).fill().map(() => Array(9).fill(0));
+            fillGrid(grid);
+            return grid;
+        }
+        
+        function fillGrid(grid) {
+            const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+            
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (grid[row][col] === 0) {
+                        shuffle(numbers);
+                        for (const num of numbers) {
+                            if (isValid(grid, row, col, num)) {
+                                grid[row][col] = num;
+                                if (fillGrid(grid)) return true;
+                                grid[row][col] = 0;
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        function isValid(grid, row, col, num) {
+            if (grid[row].includes(num)) return false;
+            if (grid.some(r => r[col] === num)) return false;
+            
+            const boxRow = Math.floor(row / 3) * 3;
+            const boxCol = Math.floor(col / 3) * 3;
+            for (let r = boxRow; r < boxRow + 3; r++) {
+                for (let c = boxCol; c < boxCol + 3; c++) {
+                    if (grid[r][c] === num) return false;
+                }
+            }
+            return true;
+        }
+        
+        // Generate cages for the puzzle
+        function generateCages(sol) {
+            const used = Array(81).fill(false);
+            const cageList = [];
+            const { min, max } = DIFFICULTY_CAGE_SIZE[difficulty];
+            
+            for (let i = 0; i < 81; i++) {
+                if (used[i]) continue;
+                
+                const cage = { cells: [], sum: 0 };
+                const startRow = Math.floor(i / 9);
+                const startCol = i % 9;
+                
+                // BFS to create connected cage
+                const queue = [[startRow, startCol]];
+                const maxSize = min + Math.floor(Math.random() * (max - min + 1));
+                
+                while (queue.length > 0 && cage.cells.length < maxSize) {
+                    const [r, c] = queue.shift();
+                    const idx = r * 9 + c;
+                    
+                    if (used[idx] || r < 0 || r >= 9 || c < 0 || c >= 9) continue;
+                    
+                    used[idx] = true;
+                    cage.cells.push({ row: r, col: c });
+                    cage.sum += sol[r][c];
+                    
+                    // Add neighbors in random order
+                    const neighbors = [[r-1,c], [r+1,c], [r,c-1], [r,c+1]];
+                    shuffle(neighbors);
+                    
+                    for (const [nr, nc] of neighbors) {
+                        if (nr >= 0 && nr < 9 && nc >= 0 && nc < 9 && !used[nr * 9 + nc]) {
+                            if (Math.random() > 0.3) { // Random chance to add neighbor
+                                queue.push([nr, nc]);
+                            }
+                        }
+                    }
+                }
+                
+                if (cage.cells.length > 0) {
+                    cageList.push(cage);
+                }
+            }
+            
+            // Handle any remaining uncaged cells
+            for (let i = 0; i < 81; i++) {
+                if (!used[i]) {
+                    const r = Math.floor(i / 9);
+                    const c = i % 9;
+                    cageList.push({
+                        cells: [{ row: r, col: c }],
+                        sum: sol[r][c]
+                    });
+                }
+            }
+            
+            return cageList;
+        }
+        
+        function getCageForCell(row, col) {
+            return cages.findIndex(cage => 
+                cage.cells.some(cell => cell.row === row && cell.col === col)
+            );
+        }
+        
+        function getCageBorders(cageIdx, row, col) {
+            const cage = cages[cageIdx];
+            const borders = { top: true, bottom: true, left: true, right: true };
+            
+            for (const cell of cage.cells) {
+                if (cell.row === row - 1 && cell.col === col) borders.top = false;
+                if (cell.row === row + 1 && cell.col === col) borders.bottom = false;
+                if (cell.row === row && cell.col === col - 1) borders.left = false;
+                if (cell.row === row && cell.col === col + 1) borders.right = false;
+            }
+            
+            return borders;
+        }
+        
+        function isFirstCellInCage(cageIdx, row, col) {
+            const cage = cages[cageIdx];
+            // First cell is the one with smallest row, then smallest col
+            for (const cell of cage.cells) {
+                if (cell.row < row || (cell.row === row && cell.col < col)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        function createBoard() {
+            board.innerHTML = '';
+            
+            for (let i = 0; i < 81; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'sudoku-cell';
+                cell.dataset.index = i;
+                cell.addEventListener('click', () => selectCell(i));
+                board.appendChild(cell);
+            }
+        }
+        
+        function createNumPad() {
+            numPad.innerHTML = '';
+            
+            for (let i = 1; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'num-btn';
+                btn.textContent = i;
+                btn.addEventListener('click', () => inputNumber(i));
+                numPad.appendChild(btn);
+            }
+            
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'num-btn';
+            clearBtn.textContent = '✕';
+            clearBtn.addEventListener('click', () => eraseCell());
+            numPad.appendChild(clearBtn);
+        }
+        
+        function renderBoard() {
+            const cells = board.querySelectorAll('.sudoku-cell');
+            const selectedCage = selectedCell !== null ? getCageForCell(Math.floor(selectedCell / 9), selectedCell % 9) : -1;
+            const selectedValue = selectedCell !== null ? userGrid[Math.floor(selectedCell / 9)][selectedCell % 9] : null;
+            
+            cells.forEach((cell, i) => {
+                const row = Math.floor(i / 9);
+                const col = i % 9;
+                const value = userGrid[row][col];
+                const cellNotes = notes[row][col];
+                const cageIdx = getCageForCell(row, col);
+                const borders = getCageBorders(cageIdx, row, col);
+                
+                cell.className = 'sudoku-cell';
+                if (borders.top) cell.classList.add('cage-top');
+                if (borders.bottom) cell.classList.add('cage-bottom');
+                if (borders.left) cell.classList.add('cage-left');
+                if (borders.right) cell.classList.add('cage-right');
+                
+                if (i === selectedCell) {
+                    cell.classList.add('selected');
+                } else if (cageIdx === selectedCage && selectedCage !== -1) {
+                    cell.classList.add('same-cage');
+                }
+                
+                // Build cell content
+                let content = '';
+                
+                // Add cage sum for first cell in cage
+                if (isFirstCellInCage(cageIdx, row, col)) {
+                    content += `<span class="cage-sum">${cages[cageIdx].sum}</span>`;
+                }
+                
+                if (value !== 0) {
+                    cell.classList.add('user-input');
+                    
+                    // Check if correct
+                    if (value !== solution[row][col]) {
+                        cell.classList.add('error');
+                    }
+                    
+                    // Highlight same numbers
+                    if (selectedValue && value === selectedValue && i !== selectedCell) {
+                        cell.classList.add('same-number');
+                    }
+                    
+                    content += value;
+                } else if (cellNotes.length > 0) {
+                    content += '<div class="cell-notes">' +
+                        [1,2,3,4,5,6,7,8,9].map(n => 
+                            `<span>${cellNotes.includes(n) ? n : ''}</span>`
+                        ).join('') + '</div>';
+                }
+                
+                cell.innerHTML = content;
+            });
+            
+            updateNumPadCount();
+        }
+        
+        function updateNumPadCount() {
+            const counts = Array(10).fill(0);
+            userGrid.forEach(row => row.forEach(val => { if (val > 0) counts[val]++; }));
+            
+            numPad.querySelectorAll('.num-btn').forEach((btn, i) => {
+                if (i < 9) {
+                    btn.classList.toggle('completed', counts[i + 1] >= 9);
+                }
+            });
+        }
+        
+        function selectCell(index) {
+            selectedCell = index;
+            renderBoard();
+        }
+        
+        function isValidInCage(cageIdx, num, excludeRow, excludeCol) {
+            const cage = cages[cageIdx];
+            for (const cell of cage.cells) {
+                if (cell.row === excludeRow && cell.col === excludeCol) continue;
+                if (userGrid[cell.row][cell.col] === num) return false;
+            }
+            return true;
+        }
+        
+        function inputNumber(num) {
+            if (selectedCell === null || !gameActive) return;
+            
+            const row = Math.floor(selectedCell / 9);
+            const col = selectedCell % 9;
+            
+            // Save to history
+            history.push({
+                row, col,
+                oldValue: userGrid[row][col],
+                oldNotes: [...notes[row][col]]
+            });
+            
+            if (notesMode) {
+                if (notes[row][col].includes(num)) {
+                    notes[row][col] = notes[row][col].filter(n => n !== num);
+                } else {
+                    notes[row][col].push(num);
+                    notes[row][col].sort();
+                }
+                userGrid[row][col] = 0;
+            } else {
+                userGrid[row][col] = num;
+                notes[row][col] = [];
+                
+                // Check if correct
+                if (num !== solution[row][col]) {
+                    errors++;
+                    document.getElementById('errors').textContent = `${errors}/${maxErrors}`;
+                    
+                    if (errors >= maxErrors) {
+                        endGame(false);
+                        return;
+                    }
+                }
+                
+                // Remove notes from related cells
+                removeNoteFromRelated(row, col, num);
+                
+                // Check win
+                if (checkWin()) {
+                    endGame(true);
+                    return;
+                }
+            }
+            
+            renderBoard();
+            saveProgress();
+        }
+        
+        function removeNoteFromRelated(row, col, num) {
+            // Row and column
+            for (let i = 0; i < 9; i++) {
+                notes[row][i] = notes[row][i].filter(n => n !== num);
+                notes[i][col] = notes[i][col].filter(n => n !== num);
+            }
+            
+            // Box
+            const boxRow = Math.floor(row / 3) * 3;
+            const boxCol = Math.floor(col / 3) * 3;
+            for (let r = boxRow; r < boxRow + 3; r++) {
+                for (let c = boxCol; c < boxCol + 3; c++) {
+                    notes[r][c] = notes[r][c].filter(n => n !== num);
+                }
+            }
+            
+            // Cage
+            const cageIdx = getCageForCell(row, col);
+            for (const cell of cages[cageIdx].cells) {
+                notes[cell.row][cell.col] = notes[cell.row][cell.col].filter(n => n !== num);
+            }
+        }
+        
+        function eraseCell() {
+            if (selectedCell === null || !gameActive) return;
+            
+            const row = Math.floor(selectedCell / 9);
+            const col = selectedCell % 9;
+            
+            history.push({
+                row, col,
+                oldValue: userGrid[row][col],
+                oldNotes: [...notes[row][col]]
+            });
+            
+            userGrid[row][col] = 0;
+            notes[row][col] = [];
+            renderBoard();
+            saveProgress();
+        }
+        
+        function undo() {
+            if (history.length === 0) return;
+            
+            const { row, col, oldValue, oldNotes } = history.pop();
+            userGrid[row][col] = oldValue;
+            notes[row][col] = oldNotes;
+            renderBoard();
+            saveProgress();
+        }
+        
+        function useHint() {
+            if (hintsRemaining <= 0 || !gameActive) return;
+            
+            // Find an empty or wrong cell
+            const emptyCells = [];
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (userGrid[r][c] === 0 || userGrid[r][c] !== solution[r][c]) {
+                        emptyCells.push([r, c]);
+                    }
+                }
+            }
+            
+            if (emptyCells.length === 0) return;
+            
+            let [row, col] = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            
+            if (selectedCell !== null) {
+                const sr = Math.floor(selectedCell / 9);
+                const sc = selectedCell % 9;
+                if (userGrid[sr][sc] === 0 || userGrid[sr][sc] !== solution[sr][sc]) {
+                    row = sr;
+                    col = sc;
+                }
+            }
+            
+            userGrid[row][col] = solution[row][col];
+            notes[row][col] = [];
+            hintsRemaining--;
+            document.getElementById('hints').textContent = hintsRemaining;
+            
+            const cell = board.children[row * 9 + col];
+            cell.classList.add('hint');
+            
+            removeNoteFromRelated(row, col, solution[row][col]);
+            
+            if (checkWin()) {
+                endGame(true);
+                return;
+            }
+            
+            renderBoard();
+            saveProgress();
+        }
+        
+        function checkWin() {
+            for (let r = 0; r < 9; r++) {
+                for (let c = 0; c < 9; c++) {
+                    if (userGrid[r][c] !== solution[r][c]) return false;
+                }
+            }
+            return true;
+        }
+        
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('timer').textContent = 
+                    `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        function endGame(won) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            
+            if (won) {
+                const mins = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('endTitle').textContent = '🎉 Puzzle Complete!';
+                document.getElementById('finalTime').textContent = 
+                    `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                document.getElementById('finalDiff').textContent = 
+                    difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+            } else {
+                document.getElementById('endTitle').textContent = '😔 Too Many Errors!';
+                document.getElementById('finalTime').textContent = 'Better luck next time';
+                document.getElementById('finalDiff').textContent = '';
+            }
+            
+            document.getElementById('gameOverOverlay').classList.remove('hidden');
+            localStorage.removeItem('killerSudokuProgress');
+        }
+        
+        function newGame() {
+            solution = generateSolution();
+            cages = generateCages(solution);
+            userGrid = Array(9).fill().map(() => Array(9).fill(0));
+            notes = Array(9).fill().map(() => Array(9).fill().map(() => []));
+            selectedCell = null;
+            errors = 0;
+            hintsRemaining = 3;
+            history = [];
+            seconds = 0;
+            gameActive = true;
+            
+            document.getElementById('errors').textContent = '0/3';
+            document.getElementById('hints').textContent = '3';
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            
+            renderBoard();
+            startTimer();
+            localStorage.removeItem('killerSudokuProgress');
+        }
+        
+        function saveProgress() {
+            const data = {
+                solution, userGrid, cages, notes,
+                errors, hintsRemaining, seconds, difficulty
+            };
+            localStorage.setItem('killerSudokuProgress', JSON.stringify(data));
+        }
+        
+        function loadProgress() {
+            const saved = localStorage.getItem('killerSudokuProgress');
+            if (!saved) return false;
+            
+            try {
+                const data = JSON.parse(saved);
+                solution = data.solution;
+                userGrid = data.userGrid;
+                cages = data.cages;
+                notes = data.notes;
+                errors = data.errors;
+                hintsRemaining = data.hintsRemaining;
+                seconds = data.seconds;
+                difficulty = data.difficulty;
+                
+                document.getElementById('errors').textContent = `${errors}/${maxErrors}`;
+                document.getElementById('hints').textContent = hintsRemaining;
+                
+                document.querySelectorAll('.diff-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.diff === difficulty);
+                });
+                
+                gameActive = true;
+                renderBoard();
+                startTimer();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', e => {
+            if (!gameActive) return;
+            
+            if (e.key >= '1' && e.key <= '9') {
+                inputNumber(parseInt(e.key));
+            } else if (e.key === 'Backspace' || e.key === 'Delete') {
+                eraseCell();
+            } else if (e.key === 'z' && e.ctrlKey) {
+                undo();
+            } else if (e.key === 'n') {
+                notesMode = !notesMode;
+                document.getElementById('notesBtn').classList.toggle('active', notesMode);
+            }
+            
+            // Arrow key navigation
+            if (selectedCell !== null) {
+                let newCell = selectedCell;
+                if (e.key === 'ArrowUp' && selectedCell >= 9) newCell -= 9;
+                if (e.key === 'ArrowDown' && selectedCell < 72) newCell += 9;
+                if (e.key === 'ArrowLeft' && selectedCell % 9 > 0) newCell -= 1;
+                if (e.key === 'ArrowRight' && selectedCell % 9 < 8) newCell += 1;
+                
+                if (newCell !== selectedCell) {
+                    e.preventDefault();
+                    selectCell(newCell);
+                }
+            }
+        });
+        
+        document.getElementById('undoBtn').addEventListener('click', undo);
+        document.getElementById('eraseBtn').addEventListener('click', eraseCell);
+        document.getElementById('hintBtn').addEventListener('click', useHint);
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            saveProgress();
+            alert('Progress saved!');
+        });
+        
+        document.getElementById('notesBtn').addEventListener('click', () => {
+            notesMode = !notesMode;
+            document.getElementById('notesBtn').classList.toggle('active', notesMode);
+        });
+        
+        document.getElementById('newGameBtn').addEventListener('click', newGame);
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            newGame();
+        });
+        
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                difficulty = btn.dataset.diff;
+                newGame();
+            });
+        });
+        
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+        
+        // Initialize
+        createBoard();
+        createNumPad();
+        
+        if (!loadProgress()) {
+            newGame();
+        }
+    </script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>

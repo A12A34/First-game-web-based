@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch! - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        #gameCanvas {
+            border: 3px solid #00d9ff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+            touch-action: none;
+        }
+        
+        .game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            min-width: 80px;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #a0a0a0;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        
+        .stat-value.lives { color: #ff6b6b; }
+        .stat-value.combo { color: #ffaa00; }
+        
+        .powerup-display {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+            min-height: 40px;
+        }
+        
+        .active-powerup {
+            padding: 8px 15px;
+            background: rgba(255, 170, 0, 0.3);
+            border: 1px solid #ffaa00;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .diff-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .diff-btn.active {
+            background: #00d9ff;
+            color: #1a1a2e;
+            border-color: #00d9ff;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: background 0.3s;
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🧺 Catch!</h1>
+            
+            <div class="difficulty-selector">
+                <button class="diff-btn" data-diff="easy">Easy</button>
+                <button class="diff-btn active" data-diff="medium">Medium</button>
+                <button class="diff-btn" data-diff="hard">Hard</button>
+            </div>
+            
+            <div class="game-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Score</div>
+                    <div class="stat-value" id="score">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Level</div>
+                    <div class="stat-value" id="level">1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Combo</div>
+                    <div class="stat-value combo" id="combo">x1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Lives</div>
+                    <div class="stat-value lives" id="lives">❤❤❤</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Best</div>
+                    <div class="stat-value" id="bestScore">0</div>
+                </div>
+            </div>
+            
+            <div class="powerup-display" id="powerupDisplay"></div>
+            
+            <canvas id="gameCanvas" width="600" height="450"></canvas>
+            
+            <button id="startBtn" class="btn btn-primary">Start Game</button>
+            
+            <div class="legend">
+                <div class="legend-item">🍎 +10</div>
+                <div class="legend-item">⭐ +25</div>
+                <div class="legend-item">💎 +50</div>
+                <div class="legend-item">🌟 +100</div>
+                <div class="legend-item">💀 Lose Life</div>
+                <div class="legend-item">🛡️ Shield</div>
+                <div class="legend-item">🧲 Magnet</div>
+                <div class="legend-item">⏱️ Slow</div>
+                <div class="legend-item">📏 Wide</div>
+                <div class="legend-item">🔥 2x Score</div>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Move with Arrow keys, WASD, or touch/drag.<br>
+                Catch fruits and gems for points!<br>
+                Avoid skulls and collect powerups!</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="gameOverOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span><br>
+            Level Reached: <span id="finalLevel">1</span></p>
+            <button id="playAgainBtn" class="btn btn-primary">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game settings by difficulty
+        const DIFFICULTY_SETTINGS = {
+            easy: { baseSpeed: 2, spawnRate: 1500, badItemChance: 0.1, powerupChance: 0.15 },
+            medium: { baseSpeed: 3, spawnRate: 1200, badItemChance: 0.15, powerupChance: 0.12 },
+            hard: { baseSpeed: 4, spawnRate: 900, badItemChance: 0.2, powerupChance: 0.1 }
+        };
+        
+        let difficulty = 'medium';
+        let settings = DIFFICULTY_SETTINGS[difficulty];
+        
+        // Item types
+        const ITEMS = {
+            fruits: [
+                { emoji: '🍎', points: 10 },
+                { emoji: '🍊', points: 10 },
+                { emoji: '🍋', points: 10 },
+                { emoji: '🍇', points: 15 },
+                { emoji: '🍓', points: 15 },
+                { emoji: '🍒', points: 20 }
+            ],
+            gems: [
+                { emoji: '⭐', points: 25 },
+                { emoji: '💎', points: 50 },
+                { emoji: '🌟', points: 100 }
+            ],
+            bad: [
+                { emoji: '💀', points: -1 },
+                { emoji: '💣', points: -1 },
+                { emoji: '🦠', points: -1 }
+            ],
+            powerups: [
+                { emoji: '🛡️', type: 'shield', name: 'Shield', duration: 5000 },
+                { emoji: '🧲', type: 'magnet', name: 'Magnet', duration: 6000 },
+                { emoji: '⏱️', type: 'slow', name: 'Slow Time', duration: 5000 },
+                { emoji: '📏', type: 'wide', name: 'Wide Basket', duration: 7000 },
+                { emoji: '🔥', type: 'double', name: '2x Score', duration: 8000 }
+            ]
+        };
+        
+        // Basket
+        const BASKET_BASE_WIDTH = 80;
+        let basket = {
+            x: canvas.width / 2 - BASKET_BASE_WIDTH / 2,
+            y: canvas.height - 60,
+            width: BASKET_BASE_WIDTH,
+            height: 40,
+            speed: 8
+        };
+        
+        // Game state
+        let fallingItems = [];
+        let particles = [];
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let combo = 1;
+        let comboTimer = 0;
+        let gameRunning = false;
+        let animationId = null;
+        let spawnInterval = null;
+        let bestScore = localStorage.getItem('catchBest') || 0;
+        
+        // Active powerups
+        let activePowerups = {};
+        
+        // Keys
+        const keys = {};
+        
+        // Touch controls
+        let touchX = null;
+        
+        function createItem() {
+            const rand = Math.random();
+            let itemData;
+            let isBad = false;
+            let isPowerup = false;
+            
+            if (rand < settings.powerupChance) {
+                itemData = ITEMS.powerups[Math.floor(Math.random() * ITEMS.powerups.length)];
+                isPowerup = true;
+            } else if (rand < settings.powerupChance + settings.badItemChance) {
+                itemData = ITEMS.bad[Math.floor(Math.random() * ITEMS.bad.length)];
+                isBad = true;
+            } else if (rand < settings.powerupChance + settings.badItemChance + 0.15) {
+                itemData = ITEMS.gems[Math.floor(Math.random() * ITEMS.gems.length)];
+            } else {
+                itemData = ITEMS.fruits[Math.floor(Math.random() * ITEMS.fruits.length)];
+            }
+            
+            const speed = settings.baseSpeed + (level - 1) * 0.3 + Math.random() * 1;
+            
+            return {
+                x: Math.random() * (canvas.width - 40) + 20,
+                y: -30,
+                size: 30,
+                speed: activePowerups.slow ? speed * 0.5 : speed,
+                ...itemData,
+                isBad,
+                isPowerup
+            };
+        }
+        
+        function spawnItem() {
+            if (!gameRunning) return;
+            fallingItems.push(createItem());
+        }
+        
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 30,
+                    color,
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+        
+        function activatePowerup(item) {
+            activePowerups[item.type] = {
+                name: item.name,
+                endTime: Date.now() + item.duration
+            };
+            
+            if (item.type === 'wide') {
+                basket.width = BASKET_BASE_WIDTH * 1.5;
+            }
+            
+            updatePowerupDisplay();
+        }
+        
+        function updatePowerups() {
+            const now = Date.now();
+            let changed = false;
+            
+            for (const type in activePowerups) {
+                if (now >= activePowerups[type].endTime) {
+                    delete activePowerups[type];
+                    changed = true;
+                    
+                    if (type === 'wide') {
+                        basket.width = BASKET_BASE_WIDTH;
+                    }
+                }
+            }
+            
+            if (changed) updatePowerupDisplay();
+        }
+        
+        function updatePowerupDisplay() {
+            const display = document.getElementById('powerupDisplay');
+            display.innerHTML = Object.entries(activePowerups)
+                .map(([type, data]) => {
+                    const remaining = Math.ceil((data.endTime - Date.now()) / 1000);
+                    return `<div class="active-powerup">${data.name} (${remaining}s)</div>`;
+                }).join('');
+        }
+        
+        function update() {
+            // Move basket
+            let targetX = basket.x;
+            
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) targetX -= basket.speed;
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) targetX += basket.speed;
+            
+            if (touchX !== null) {
+                targetX = touchX - basket.width / 2;
+            }
+            
+            basket.x = Math.max(0, Math.min(canvas.width - basket.width, targetX));
+            
+            // Magnet effect
+            if (activePowerups.magnet) {
+                const magnetRange = 100;
+                fallingItems.forEach(item => {
+                    if (!item.isBad) {
+                        const itemCenterX = item.x + item.size / 2;
+                        const basketCenterX = basket.x + basket.width / 2;
+                        const dist = Math.abs(itemCenterX - basketCenterX);
+                        
+                        if (dist < magnetRange) {
+                            const pull = (magnetRange - dist) / magnetRange * 3;
+                            item.x += (basketCenterX - itemCenterX) > 0 ? pull : -pull;
+                        }
+                    }
+                });
+            }
+            
+            // Update falling items
+            for (let i = fallingItems.length - 1; i >= 0; i--) {
+                const item = fallingItems[i];
+                item.y += item.speed;
+                
+                // Check collision with basket
+                if (item.y + item.size >= basket.y && 
+                    item.y <= basket.y + basket.height &&
+                    item.x + item.size >= basket.x && 
+                    item.x <= basket.x + basket.width) {
+                    
+                    if (item.isPowerup) {
+                        activatePowerup(item);
+                        createParticles(item.x + item.size/2, item.y, '#ffaa00', 15);
+                    } else if (item.isBad) {
+                        if (!activePowerups.shield) {
+                            lives--;
+                            combo = 1;
+                            createParticles(item.x + item.size/2, item.y, '#ff0000', 20);
+                            document.getElementById('lives').textContent = '❤'.repeat(Math.max(0, lives));
+                            
+                            if (lives <= 0) {
+                                endGame();
+                                return;
+                            }
+                        } else {
+                            createParticles(item.x + item.size/2, item.y, '#00ffff', 15);
+                        }
+                    } else {
+                        let points = item.points * combo;
+                        if (activePowerups.double) points *= 2;
+                        
+                        score += points;
+                        combo = Math.min(10, combo + 0.5);
+                        comboTimer = 60;
+                        
+                        createParticles(item.x + item.size/2, item.y, '#00ff88', 10);
+                    }
+                    
+                    fallingItems.splice(i, 1);
+                    continue;
+                }
+                
+                // Remove if off screen
+                if (item.y > canvas.height) {
+                    if (!item.isBad && !item.isPowerup) {
+                        combo = 1;
+                    }
+                    fallingItems.splice(i, 1);
+                }
+            }
+            
+            // Update combo
+            if (comboTimer > 0) {
+                comboTimer--;
+            } else if (combo > 1) {
+                combo = Math.max(1, combo - 0.02);
+            }
+            
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3;
+                p.life--;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // Level up
+            const newLevel = Math.floor(score / 500) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                // Increase difficulty
+                settings.spawnRate = Math.max(500, DIFFICULTY_SETTINGS[difficulty].spawnRate - level * 50);
+                clearInterval(spawnInterval);
+                spawnInterval = setInterval(spawnItem, settings.spawnRate);
+            }
+            
+            // Update powerups
+            updatePowerups();
+            
+            // Update display
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('combo').textContent = 'x' + combo.toFixed(1);
+        }
+        
+        function draw() {
+            // Clear
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ground
+            ctx.fillStyle = 'rgba(0, 217, 255, 0.1)';
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+            
+            // Draw basket
+            ctx.fillStyle = activePowerups.shield ? 'rgba(0, 255, 255, 0.8)' : 'rgba(139, 90, 43, 0.9)';
+            ctx.beginPath();
+            ctx.moveTo(basket.x, basket.y);
+            ctx.lineTo(basket.x + 10, basket.y + basket.height);
+            ctx.lineTo(basket.x + basket.width - 10, basket.y + basket.height);
+            ctx.lineTo(basket.x + basket.width, basket.y);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Basket rim
+            ctx.strokeStyle = activePowerups.wide ? '#ffaa00' : '#5d4037';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(basket.x - 5, basket.y);
+            ctx.lineTo(basket.x + basket.width + 5, basket.y);
+            ctx.stroke();
+            
+            // Draw falling items
+            ctx.font = '28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            fallingItems.forEach(item => {
+                ctx.fillText(item.emoji, item.x + item.size/2, item.y + item.size/2);
+                
+                // Glow for powerups
+                if (item.isPowerup) {
+                    ctx.shadowColor = '#ffaa00';
+                    ctx.shadowBlur = 15;
+                    ctx.fillText(item.emoji, item.x + item.size/2, item.y + item.size/2);
+                    ctx.shadowBlur = 0;
+                }
+            });
+            
+            // Draw particles
+            particles.forEach(p => {
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            
+            // Magnet range indicator
+            if (activePowerups.magnet) {
+                ctx.strokeStyle = 'rgba(148, 0, 211, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(basket.x + basket.width/2, basket.y, 100, Math.PI, 0);
+                ctx.stroke();
+            }
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            if (gameRunning) {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            
+            // Reset
+            score = 0;
+            level = 1;
+            lives = 3;
+            combo = 1;
+            fallingItems = [];
+            particles = [];
+            activePowerups = {};
+            basket.width = BASKET_BASE_WIDTH;
+            basket.x = canvas.width / 2 - basket.width / 2;
+            settings = { ...DIFFICULTY_SETTINGS[difficulty] };
+            
+            document.getElementById('lives').textContent = '❤❤❤';
+            document.getElementById('score').textContent = '0';
+            document.getElementById('level').textContent = '1';
+            document.getElementById('combo').textContent = 'x1';
+            document.getElementById('powerupDisplay').innerHTML = '';
+            document.getElementById('startBtn').textContent = 'Playing...';
+            document.getElementById('startBtn').disabled = true;
+            
+            gameRunning = true;
+            spawnInterval = setInterval(spawnItem, settings.spawnRate);
+            gameLoop();
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            clearInterval(spawnInterval);
+            
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('catchBest', bestScore);
+                document.getElementById('bestScore').textContent = bestScore;
+            }
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalLevel').textContent = level;
+            document.getElementById('gameOverOverlay').classList.remove('hidden');
+            
+            document.getElementById('startBtn').textContent = 'Start Game';
+            document.getElementById('startBtn').disabled = false;
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', e => {
+            keys[e.key] = false;
+        });
+        
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+        });
+        
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            touchX = null;
+        });
+        
+        canvas.addEventListener('mousemove', e => {
+            if (gameRunning) {
+                const rect = canvas.getBoundingClientRect();
+                basket.x = e.clientX - rect.left - basket.width / 2;
+                basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+            }
+        });
+        
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            startGame();
+        });
+        
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                difficulty = btn.dataset.diff;
+            });
+        });
+        
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+        
+        // Initialize
+        document.getElementById('bestScore').textContent = bestScore;
+        draw();
+    </script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>
