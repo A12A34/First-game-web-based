@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Test - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .typing-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        .stat-value.wpm { color: #00ff88; }
+        .stat-value.accuracy { color: #ffaa00; }
+        .stat-value.time { color: #ff6b6b; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .text-display {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            font-size: 1.3rem;
+            line-height: 1.8;
+            text-align: left;
+            width: 100%;
+        }
+        .text-display .char {
+            transition: all 0.1s;
+        }
+        .text-display .char.correct {
+            color: #00ff88;
+        }
+        .text-display .char.incorrect {
+            color: #ff6b6b;
+            text-decoration: underline;
+        }
+        .text-display .char.current {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        .text-display .char.pending {
+            color: #666;
+        }
+        .typing-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .typing-input:focus {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+        .typing-input:disabled {
+            opacity: 0.5;
+        }
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .diff-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .diff-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .results {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            width: 100%;
+        }
+        .result-wpm {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        .result-label {
+            font-size: 1.2rem;
+            color: #888;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00d9ff);
+            transition: width 0.3s;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">⌨️ Typing Speed Test</h1>
+            
+            <div class="typing-container">
+                <div class="difficulty-selector">
+                    <button class="diff-btn active" data-diff="easy">Easy</button>
+                    <button class="diff-btn" data-diff="medium">Medium</button>
+                    <button class="diff-btn" data-diff="hard">Hard</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value wpm" id="wpm">0</div>
+                        <div class="stat-label">WPM</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value accuracy" id="accuracy">100%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value time" id="time">60</div>
+                        <div class="stat-label">Seconds</div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress" style="width: 0%"></div>
+                </div>
+                
+                <div class="text-display" id="textDisplay"></div>
+                
+                <input type="text" class="typing-input" id="typingInput" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                
+                <button id="restartBtn" class="btn btn-primary">Restart</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Type the text as fast and accurately as you can! Your WPM (words per minute) and accuracy will be calculated in real-time.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const texts = {
+            easy: [
+                "The quick brown fox jumps over the lazy dog near the river bank.",
+                "A happy cat sat on the warm mat and watched the birds fly by.",
+                "The sun was bright and the sky was blue on this lovely day.",
+                "She sells sea shells by the sea shore every summer morning."
+            ],
+            medium: [
+                "Programming is the art of telling a computer what to do through a series of instructions called code.",
+                "The internet has revolutionized how we communicate, learn, and share information across the globe.",
+                "Artificial intelligence is transforming industries from healthcare to transportation with remarkable speed.",
+                "Climate change presents one of the greatest challenges facing humanity in the twenty-first century."
+            ],
+            hard: [
+                "Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to perform calculations exponentially faster than classical computers for specific problems.",
+                "The electromagnetic spectrum encompasses all frequencies of electromagnetic radiation, from low-frequency radio waves through microwaves, infrared, visible light, ultraviolet, X-rays, to high-frequency gamma rays.",
+                "Cryptocurrency utilizes blockchain technology to create decentralized, cryptographically secured digital currencies that operate independently of traditional banking institutions."
+            ]
+        };
+
+        let currentText = '';
+        let charIndex = 0;
+        let errors = 0;
+        let totalTyped = 0;
+        let startTime = null;
+        let timer = null;
+        let timeLeft = 60;
+        let isFinished = false;
+        let difficulty = 'easy';
+
+        const textDisplay = document.getElementById('textDisplay');
+        const typingInput = document.getElementById('typingInput');
+        const wpmEl = document.getElementById('wpm');
+        const accuracyEl = document.getElementById('accuracy');
+        const timeEl = document.getElementById('time');
+        const progressEl = document.getElementById('progress');
+
+        function init() {
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    difficulty = btn.dataset.diff;
+                    restart();
+                });
+            });
+            
+            document.getElementById('restartBtn').addEventListener('click', restart);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            typingInput.addEventListener('input', handleTyping);
+            typingInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                }
+            });
+            
+            restart();
+        }
+
+        function restart() {
+            const textList = texts[difficulty];
+            currentText = textList[Math.floor(Math.random() * textList.length)];
+            charIndex = 0;
+            errors = 0;
+            totalTyped = 0;
+            startTime = null;
+            timeLeft = 60;
+            isFinished = false;
+            
+            clearInterval(timer);
+            
+            typingInput.value = '';
+            typingInput.disabled = false;
+            typingInput.focus();
+            
+            wpmEl.textContent = '0';
+            accuracyEl.textContent = '100%';
+            timeEl.textContent = '60';
+            progressEl.style.width = '0%';
+            
+            renderText();
+        }
+
+        function renderText() {
+            textDisplay.innerHTML = currentText.split('').map((char, i) => {
+                let className = 'char';
+                if (i < charIndex) {
+                    className += typingInput.value[i] === char ? ' correct' : ' incorrect';
+                } else if (i === charIndex) {
+                    className += ' current';
+                } else {
+                    className += ' pending';
+                }
+                return `<span class="${className}">${char === ' ' ? '&nbsp;' : char}</span>`;
+            }).join('');
+        }
+
+        function handleTyping(e) {
+            if (isFinished) return;
+            
+            if (!startTime) {
+                startTime = Date.now();
+                startTimer();
+            }
+            
+            const typed = typingInput.value;
+            charIndex = typed.length;
+            totalTyped++;
+            
+            // Count errors
+            errors = 0;
+            for (let i = 0; i < typed.length; i++) {
+                if (typed[i] !== currentText[i]) {
+                    errors++;
+                }
+            }
+            
+            renderText();
+            updateStats();
+            
+            // Check completion
+            if (typed === currentText) {
+                finish();
+            }
+            
+            progressEl.style.width = `${(charIndex / currentText.length) * 100}%`;
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft--;
+                timeEl.textContent = timeLeft;
+                updateStats();
+                
+                if (timeLeft <= 0) {
+                    finish();
+                }
+            }, 1000);
+        }
+
+        function updateStats() {
+            const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
+            const wordsTyped = (charIndex - errors) / 5; // standard: 5 chars = 1 word
+            const wpm = Math.round(wordsTyped / timeElapsed) || 0;
+            const accuracy = Math.round(((charIndex - errors) / charIndex) * 100) || 100;
+            
+            wpmEl.textContent = wpm;
+            accuracyEl.textContent = accuracy + '%';
+        }
+
+        function finish() {
+            isFinished = true;
+            clearInterval(timer);
+            typingInput.disabled = true;
+            
+            const timeElapsed = (Date.now() - startTime) / 1000 / 60;
+            const wordsTyped = (charIndex - errors) / 5;
+            const finalWPM = Math.round(wordsTyped / timeElapsed) || 0;
+            const finalAccuracy = Math.round(((charIndex - errors) / charIndex) * 100) || 100;
+            
+            let message = '';
+            if (finalWPM >= 80) message = '🏆 Incredible!';
+            else if (finalWPM >= 60) message = '🌟 Excellent!';
+            else if (finalWPM >= 40) message = '👍 Good job!';
+            else message = '💪 Keep practicing!';
+            
+            textDisplay.innerHTML = `
+                <div class="results">
+                    <div class="result-label">${message}</div>
+                    <div class="result-wpm">${finalWPM} WPM</div>
+                    <div style="margin-top: 15px; color: #888;">
+                        Accuracy: ${finalAccuracy}% | Characters: ${charIndex} | Errors: ${errors}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

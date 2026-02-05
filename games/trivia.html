@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Quiz - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .quiz-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00d9ff);
+            transition: width 0.5s;
+        }
+        .question-counter {
+            font-size: 1rem;
+            color: #888;
+        }
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffaa00;
+        }
+        .timer.warning { color: #ff6b6b; }
+        .question-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            text-align: center;
+        }
+        .category {
+            font-size: 0.9rem;
+            color: #00ff88;
+            margin-bottom: 15px;
+        }
+        .question {
+            font-size: 1.3rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .answers {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .answer-btn {
+            padding: 15px 20px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+        .answer-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #00ff88;
+        }
+        .answer-btn.correct {
+            background: rgba(0, 255, 136, 0.3);
+            border-color: #00ff88;
+        }
+        .answer-btn.wrong {
+            background: rgba(255, 107, 107, 0.3);
+            border-color: #ff6b6b;
+        }
+        .answer-btn:disabled {
+            cursor: not-allowed;
+        }
+        .result-screen {
+            text-align: center;
+            padding: 40px;
+        }
+        .result-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #00ff88;
+            margin: 20px 0;
+        }
+        .result-message {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .category-select {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .cat-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .cat-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🧠 Trivia Quiz</h1>
+            
+            <div class="quiz-container" id="quizContainer">
+                <div class="category-select" id="categorySelect">
+                    <button class="cat-btn active" data-cat="all">All</button>
+                    <button class="cat-btn" data-cat="science">Science</button>
+                    <button class="cat-btn" data-cat="history">History</button>
+                    <button class="cat-btn" data-cat="geography">Geography</button>
+                    <button class="cat-btn" data-cat="entertainment">Entertainment</button>
+                </div>
+                
+                <button id="startBtn" class="btn btn-primary">Start Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = {
+            science: [
+                { q: "What planet is known as the Red Planet?", a: ["Mars", "Venus", "Jupiter", "Saturn"], correct: 0 },
+                { q: "What is the chemical symbol for gold?", a: ["Go", "Gd", "Au", "Ag"], correct: 2 },
+                { q: "How many bones are in the adult human body?", a: ["186", "206", "226", "256"], correct: 1 },
+                { q: "What is the hardest natural substance on Earth?", a: ["Gold", "Iron", "Diamond", "Platinum"], correct: 2 },
+                { q: "What gas do plants absorb from the atmosphere?", a: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], correct: 2 }
+            ],
+            history: [
+                { q: "In what year did World War II end?", a: ["1943", "1944", "1945", "1946"], correct: 2 },
+                { q: "Who was the first President of the United States?", a: ["John Adams", "Thomas Jefferson", "George Washington", "Benjamin Franklin"], correct: 2 },
+                { q: "The ancient city of Rome was built on how many hills?", a: ["5", "6", "7", "8"], correct: 2 },
+                { q: "Which empire built the Colosseum?", a: ["Greek", "Roman", "Byzantine", "Ottoman"], correct: 1 },
+                { q: "In what year did the Titanic sink?", a: ["1910", "1911", "1912", "1913"], correct: 2 }
+            ],
+            geography: [
+                { q: "What is the largest ocean on Earth?", a: ["Atlantic", "Indian", "Arctic", "Pacific"], correct: 3 },
+                { q: "What is the capital of Australia?", a: ["Sydney", "Melbourne", "Canberra", "Perth"], correct: 2 },
+                { q: "Which river is the longest in the world?", a: ["Amazon", "Nile", "Mississippi", "Yangtze"], correct: 1 },
+                { q: "How many continents are there?", a: ["5", "6", "7", "8"], correct: 2 },
+                { q: "What is the smallest country in the world?", a: ["Monaco", "Vatican City", "San Marino", "Liechtenstein"], correct: 1 }
+            ],
+            entertainment: [
+                { q: "Who directed the movie 'Inception'?", a: ["Steven Spielberg", "Christopher Nolan", "Martin Scorsese", "Quentin Tarantino"], correct: 1 },
+                { q: "What band was Freddie Mercury the lead singer of?", a: ["The Beatles", "Led Zeppelin", "Queen", "Pink Floyd"], correct: 2 },
+                { q: "In which year was the first iPhone released?", a: ["2005", "2006", "2007", "2008"], correct: 2 },
+                { q: "What is the highest-grossing film of all time?", a: ["Titanic", "Avatar", "Avengers: Endgame", "Star Wars"], correct: 1 },
+                { q: "Who painted the Mona Lisa?", a: ["Michelangelo", "Leonardo da Vinci", "Raphael", "Donatello"], correct: 1 }
+            ]
+        };
+
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+        let timeLeft = 15;
+        let timer = null;
+        let selectedCategory = 'all';
+        let answered = false;
+
+        const quizContainer = document.getElementById('quizContainer');
+
+        function init() {
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedCategory = btn.dataset.cat;
+                });
+            });
+            
+            document.getElementById('startBtn').addEventListener('click', startQuiz);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        }
+
+        function startQuiz() {
+            // Gather questions
+            if (selectedCategory === 'all') {
+                currentQuestions = Object.values(questions).flat();
+            } else {
+                currentQuestions = [...questions[selectedCategory]];
+            }
+            
+            // Shuffle
+            currentQuestions.sort(() => Math.random() - 0.5);
+            currentQuestions = currentQuestions.slice(0, 10);
+            
+            currentIndex = 0;
+            score = 0;
+            
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const q = currentQuestions[currentIndex];
+            answered = false;
+            timeLeft = 15;
+            
+            quizContainer.innerHTML = `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${((currentIndex) / currentQuestions.length) * 100}%"></div>
+                </div>
+                <div class="question-counter">Question ${currentIndex + 1} of ${currentQuestions.length}</div>
+                <div class="timer" id="timer">${timeLeft}</div>
+                <div class="question-card">
+                    <div class="category">${getCategoryName(q)}</div>
+                    <div class="question">${q.q}</div>
+                    <div class="answers" id="answers">
+                        ${q.a.map((answer, i) => `
+                            <button class="answer-btn" data-index="${i}">${answer}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            document.querySelectorAll('.answer-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectAnswer(parseInt(btn.dataset.index)));
+            });
+            
+            startTimer();
+        }
+
+        function getCategoryName(question) {
+            for (const [cat, qs] of Object.entries(questions)) {
+                if (qs.includes(question)) {
+                    return cat.charAt(0).toUpperCase() + cat.slice(1);
+                }
+            }
+            return '';
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                const timerEl = document.getElementById('timer');
+                timerEl.textContent = timeLeft;
+                if (timeLeft <= 5) timerEl.classList.add('warning');
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    selectAnswer(-1); // Time's up
+                }
+            }, 1000);
+        }
+
+        function selectAnswer(index) {
+            if (answered) return;
+            answered = true;
+            clearInterval(timer);
+            
+            const q = currentQuestions[currentIndex];
+            const buttons = document.querySelectorAll('.answer-btn');
+            
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                const btnIndex = parseInt(btn.dataset.index);
+                if (btnIndex === q.correct) {
+                    btn.classList.add('correct');
+                } else if (btnIndex === index) {
+                    btn.classList.add('wrong');
+                }
+            });
+            
+            if (index === q.correct) {
+                score++;
+            }
+            
+            setTimeout(() => {
+                currentIndex++;
+                if (currentIndex < currentQuestions.length) {
+                    showQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1500);
+        }
+
+        function showResults() {
+            const percentage = Math.round((score / currentQuestions.length) * 100);
+            let message = '';
+            let emoji = '';
+            
+            if (percentage >= 90) { message = 'Outstanding!'; emoji = '🏆'; }
+            else if (percentage >= 70) { message = 'Great job!'; emoji = '🌟'; }
+            else if (percentage >= 50) { message = 'Good effort!'; emoji = '👍'; }
+            else { message = 'Keep practicing!'; emoji = '💪'; }
+            
+            quizContainer.innerHTML = `
+                <div class="result-screen">
+                    <div style="font-size: 5rem;">${emoji}</div>
+                    <div class="result-message">${message}</div>
+                    <div class="result-score">${score}/${currentQuestions.length}</div>
+                    <div style="color: #888; margin-bottom: 20px;">${percentage}% Correct</div>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value" style="color: #00ff88;">${score}</div>
+                            <div class="stat-label">Correct</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" style="color: #ff6b6b;">${currentQuestions.length - score}</div>
+                            <div class="stat-label">Wrong</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="location.reload()">Play Again</button>
+                </div>
+            `;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .rps-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+        .arena {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 50px;
+            margin: 20px 0;
+        }
+        .player-side {
+            text-align: center;
+        }
+        .player-label {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .choice-display {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            transition: all 0.3s;
+        }
+        .choice-display.win {
+            border-color: #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+        .choice-display.lose {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+        }
+        .choice-display.thinking {
+            animation: shake 0.5s ease-in-out infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+        }
+        .vs {
+            font-size: 2rem;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        .choices {
+            display: flex;
+            gap: 20px;
+        }
+        .choice-btn {
+            width: 100px;
+            height: 100px;
+            font-size: 3rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .choice-btn:hover {
+            transform: scale(1.1);
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+        }
+        .choice-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result-message {
+            font-size: 2rem;
+            font-weight: bold;
+            min-height: 50px;
+            transition: all 0.3s;
+        }
+        .result-message.win { color: #00ff88; }
+        .result-message.lose { color: #ff6b6b; }
+        .result-message.draw { color: #ffaa00; }
+        .score-board {
+            display: flex;
+            gap: 40px;
+            margin: 20px 0;
+        }
+        .score-item {
+            text-align: center;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .score-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+        .score-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .score-value.player { color: #00ff88; }
+        .score-value.computer { color: #ff6b6b; }
+        .score-value.draws { color: #ffaa00; }
+        .rounds-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .rounds-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .rounds-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">✊✋✌️ Rock Paper Scissors</h1>
+            
+            <div class="rps-container">
+                <div class="rounds-selector">
+                    <span>Best of: </span>
+                    <button class="rounds-btn" data-rounds="3">3</button>
+                    <button class="rounds-btn active" data-rounds="5">5</button>
+                    <button class="rounds-btn" data-rounds="7">7</button>
+                </div>
+                
+                <div class="score-board">
+                    <div class="score-item">
+                        <div class="score-label">You</div>
+                        <div class="score-value player" id="playerScore">0</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">Draws</div>
+                        <div class="score-value draws" id="drawScore">0</div>
+                    </div>
+                    <div class="score-item">
+                        <div class="score-label">Computer</div>
+                        <div class="score-value computer" id="computerScore">0</div>
+                    </div>
+                </div>
+                
+                <div class="arena">
+                    <div class="player-side">
+                        <div class="player-label">You</div>
+                        <div class="choice-display" id="playerChoice">❓</div>
+                    </div>
+                    <div class="vs">VS</div>
+                    <div class="player-side">
+                        <div class="player-label">Computer</div>
+                        <div class="choice-display" id="computerChoice">❓</div>
+                    </div>
+                </div>
+                
+                <div class="result-message" id="result"></div>
+                
+                <div class="choices" id="choices">
+                    <button class="choice-btn" data-choice="rock">🪨</button>
+                    <button class="choice-btn" data-choice="paper">📄</button>
+                    <button class="choice-btn" data-choice="scissors">✂️</button>
+                </div>
+                
+                <button id="resetBtn" class="btn btn-primary" style="margin-top: 20px;">Reset Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Rock beats Scissors, Scissors beats Paper, Paper beats Rock. First to win the majority of rounds wins!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const choices = ['rock', 'paper', 'scissors'];
+        const emojis = { rock: '🪨', paper: '📄', scissors: '✂️' };
+        
+        let playerScore = 0;
+        let computerScore = 0;
+        let drawScore = 0;
+        let bestOf = 5;
+        let gameOver = false;
+        let isPlaying = false;
+
+        const playerChoiceEl = document.getElementById('playerChoice');
+        const computerChoiceEl = document.getElementById('computerChoice');
+        const resultEl = document.getElementById('result');
+        const playerScoreEl = document.getElementById('playerScore');
+        const computerScoreEl = document.getElementById('computerScore');
+        const drawScoreEl = document.getElementById('drawScore');
+
+        function init() {
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (!gameOver && !isPlaying) {
+                        play(btn.dataset.choice);
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.rounds-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.rounds-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    bestOf = parseInt(btn.dataset.rounds);
+                    resetGame();
+                });
+            });
+            
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        }
+
+        function play(playerChoice) {
+            isPlaying = true;
+            
+            // Disable buttons
+            document.querySelectorAll('.choice-btn').forEach(btn => btn.disabled = true);
+            
+            // Animation
+            playerChoiceEl.textContent = '✊';
+            computerChoiceEl.textContent = '✊';
+            playerChoiceEl.classList.add('thinking');
+            computerChoiceEl.classList.add('thinking');
+            resultEl.textContent = '';
+            resultEl.className = 'result-message';
+            
+            setTimeout(() => {
+                // Remove animation
+                playerChoiceEl.classList.remove('thinking');
+                computerChoiceEl.classList.remove('thinking');
+                
+                const computerChoice = choices[Math.floor(Math.random() * 3)];
+                
+                playerChoiceEl.textContent = emojis[playerChoice];
+                computerChoiceEl.textContent = emojis[computerChoice];
+                
+                const result = getResult(playerChoice, computerChoice);
+                
+                playerChoiceEl.classList.remove('win', 'lose');
+                computerChoiceEl.classList.remove('win', 'lose');
+                
+                if (result === 'win') {
+                    playerScore++;
+                    resultEl.textContent = '🎉 You Win!';
+                    resultEl.className = 'result-message win';
+                    playerChoiceEl.classList.add('win');
+                    computerChoiceEl.classList.add('lose');
+                } else if (result === 'lose') {
+                    computerScore++;
+                    resultEl.textContent = '😢 You Lose!';
+                    resultEl.className = 'result-message lose';
+                    playerChoiceEl.classList.add('lose');
+                    computerChoiceEl.classList.add('win');
+                } else {
+                    drawScore++;
+                    resultEl.textContent = '🤝 Draw!';
+                    resultEl.className = 'result-message draw';
+                }
+                
+                updateScores();
+                checkGameOver();
+                
+                isPlaying = false;
+                if (!gameOver) {
+                    document.querySelectorAll('.choice-btn').forEach(btn => btn.disabled = false);
+                }
+            }, 1000);
+        }
+
+        function getResult(player, computer) {
+            if (player === computer) return 'draw';
+            if (
+                (player === 'rock' && computer === 'scissors') ||
+                (player === 'paper' && computer === 'rock') ||
+                (player === 'scissors' && computer === 'paper')
+            ) {
+                return 'win';
+            }
+            return 'lose';
+        }
+
+        function updateScores() {
+            playerScoreEl.textContent = playerScore;
+            computerScoreEl.textContent = computerScore;
+            drawScoreEl.textContent = drawScore;
+        }
+
+        function checkGameOver() {
+            const winsNeeded = Math.ceil(bestOf / 2);
+            
+            if (playerScore >= winsNeeded) {
+                gameOver = true;
+                resultEl.textContent = '🏆 You Win the Match!';
+                resultEl.className = 'result-message win';
+            } else if (computerScore >= winsNeeded) {
+                gameOver = true;
+                resultEl.textContent = '💻 Computer Wins the Match!';
+                resultEl.className = 'result-message lose';
+            }
+        }
+
+        function resetGame() {
+            playerScore = 0;
+            computerScore = 0;
+            drawScore = 0;
+            gameOver = false;
+            isPlaying = false;
+            
+            playerChoiceEl.textContent = '❓';
+            computerChoiceEl.textContent = '❓';
+            playerChoiceEl.classList.remove('win', 'lose', 'thinking');
+            computerChoiceEl.classList.remove('win', 'lose', 'thinking');
+            resultEl.textContent = '';
+            resultEl.className = 'result-message';
+            
+            updateScores();
+            document.querySelectorAll('.choice-btn').forEach(btn => btn.disabled = false);
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

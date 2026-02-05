@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaction Time - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .reaction-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+        .reaction-box {
+            width: 400px;
+            height: 300px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            user-select: none;
+        }
+        .reaction-box.waiting {
+            background: #ff6b6b;
+        }
+        .reaction-box.ready {
+            background: #00ff88;
+        }
+        .reaction-box.result {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        .reaction-box.early {
+            background: #ffaa00;
+        }
+        .box-text {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+        }
+        .box-subtext {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+        .result-time {
+            font-size: 5rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        .result-ms {
+            font-size: 1.5rem;
+            color: #888;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .stat-value.best { color: #00ff88; }
+        .stat-value.average { color: #ffaa00; }
+        .stat-value.tries { color: #4d94ff; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .history {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 400px;
+        }
+        .history-item {
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        .history-item.good { color: #00ff88; }
+        .history-item.ok { color: #ffaa00; }
+        .history-item.slow { color: #ff6b6b; }
+        .rating {
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        .leaderboard {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .leaderboard h3 {
+            margin-bottom: 15px;
+            color: #ffaa00;
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">⚡ Reaction Time</h1>
+            
+            <div class="reaction-container">
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value best" id="best">-</div>
+                        <div class="stat-label">Best (ms)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value average" id="average">-</div>
+                        <div class="stat-label">Average (ms)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value tries" id="tries">0</div>
+                        <div class="stat-label">Tries</div>
+                    </div>
+                </div>
+                
+                <div class="reaction-box result" id="reactionBox">
+                    <div class="box-text">Click to Start</div>
+                    <div class="box-subtext">Test your reaction speed!</div>
+                </div>
+                
+                <div class="history" id="history"></div>
+                
+                <div class="leaderboard">
+                    <h3>🏆 Reaction Ratings</h3>
+                    <div class="leaderboard-item">
+                        <span>🚀 Incredible</span>
+                        <span style="color: #00ff88;">< 200ms</span>
+                    </div>
+                    <div class="leaderboard-item">
+                        <span>⚡ Fast</span>
+                        <span style="color: #00ff88;">200-300ms</span>
+                    </div>
+                    <div class="leaderboard-item">
+                        <span>👍 Average</span>
+                        <span style="color: #ffaa00;">300-400ms</span>
+                    </div>
+                    <div class="leaderboard-item">
+                        <span>🐢 Slow</span>
+                        <span style="color: #ff6b6b;">> 400ms</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Wait for the box to turn GREEN, then click as fast as you can! Don't click too early or it won't count.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let state = 'idle'; // idle, waiting, ready
+        let startTime = 0;
+        let timeout = null;
+        let results = [];
+
+        const reactionBox = document.getElementById('reactionBox');
+        const bestEl = document.getElementById('best');
+        const averageEl = document.getElementById('average');
+        const triesEl = document.getElementById('tries');
+        const historyEl = document.getElementById('history');
+
+        function init() {
+            reactionBox.addEventListener('click', handleClick);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        }
+
+        function handleClick() {
+            switch (state) {
+                case 'idle':
+                    startWaiting();
+                    break;
+                case 'waiting':
+                    tooEarly();
+                    break;
+                case 'ready':
+                    recordTime();
+                    break;
+            }
+        }
+
+        function startWaiting() {
+            state = 'waiting';
+            reactionBox.className = 'reaction-box waiting';
+            reactionBox.innerHTML = `
+                <div class="box-text">Wait for green...</div>
+                <div class="box-subtext">Don't click yet!</div>
+            `;
+            
+            // Random delay between 1-4 seconds
+            const delay = 1000 + Math.random() * 3000;
+            timeout = setTimeout(showGreen, delay);
+        }
+
+        function showGreen() {
+            state = 'ready';
+            startTime = Date.now();
+            reactionBox.className = 'reaction-box ready';
+            reactionBox.innerHTML = `
+                <div class="box-text" style="color: #1a1a2e;">CLICK NOW!</div>
+            `;
+        }
+
+        function tooEarly() {
+            clearTimeout(timeout);
+            state = 'idle';
+            reactionBox.className = 'reaction-box early';
+            reactionBox.innerHTML = `
+                <div class="box-text" style="color: #1a1a2e;">Too early!</div>
+                <div class="box-subtext" style="color: #1a1a2e;">Click to try again</div>
+            `;
+        }
+
+        function recordTime() {
+            const reactionTime = Date.now() - startTime;
+            results.push(reactionTime);
+            state = 'idle';
+            
+            const rating = getRating(reactionTime);
+            
+            reactionBox.className = 'reaction-box result';
+            reactionBox.innerHTML = `
+                <div class="result-time">${reactionTime}</div>
+                <div class="result-ms">milliseconds</div>
+                <div class="rating">${rating}</div>
+                <div class="box-subtext" style="margin-top: 15px;">Click to try again</div>
+            `;
+            
+            updateStats();
+            updateHistory();
+        }
+
+        function getRating(time) {
+            if (time < 200) return '🚀 Incredible!';
+            if (time < 250) return '⚡ Super Fast!';
+            if (time < 300) return '⚡ Fast!';
+            if (time < 350) return '👍 Good';
+            if (time < 400) return '👍 Average';
+            if (time < 500) return '🐢 Slow';
+            return '🐌 Very Slow';
+        }
+
+        function updateStats() {
+            const best = Math.min(...results);
+            const average = Math.round(results.reduce((a, b) => a + b, 0) / results.length);
+            
+            bestEl.textContent = best;
+            averageEl.textContent = average;
+            triesEl.textContent = results.length;
+        }
+
+        function updateHistory() {
+            // Show last 10 results
+            const recent = results.slice(-10);
+            historyEl.innerHTML = recent.map(time => {
+                let className = 'history-item';
+                if (time < 300) className += ' good';
+                else if (time < 400) className += ' ok';
+                else className += ' slow';
+                return `<div class="${className}">${time}ms</div>`;
+            }).join('');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

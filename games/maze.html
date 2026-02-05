@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Runner - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .maze-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .maze {
+            display: grid;
+            gap: 0;
+            background: #1a1a2e;
+            border: 3px solid #00ff88;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+        .cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .cell.wall {
+            background: #16213e;
+        }
+        .cell.path {
+            background: #1a1a2e;
+        }
+        .cell.player {
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+        .cell.end {
+            background: rgba(255, 107, 107, 0.3);
+        }
+        .cell.visited {
+            background: rgba(0, 255, 136, 0.1);
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(0.9); }
+            50% { transform: scale(1); }
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .stat-value.time { color: #ffaa00; }
+        .stat-value.moves { color: #00ff88; }
+        .stat-value.level { color: #ff6b6b; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .touch-controls {
+            display: none;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 5px;
+        }
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .touch-btn:active {
+            background: rgba(0, 255, 136, 0.3);
+        }
+        .touch-btn.empty {
+            visibility: hidden;
+        }
+        @media (pointer: coarse) {
+            .touch-controls { display: grid; }
+        }
+        .size-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .size-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .size-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .message {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 40px;
+            color: #00ff88;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🏃 Maze Runner</h1>
+            
+            <div class="maze-container">
+                <div class="size-selector">
+                    <button class="size-btn active" data-size="11">Small</button>
+                    <button class="size-btn" data-size="15">Medium</button>
+                    <button class="size-btn" data-size="21">Large</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value time" id="time">0:00</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value moves" id="moves">0</div>
+                        <div class="stat-label">Moves</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value level" id="level">1</div>
+                        <div class="stat-label">Level</div>
+                    </div>
+                </div>
+                
+                <div class="message" id="message"></div>
+                
+                <div class="maze" id="maze"></div>
+                
+                <div class="touch-controls">
+                    <div class="touch-btn empty"></div>
+                    <button class="touch-btn" id="upBtn">▲</button>
+                    <div class="touch-btn empty"></div>
+                    <button class="touch-btn" id="leftBtn">◀</button>
+                    <div class="touch-btn empty"></div>
+                    <button class="touch-btn" id="rightBtn">▶</button>
+                    <div class="touch-btn empty"></div>
+                    <button class="touch-btn" id="downBtn">▼</button>
+                    <div class="touch-btn empty"></div>
+                </div>
+                
+                <button id="newMazeBtn" class="btn btn-primary">New Maze</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Use arrow keys or WASD to navigate through the maze. Find your way from the green dot to the red goal!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mazeSize = 11;
+        let maze = [];
+        let playerPos = { x: 1, y: 1 };
+        let endPos = { x: 0, y: 0 };
+        let moves = 0;
+        let level = 1;
+        let startTime = null;
+        let timer = null;
+        let gameWon = false;
+
+        const mazeEl = document.getElementById('maze');
+        const movesEl = document.getElementById('moves');
+        const timeEl = document.getElementById('time');
+        const levelEl = document.getElementById('level');
+        const messageEl = document.getElementById('message');
+
+        function init() {
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mazeSize = parseInt(btn.dataset.size);
+                    level = 1;
+                    generateMaze();
+                });
+            });
+            
+            document.addEventListener('keydown', handleKeydown);
+            
+            document.getElementById('upBtn').addEventListener('click', () => move(0, -1));
+            document.getElementById('downBtn').addEventListener('click', () => move(0, 1));
+            document.getElementById('leftBtn').addEventListener('click', () => move(-1, 0));
+            document.getElementById('rightBtn').addEventListener('click', () => move(1, 0));
+            
+            document.getElementById('newMazeBtn').addEventListener('click', generateMaze);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            generateMaze();
+        }
+
+        function generateMaze() {
+            // Initialize maze with walls
+            maze = Array(mazeSize).fill(null).map(() => Array(mazeSize).fill(1));
+            
+            // Generate maze using recursive backtracking
+            function carve(x, y) {
+                maze[y][x] = 0;
+                
+                const directions = [
+                    [0, -2], [0, 2], [-2, 0], [2, 0]
+                ].sort(() => Math.random() - 0.5);
+                
+                for (const [dx, dy] of directions) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    
+                    if (nx > 0 && nx < mazeSize - 1 && ny > 0 && ny < mazeSize - 1 && maze[ny][nx] === 1) {
+                        maze[y + dy/2][x + dx/2] = 0;
+                        carve(nx, ny);
+                    }
+                }
+            }
+            
+            carve(1, 1);
+            
+            // Set player and end positions
+            playerPos = { x: 1, y: 1 };
+            endPos = { x: mazeSize - 2, y: mazeSize - 2 };
+            maze[endPos.y][endPos.x] = 0;
+            
+            // Reset game state
+            moves = 0;
+            gameWon = false;
+            startTime = Date.now();
+            messageEl.textContent = '';
+            
+            clearInterval(timer);
+            timer = setInterval(updateTimer, 1000);
+            
+            renderMaze();
+            updateStats();
+        }
+
+        function renderMaze() {
+            mazeEl.style.gridTemplateColumns = `repeat(${mazeSize}, 30px)`;
+            mazeEl.innerHTML = '';
+            
+            for (let y = 0; y < mazeSize; y++) {
+                for (let x = 0; x < mazeSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    if (x === playerPos.x && y === playerPos.y) {
+                        cell.classList.add('player');
+                        cell.textContent = '😊';
+                    } else if (x === endPos.x && y === endPos.y) {
+                        cell.classList.add('path', 'end');
+                        cell.textContent = '🏁';
+                    } else if (maze[y][x] === 1) {
+                        cell.classList.add('wall');
+                    } else {
+                        cell.classList.add('path');
+                    }
+                    
+                    mazeEl.appendChild(cell);
+                }
+            }
+        }
+
+        function handleKeydown(e) {
+            if (gameWon) return;
+            
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    move(0, -1);
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    move(0, 1);
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    move(-1, 0);
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    move(1, 0);
+                    e.preventDefault();
+                    break;
+            }
+        }
+
+        function move(dx, dy) {
+            if (gameWon) return;
+            
+            const newX = playerPos.x + dx;
+            const newY = playerPos.y + dy;
+            
+            if (newX >= 0 && newX < mazeSize && newY >= 0 && newY < mazeSize && maze[newY][newX] === 0) {
+                playerPos.x = newX;
+                playerPos.y = newY;
+                moves++;
+                
+                renderMaze();
+                updateStats();
+                
+                // Check win
+                if (playerPos.x === endPos.x && playerPos.y === endPos.y) {
+                    winLevel();
+                }
+            }
+        }
+
+        function winLevel() {
+            gameWon = true;
+            clearInterval(timer);
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            messageEl.textContent = `🎉 Level ${level} Complete! Time: ${formatTime(elapsed)}, Moves: ${moves}`;
+            
+            level++;
+            levelEl.textContent = level;
+            
+            setTimeout(() => {
+                generateMaze();
+            }, 2000);
+        }
+
+        function updateTimer() {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            timeEl.textContent = formatTime(elapsed);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateStats() {
+            movesEl.textContent = moves;
+            levelEl.textContent = level;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whack-a-Mole - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .whack-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .mole-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 15px;
+            padding: 20px;
+            background: linear-gradient(135deg, #8B4513, #654321);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .hole {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(ellipse at center, #3d2817 0%, #1a0f0a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .mole {
+            font-size: 3rem;
+            position: absolute;
+            bottom: -100%;
+            transition: bottom 0.1s;
+        }
+        .hole.active .mole {
+            bottom: 10%;
+        }
+        .hole.whacked .mole {
+            transform: scale(0.8) rotate(10deg);
+        }
+        .hole.golden .mole {
+            filter: drop-shadow(0 0 10px gold);
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stat-value.score { color: #00ff88; }
+        .stat-value.time { color: #ff6b6b; }
+        .stat-value.combo { color: #ffaa00; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .message {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 40px;
+        }
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .diff-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .diff-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .hit-effect {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: floatUp 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🔨 Whack-a-Mole</h1>
+            
+            <div class="whack-container">
+                <div class="difficulty-selector">
+                    <button class="diff-btn active" data-speed="1000">Easy</button>
+                    <button class="diff-btn" data-speed="700">Medium</button>
+                    <button class="diff-btn" data-speed="500">Hard</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value score" id="score">0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value time" id="time">30</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value combo" id="combo">x1</div>
+                        <div class="stat-label">Combo</div>
+                    </div>
+                </div>
+                
+                <div class="message" id="message"></div>
+                
+                <div class="mole-grid" id="moleGrid">
+                    <div class="hole" data-index="0"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="1"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="2"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="3"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="4"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="5"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="6"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="7"><div class="mole">🐹</div></div>
+                    <div class="hole" data-index="8"><div class="mole">🐹</div></div>
+                </div>
+                
+                <button id="startBtn" class="btn btn-primary">Start Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Click on the moles when they pop up! Golden moles are worth bonus points. Build combos by hitting consecutive moles!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 30;
+        let combo = 1;
+        let gameActive = false;
+        let moleSpeed = 1000;
+        let moleTimer = null;
+        let gameTimer = null;
+        let lastHole = -1;
+
+        const holes = document.querySelectorAll('.hole');
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        const comboEl = document.getElementById('combo');
+        const messageEl = document.getElementById('message');
+        const startBtn = document.getElementById('startBtn');
+
+        function init() {
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (!gameActive) {
+                        document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        moleSpeed = parseInt(btn.dataset.speed);
+                    }
+                });
+            });
+            
+            holes.forEach(hole => {
+                hole.addEventListener('click', () => whackMole(hole));
+            });
+            
+            startBtn.addEventListener('click', startGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            combo = 1;
+            gameActive = true;
+            
+            scoreEl.textContent = '0';
+            timeEl.textContent = '30';
+            comboEl.textContent = 'x1';
+            messageEl.textContent = '';
+            startBtn.textContent = 'Playing...';
+            startBtn.disabled = true;
+            
+            holes.forEach(h => {
+                h.classList.remove('active', 'whacked', 'golden');
+            });
+            
+            showMole();
+            gameTimer = setInterval(tick, 1000);
+        }
+
+        function tick() {
+            timeLeft--;
+            timeEl.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function showMole() {
+            if (!gameActive) return;
+            
+            // Hide all moles first
+            holes.forEach(h => h.classList.remove('active', 'golden'));
+            
+            // Pick random hole (not the same as last)
+            let idx;
+            do {
+                idx = Math.floor(Math.random() * holes.length);
+            } while (idx === lastHole);
+            lastHole = idx;
+            
+            const hole = holes[idx];
+            hole.classList.add('active');
+            
+            // 10% chance for golden mole
+            if (Math.random() < 0.1) {
+                hole.classList.add('golden');
+            }
+            
+            // Schedule next mole
+            const showTime = moleSpeed * (0.8 + Math.random() * 0.4);
+            moleTimer = setTimeout(() => {
+                if (hole.classList.contains('active') && !hole.classList.contains('whacked')) {
+                    // Missed!
+                    combo = 1;
+                    comboEl.textContent = 'x1';
+                }
+                hole.classList.remove('active', 'golden');
+                showMole();
+            }, showTime);
+        }
+
+        function whackMole(hole) {
+            if (!gameActive || !hole.classList.contains('active') || hole.classList.contains('whacked')) {
+                return;
+            }
+            
+            hole.classList.add('whacked');
+            
+            // Calculate points
+            let points = 10 * combo;
+            if (hole.classList.contains('golden')) {
+                points *= 3;
+            }
+            
+            score += points;
+            scoreEl.textContent = score;
+            
+            // Show hit effect
+            showHitEffect(hole, points);
+            
+            // Increase combo
+            combo = Math.min(combo + 1, 10);
+            comboEl.textContent = `x${combo}`;
+            
+            setTimeout(() => {
+                hole.classList.remove('active', 'whacked', 'golden');
+            }, 200);
+        }
+
+        function showHitEffect(hole, points) {
+            const effect = document.createElement('div');
+            effect.className = 'hit-effect';
+            effect.textContent = `+${points}`;
+            effect.style.color = points > 30 ? '#ffd700' : '#00ff88';
+            hole.appendChild(effect);
+            
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(gameTimer);
+            clearTimeout(moleTimer);
+            
+            holes.forEach(h => h.classList.remove('active', 'golden'));
+            
+            let message = '';
+            if (score >= 500) message = '🏆 Amazing!';
+            else if (score >= 300) message = '🌟 Great!';
+            else if (score >= 150) message = '👍 Good job!';
+            else message = '💪 Keep trying!';
+            
+            messageEl.textContent = `${message} Final Score: ${score}`;
+            startBtn.textContent = 'Play Again';
+            startBtn.disabled = false;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

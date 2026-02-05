@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Match - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .color-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stat-value.score { color: #00ff88; }
+        .stat-value.time { color: #ff6b6b; }
+        .stat-value.streak { color: #ffaa00; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .color-word {
+            font-size: 4rem;
+            font-weight: bold;
+            padding: 30px 60px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        .question {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        .color-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .color-btn {
+            width: 120px;
+            height: 80px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .color-btn:hover {
+            transform: scale(1.05);
+        }
+        .color-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .color-btn.correct {
+            animation: correctPulse 0.5s;
+        }
+        .color-btn.wrong {
+            animation: wrongShake 0.5s;
+        }
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); box-shadow: 0 0 30px #00ff88; }
+        }
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .feedback {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 40px;
+        }
+        .feedback.correct { color: #00ff88; }
+        .feedback.wrong { color: #ff6b6b; }
+        .progress-bar {
+            width: 300px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #ff6b6b);
+            transition: width 0.1s;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .mode-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .mode-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🎨 Color Match</h1>
+            
+            <div class="color-container">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="text">Match Text</button>
+                    <button class="mode-btn" data-mode="color">Match Color</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value score" id="score">0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value time" id="time">30</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value streak" id="streak">0</div>
+                        <div class="stat-label">Streak</div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress" style="width: 100%"></div>
+                </div>
+                
+                <div class="question" id="question">What color is the TEXT?</div>
+                <div class="color-word" id="colorWord">Ready?</div>
+                
+                <div class="feedback" id="feedback"></div>
+                
+                <div class="color-options" id="colorOptions"></div>
+                
+                <button id="startBtn" class="btn btn-primary" style="margin-top: 20px;">Start Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>In "Match Text" mode, click the button matching what the word SAYS. In "Match Color" mode, click the button matching the COLOR of the word. Be fast!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const colors = [
+            { name: 'Red', hex: '#ff6b6b' },
+            { name: 'Blue', hex: '#4d94ff' },
+            { name: 'Green', hex: '#00ff88' },
+            { name: 'Yellow', hex: '#ffd93d' },
+            { name: 'Purple', hex: '#b388ff' },
+            { name: 'Orange', hex: '#ff9f43' }
+        ];
+
+        let score = 0;
+        let streak = 0;
+        let bestStreak = 0;
+        let timeLeft = 30;
+        let timer = null;
+        let gameActive = false;
+        let mode = 'text'; // 'text' or 'color'
+        let currentWord = null;
+        let currentColor = null;
+
+        const colorWord = document.getElementById('colorWord');
+        const colorOptions = document.getElementById('colorOptions');
+        const feedbackEl = document.getElementById('feedback');
+        const scoreEl = document.getElementById('score');
+        const timeEl = document.getElementById('time');
+        const streakEl = document.getElementById('streak');
+        const progressEl = document.getElementById('progress');
+        const questionEl = document.getElementById('question');
+        const startBtn = document.getElementById('startBtn');
+
+        function init() {
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (!gameActive) {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        mode = btn.dataset.mode;
+                        questionEl.textContent = mode === 'text' ? 
+                            'What does the word SAY?' : 
+                            'What COLOR is the word?';
+                    }
+                });
+            });
+            
+            startBtn.addEventListener('click', startGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            createColorButtons();
+        }
+
+        function createColorButtons() {
+            colorOptions.innerHTML = '';
+            colors.slice(0, 4).forEach(color => {
+                const btn = document.createElement('button');
+                btn.className = 'color-btn';
+                btn.style.background = color.hex;
+                btn.textContent = color.name;
+                btn.dataset.color = color.name;
+                btn.addEventListener('click', () => checkAnswer(color.name));
+                colorOptions.appendChild(btn);
+            });
+        }
+
+        function startGame() {
+            score = 0;
+            streak = 0;
+            timeLeft = 30;
+            gameActive = true;
+            
+            scoreEl.textContent = '0';
+            streakEl.textContent = '0';
+            feedbackEl.textContent = '';
+            startBtn.textContent = 'Playing...';
+            startBtn.disabled = true;
+            
+            enableButtons(true);
+            nextRound();
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                timeEl.textContent = timeLeft;
+                progressEl.style.width = `${(timeLeft / 30) * 100}%`;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function nextRound() {
+            // Pick random word text
+            currentWord = colors[Math.floor(Math.random() * colors.length)];
+            // Pick random display color (different from word)
+            let colorPool = colors.filter(c => c.name !== currentWord.name);
+            currentColor = colorPool[Math.floor(Math.random() * colorPool.length)];
+            
+            colorWord.textContent = currentWord.name;
+            colorWord.style.color = currentColor.hex;
+            
+            // Update button options to include both current word and color
+            updateButtonOptions();
+        }
+
+        function updateButtonOptions() {
+            // Always include the correct answer and some distractors
+            let options = new Set();
+            options.add(currentWord.name); // text answer
+            options.add(currentColor.name); // color answer
+            
+            while (options.size < 4) {
+                const random = colors[Math.floor(Math.random() * colors.length)];
+                options.add(random.name);
+            }
+            
+            options = Array.from(options).sort(() => Math.random() - 0.5);
+            
+            const buttons = colorOptions.querySelectorAll('.color-btn');
+            options.forEach((colorName, i) => {
+                const colorObj = colors.find(c => c.name === colorName);
+                buttons[i].textContent = colorName;
+                buttons[i].style.background = colorObj.hex;
+                buttons[i].dataset.color = colorName;
+            });
+        }
+
+        function checkAnswer(answer) {
+            if (!gameActive) return;
+            
+            const correctAnswer = mode === 'text' ? currentWord.name : currentColor.name;
+            const buttons = colorOptions.querySelectorAll('.color-btn');
+            
+            if (answer === correctAnswer) {
+                score += 10 + streak;
+                streak++;
+                feedbackEl.textContent = '✓ Correct!';
+                feedbackEl.className = 'feedback correct';
+                
+                buttons.forEach(btn => {
+                    if (btn.dataset.color === answer) {
+                        btn.classList.add('correct');
+                        setTimeout(() => btn.classList.remove('correct'), 300);
+                    }
+                });
+            } else {
+                streak = 0;
+                feedbackEl.textContent = `✗ Wrong! It was ${correctAnswer}`;
+                feedbackEl.className = 'feedback wrong';
+                
+                buttons.forEach(btn => {
+                    if (btn.dataset.color === answer) {
+                        btn.classList.add('wrong');
+                        setTimeout(() => btn.classList.remove('wrong'), 300);
+                    }
+                });
+            }
+            
+            scoreEl.textContent = score;
+            streakEl.textContent = streak;
+            
+            setTimeout(nextRound, 300);
+        }
+
+        function enableButtons(enabled) {
+            colorOptions.querySelectorAll('.color-btn').forEach(btn => {
+                btn.disabled = !enabled;
+            });
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timer);
+            enableButtons(false);
+            
+            startBtn.textContent = 'Play Again';
+            startBtn.disabled = false;
+            
+            colorWord.textContent = 'Game Over!';
+            colorWord.style.color = '#fff';
+            feedbackEl.textContent = `Final Score: ${score} | Best Streak: ${streak}`;
+            feedbackEl.className = 'feedback';
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -77,21 +77,21 @@
             50% { background: rgba(255, 170, 0, 0.1); }
         }
         
-        /* 3x3 box borders */
-        .sudoku-cell:nth-child(3n) { border-right: 2px solid #ff6b6b; }
-        .sudoku-cell:nth-child(9n) { border-right: 3px solid #ff6b6b; }
+        /* Cage borders - will be applied dynamically */
+        .cage-top { border-top: 2px dashed #888; }
+        .cage-bottom { border-bottom: 2px dashed #888; }
+        .cage-left { border-left: 2px dashed #888; }
+        .cage-right { border-right: 2px dashed #888; }
+        
+        /* 3x3 box borders - must override cage borders */
+        .sudoku-cell:nth-child(3n) { border-right: 2px solid #ff6b6b !important; }
+        .sudoku-cell:nth-child(9n) { border-right: 3px solid #ff6b6b !important; }
         .sudoku-cell:nth-child(n+19):nth-child(-n+27),
         .sudoku-cell:nth-child(n+46):nth-child(-n+54) {
-            border-bottom: 2px solid #ff6b6b;
+            border-bottom: 2px solid #ff6b6b !important;
         }
-        .sudoku-cell:nth-child(-n+9) { border-top: 3px solid #ff6b6b; }
-        .sudoku-cell:nth-child(9n+1) { border-left: 3px solid #ff6b6b; }
-        
-        /* Cage borders - will be applied dynamically */
-        .cage-top { border-top: 2px dashed #888 !important; }
-        .cage-bottom { border-bottom: 2px dashed #888 !important; }
-        .cage-left { border-left: 2px dashed #888 !important; }
-        .cage-right { border-right: 2px dashed #888 !important; }
+        .sudoku-cell:nth-child(-n+9) { border-top: 3px solid #ff6b6b !important; }
+        .sudoku-cell:nth-child(9n+1) { border-left: 3px solid #ff6b6b !important; }
         
         .cage-sum {
             position: absolute;
