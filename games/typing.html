@@ -10,24 +10,31 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 25px;
-            max-width: 700px;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
             margin: 0 auto;
+            padding: 0 15px;
+            box-sizing: border-box;
         }
         .stats-bar {
             display: flex;
             justify-content: center;
-            gap: 40px;
+            gap: 15px;
             flex-wrap: wrap;
+            width: 100%;
         }
         .stat-box {
             text-align: center;
-            padding: 15px 25px;
+            padding: 12px 20px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
+            border-radius: 12px;
+            min-width: 80px;
+            flex: 1;
+            max-width: 120px;
         }
         .stat-value {
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: bold;
             color: #00ff88;
         }
@@ -35,47 +42,90 @@
         .stat-value.accuracy { color: #ffaa00; }
         .stat-value.time { color: #ff6b6b; }
         .stat-label {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .text-display-wrapper {
+            width: 100%;
+            position: relative;
         }
         .text-display {
             background: rgba(255, 255, 255, 0.05);
             border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 15px;
-            padding: 25px;
-            font-size: 1.3rem;
-            line-height: 1.8;
+            padding: 20px;
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            line-height: 1.9;
             text-align: left;
             width: 100%;
-            min-height: 100px;
+            min-height: 120px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+        .text-display::-webkit-scrollbar {
+            width: 8px;
+        }
+        .text-display::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        .text-display::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
         }
         .text-display .char {
-            transition: all 0.1s;
+            display: inline;
+            transition: all 0.05s;
+            position: relative;
         }
         .text-display .char.correct {
             color: #00ff88;
         }
         .text-display .char.incorrect {
             color: #ff6b6b;
-            text-decoration: underline;
-        }
-        .text-display .char.current {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 107, 107, 0.2);
             border-radius: 2px;
         }
+        .text-display .char.current {
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 2px;
+            animation: cursor-blink 1s ease-in-out infinite;
+        }
+        @keyframes cursor-blink {
+            0%, 100% { background: rgba(255, 255, 255, 0.4); }
+            50% { background: rgba(0, 255, 136, 0.6); }
+        }
         .text-display .char.pending {
-            color: #666;
+            color: #888;
+        }
+        .text-display .char.space {
+            display: inline;
+            width: 0.5em;
+        }
+        .typing-input-wrapper {
+            width: 100%;
+            position: relative;
         }
         .typing-input {
             width: 100%;
             padding: 15px 20px;
-            font-size: 1.2rem;
+            font-size: clamp(1rem, 2vw, 1.2rem);
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
             color: #fff;
             outline: none;
             transition: all 0.3s;
+            box-sizing: border-box;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         }
         .typing-input:focus {
             border-color: #00ff88;
@@ -84,20 +134,28 @@
         .typing-input:disabled {
             opacity: 0.5;
         }
+        .typing-input.has-error {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+        }
         .mode-selector, .difficulty-selector {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             justify-content: center;
         }
         .mode-btn, .diff-btn {
-            padding: 8px 20px;
+            padding: 8px 16px;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 20px;
             color: #fff;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        .mode-btn:hover, .diff-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         .mode-btn.active {
             background: #00ff88;
@@ -107,6 +165,7 @@
         .diff-btn.active {
             background: #ff6b6b;
             border-color: #ff6b6b;
+            color: #fff;
         }
         .custom-text-area {
             display: none;
@@ -125,19 +184,20 @@
             color: #fff;
             font-size: 1rem;
             resize: vertical;
+            box-sizing: border-box;
         }
         .custom-input::placeholder {
             color: #666;
         }
         .results {
             text-align: center;
-            padding: 30px;
+            padding: 25px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             width: 100%;
         }
         .result-wpm {
-            font-size: 4rem;
+            font-size: 3.5rem;
             font-weight: bold;
             color: #00ff88;
         }
@@ -145,68 +205,102 @@
             font-size: 1.2rem;
             color: #888;
         }
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .result-stat {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .result-stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+        .result-stat-label {
+            font-size: 0.75rem;
+            color: #888;
+        }
         .progress-bar {
             width: 100%;
-            height: 8px;
+            height: 6px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
         }
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #00ff88, #00d9ff);
-            transition: width 0.3s;
+            transition: width 0.2s;
         }
         .time-selector {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
+            flex-wrap: wrap;
         }
         .time-btn {
-            padding: 5px 15px;
+            padding: 6px 14px;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 15px;
             color: #fff;
             cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .time-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         .time-btn.active {
             background: #ffaa00;
             color: #000;
+            border-color: #ffaa00;
         }
         .leaderboard {
             width: 100%;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
-            padding: 20px;
+            padding: 15px;
         }
         .leaderboard h3 {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             color: #ffaa00;
+            font-size: 1rem;
         }
         .leaderboard-entry {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 6px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
         }
         .leaderboard-entry:last-child {
             border-bottom: none;
         }
         .settings-row {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: center;
             flex-wrap: wrap;
             justify-content: center;
         }
         .toggle-btn {
-            padding: 8px 15px;
+            padding: 6px 12px;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 20px;
             color: #fff;
             cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         .toggle-btn.active {
             background: #00ff88;
@@ -223,10 +317,68 @@
             padding: 10px 15px;
             cursor: pointer;
             font-size: 1.5rem;
+            transition: all 0.3s;
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
         .btn-row {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .live-wpm {
+            position: absolute;
+            top: -30px;
+            right: 10px;
+            background: rgba(0, 255, 136, 0.2);
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #00ff88;
+        }
+        .streak-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            background: rgba(255, 170, 0, 0.2);
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #ffaa00;
+        }
+        .streak-indicator.hot {
+            background: rgba(255, 100, 0, 0.3);
+            color: #ff6400;
+            animation: streak-pulse 0.5s ease-in-out infinite;
+        }
+        @keyframes streak-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .category-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        @media (max-width: 600px) {
+            .stat-box {
+                padding: 10px 15px;
+                min-width: 70px;
+            }
+            .stat-value {
+                font-size: 1.4rem;
+            }
+            .text-display {
+                padding: 15px;
+                min-height: 100px;
+            }
+            .settings-row {
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -240,9 +392,11 @@
             
             <div class="typing-container">
                 <div class="mode-selector">
-                    <button class="mode-btn active" data-mode="paragraph">Paragraph</button>
+                    <button class="mode-btn active" data-mode="sentences">Sentences</button>
+                    <button class="mode-btn" data-mode="quotes">Quotes</button>
                     <button class="mode-btn" data-mode="words">Words</button>
-                    <button class="mode-btn" data-mode="custom">Custom Text</button>
+                    <button class="mode-btn" data-mode="code">Code</button>
+                    <button class="mode-btn" data-mode="custom">Custom</button>
                 </div>
                 
                 <div class="difficulty-selector" id="difficultySelector">
@@ -258,13 +412,15 @@
                 
                 <div class="settings-row">
                     <div class="time-selector">
-                        <span>Time:</span>
+                        <span style="font-size: 0.85rem;">⏱️</span>
                         <button class="time-btn" data-time="15">15s</button>
                         <button class="time-btn" data-time="30">30s</button>
                         <button class="time-btn active" data-time="60">60s</button>
-                        <button class="time-btn" data-time="120">120s</button>
+                        <button class="time-btn" data-time="120">2m</button>
                     </div>
-                    <button class="toggle-btn" id="soundToggle">🔊 Sound</button>
+                    <button class="toggle-btn" id="soundToggle">🔊</button>
+                    <div class="streak-indicator" id="streakIndicator">🔥 0</div>
+                    <span class="category-badge" id="categoryBadge">General</span>
                 </div>
                 
                 <div class="stats-bar">
@@ -284,19 +440,28 @@
                         <div class="stat-value" id="cpm" style="color: #00d9ff;">0</div>
                         <div class="stat-label">CPM</div>
                     </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="errors" style="color: #ff6b6b;">0</div>
+                        <div class="stat-label">Errors</div>
+                    </div>
                 </div>
                 
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress" style="width: 0%"></div>
                 </div>
                 
-                <div class="text-display" id="textDisplay"></div>
+                <div class="text-display-wrapper">
+                    <div class="live-wpm" id="liveWpm" style="display: none;">⚡ 0 WPM</div>
+                    <div class="text-display" id="textDisplay"></div>
+                </div>
                 
-                <input type="text" class="typing-input" id="typingInput" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <div class="typing-input-wrapper">
+                    <input type="text" class="typing-input" id="typingInput" placeholder="Click here and start typing..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                </div>
                 
                 <div class="btn-row">
-                    <button id="restartBtn" class="btn btn-primary">Restart</button>
-                    <button id="newTextBtn" class="btn btn-secondary">New Text</button>
+                    <button id="restartBtn" class="btn btn-primary">🔄 Restart</button>
+                    <button id="newTextBtn" class="btn btn-secondary">📝 New Text</button>
                 </div>
                 
                 <div class="leaderboard" id="leaderboard">
@@ -307,58 +472,199 @@
             
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Type the text as fast and accurately as you can! Choose between paragraph mode, random words, or paste your own custom text.</p>
+                <p>Type the text as fast and accurately as you can! Choose from sentences, famous quotes, random words, or code snippets. Your WPM (words per minute) and accuracy are tracked in real-time.</p>
             </div>
         </div>
     </div>
 
     <script>
-        const texts = {
+        // === MASSIVE TEXT DATABASE ===
+        const sentences = {
             easy: [
-                "The quick brown fox jumps over the lazy dog near the river bank.",
-                "A happy cat sat on the warm mat and watched the birds fly by.",
-                "The sun was bright and the sky was blue on this lovely day.",
-                "She sells sea shells by the sea shore every summer morning.",
+                "The quick brown fox jumps over the lazy dog near the river.",
+                "A happy cat sat on the mat and watched the birds fly by.",
+                "The sun is bright and the sky is blue on this day.",
+                "She sells sea shells by the sea shore every morning.",
                 "The dog ran fast and jumped over the fence to catch the ball.",
-                "I love to read books and learn new things every single day.",
-                "The garden was full of colorful flowers and buzzing bees.",
-                "We went to the park and had a picnic under the big oak tree."
+                "I love to read books and learn new things every day.",
+                "The garden is full of flowers and buzzing bees.",
+                "We went to the park and had a picnic under the tree.",
+                "Birds sing in the trees when the sun rises each day.",
+                "The little boy played with his toys all afternoon.",
+                "My favorite color is blue like the ocean and sky.",
+                "The wind blows gently through the open window.",
+                "Fresh bread from the bakery smells wonderful.",
+                "The children laughed and played in the snow.",
+                "A cup of hot tea warms you on a cold day.",
+                "The old clock on the wall ticks every second.",
+                "Raindrops fall softly on the window pane.",
+                "The moon shines bright in the dark night sky.",
+                "Apples and oranges are my favorite fruits.",
+                "The train arrived at the station on time today.",
+                "Butterflies dance among the garden flowers.",
+                "The chef prepared a delicious meal for dinner.",
+                "Stars twinkle in the sky after sunset.",
+                "The puppy wagged its tail with joy and excitement.",
+                "Leaves fall from trees in the autumn season.",
+                "The beach has warm sand and cool ocean waves.",
+                "Music fills the room and makes everyone happy.",
+                "The farmer grows vegetables in his large garden.",
+                "Snow covers the mountain tops in winter.",
+                "A rainbow appears in the sky after the rain."
             ],
             medium: [
-                "Programming is the art of telling a computer what to do through a series of instructions called code.",
-                "The internet has revolutionized how we communicate, learn, and share information across the globe.",
-                "Artificial intelligence is transforming industries from healthcare to transportation with remarkable speed.",
-                "Climate change presents one of the greatest challenges facing humanity in the twenty-first century.",
-                "The human brain contains approximately eighty-six billion neurons that form trillions of connections.",
-                "Space exploration has yielded countless technological innovations that benefit our daily lives.",
-                "Renewable energy sources like solar and wind power are becoming increasingly cost-effective solutions.",
-                "The invention of the printing press fundamentally changed how knowledge was preserved and distributed."
+                "Programming is the art of telling a computer what to do through instructions called code.",
+                "The internet has changed how we communicate and share information across the world.",
+                "Artificial intelligence is transforming many industries with remarkable speed.",
+                "Climate change presents one of the greatest challenges facing humanity today.",
+                "The human brain contains approximately eighty-six billion neurons.",
+                "Space exploration has yielded countless technological innovations.",
+                "Renewable energy sources are becoming increasingly cost-effective.",
+                "The printing press changed how knowledge was preserved and distributed.",
+                "Scientists are constantly discovering new species in the ocean depths.",
+                "Ancient civilizations built remarkable structures that still amaze us today.",
+                "Photography captures moments in time that can be treasured forever.",
+                "The development of vaccines has saved millions of lives worldwide.",
+                "Mountains and valleys were formed over millions of years by natural forces.",
+                "Libraries serve as repositories of knowledge for communities everywhere.",
+                "The art of cooking combines creativity with scientific principles.",
+                "Telescopes allow us to observe distant galaxies billions of light years away.",
+                "Music theory explains the patterns and structures found in compositions.",
+                "Architecture balances aesthetic beauty with practical functionality.",
+                "The study of history helps us understand the present and plan for the future.",
+                "Athletes train for years to compete at the highest levels of their sports.",
+                "Ecosystems depend on complex relationships between plants and animals.",
+                "Mathematics provides the foundation for scientific and engineering discoveries.",
+                "Literature reflects the values and concerns of different time periods.",
+                "Volcanoes and earthquakes remind us of the powerful forces beneath the surface.",
+                "The invention of electricity revolutionized nearly every aspect of modern life.",
+                "Philosophy encourages us to question our assumptions about reality.",
+                "Different cultures around the world have unique traditions and celebrations.",
+                "Medical research continues to find new treatments for various diseases.",
+                "The water cycle ensures fresh water is distributed across the planet.",
+                "Technology evolves rapidly, changing how we work and live each decade."
             ],
             hard: [
-                "Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to perform calculations exponentially faster than classical computers for specific problems.",
-                "The electromagnetic spectrum encompasses all frequencies of electromagnetic radiation, from low-frequency radio waves through microwaves, infrared, visible light, ultraviolet, X-rays, to high-frequency gamma rays.",
-                "Cryptocurrency utilizes blockchain technology to create decentralized, cryptographically secured digital currencies that operate independently of traditional banking institutions.",
-                "The mitochondria, often described as the powerhouse of the cell, generates adenosine triphosphate through oxidative phosphorylation, a complex biochemical process essential for cellular metabolism.",
-                "Neuroplasticity refers to the brain's remarkable ability to reorganize itself by forming new neural connections throughout life, enabling learning and recovery from injuries."
+                "Quantum computing leverages quantum mechanical phenomena like superposition to perform calculations exponentially faster than classical computers.",
+                "The electromagnetic spectrum encompasses all frequencies of radiation, from radio waves through visible light to gamma rays.",
+                "Cryptocurrency utilizes blockchain technology to create decentralized digital currencies that operate independently of banks.",
+                "The mitochondria generates adenosine triphosphate through oxidative phosphorylation, a complex biochemical process essential for cells.",
+                "Neuroplasticity refers to the brain's ability to reorganize itself by forming new neural connections throughout life.",
+                "Photosynthesis converts carbon dioxide and water into glucose and oxygen using energy from sunlight in chloroplasts.",
+                "The theory of general relativity describes gravity as a curvature of spacetime caused by mass and energy.",
+                "Genetic engineering allows scientists to modify the DNA of organisms to achieve desired characteristics.",
+                "Machine learning algorithms improve their performance through experience without being explicitly programmed.",
+                "The cardiovascular system circulates blood throughout the body, delivering oxygen and nutrients to tissues.",
+                "Plate tectonics explains how the Earth's lithosphere is divided into plates that move and interact.",
+                "Behavioral economics combines psychology and economics to understand how people make financial decisions.",
+                "The periodic table organizes elements based on their atomic number and chemical properties.",
+                "Nuclear fusion occurs when atomic nuclei combine at extremely high temperatures to release energy.",
+                "Biodiversity refers to the variety of life forms in an ecosystem and their genetic differences.",
+                "The Fibonacci sequence appears in many natural patterns from flower petals to spiral galaxies.",
+                "Thermodynamics describes how energy is transferred and transformed in physical systems.",
+                "Archaeological excavations reveal insights about ancient civilizations and their daily lives.",
+                "The immune system defends the body against pathogens through innate and adaptive responses.",
+                "Philosophical epistemology examines the nature, scope, and limits of human knowledge."
             ]
         };
 
-        const commonWords = [
-            "the", "be", "to", "of", "and", "a", "in", "that", "have", "I",
-            "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-            "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
-            "or", "an", "will", "my", "one", "all", "would", "there", "their", "what",
-            "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
-            "when", "make", "can", "like", "time", "no", "just", "him", "know", "take",
-            "people", "into", "year", "your", "good", "some", "could", "them", "see", "other",
-            "than", "then", "now", "look", "only", "come", "its", "over", "think", "also",
-            "back", "after", "use", "two", "how", "our", "work", "first", "well", "way",
-            "even", "new", "want", "because", "any", "these", "give", "day", "most", "us"
+        const quotes = [
+            { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+            { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+            { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+            { text: "It is during our darkest moments that we must focus to see the light.", author: "Aristotle" },
+            { text: "The greatest glory in living lies not in never falling, but in rising every time we fall.", author: "Nelson Mandela" },
+            { text: "Life is what happens when you're busy making other plans.", author: "John Lennon" },
+            { text: "The purpose of our lives is to be happy.", author: "Dalai Lama" },
+            { text: "Get busy living or get busy dying.", author: "Stephen King" },
+            { text: "You only live once, but if you do it right, once is enough.", author: "Mae West" },
+            { text: "Many of life's failures are people who did not realize how close they were to success.", author: "Thomas Edison" },
+            { text: "The mind is everything. What you think you become.", author: "Buddha" },
+            { text: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+            { text: "I have not failed. I've just found 10,000 ways that won't work.", author: "Thomas Edison" },
+            { text: "The only impossible journey is the one you never begin.", author: "Tony Robbins" },
+            { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+            { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+            { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb" },
+            { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs" },
+            { text: "If you want to lift yourself up, lift up someone else.", author: "Booker T. Washington" },
+            { text: "I find that the harder I work, the more luck I seem to have.", author: "Thomas Jefferson" },
+            { text: "Everything you've ever wanted is on the other side of fear.", author: "George Addair" },
+            { text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
+            { text: "Don't be afraid to give up the good to go for the great.", author: "John D. Rockefeller" },
+            { text: "I think, therefore I am.", author: "Rene Descartes" },
+            { text: "The unexamined life is not worth living.", author: "Socrates" },
+            { text: "Happiness is not something ready made. It comes from your own actions.", author: "Dalai Lama" },
+            { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle" },
+            { text: "The only thing we have to fear is fear itself.", author: "Franklin D. Roosevelt" },
+            { text: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" },
+            { text: "Stay hungry, stay foolish.", author: "Steve Jobs" },
+            { text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", author: "Ralph Waldo Emerson" },
+            { text: "Do what you can, with what you have, where you are.", author: "Theodore Roosevelt" },
+            { text: "Knowledge speaks, but wisdom listens.", author: "Jimi Hendrix" },
+            { text: "The best revenge is massive success.", author: "Frank Sinatra" },
+            { text: "Life is really simple, but we insist on making it complicated.", author: "Confucius" },
+            { text: "Try not to become a man of success. Rather become a man of value.", author: "Albert Einstein" },
+            { text: "It always seems impossible until it's done.", author: "Nelson Mandela" },
+            { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
+            { text: "Imagination is more important than knowledge.", author: "Albert Einstein" },
+            { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" }
         ];
 
+        const codeSnippets = [
+            "function greet(name) { return 'Hello, ' + name + '!'; }",
+            "const sum = (a, b) => a + b;",
+            "for (let i = 0; i < 10; i++) { console.log(i); }",
+            "const arr = [1, 2, 3].map(x => x * 2);",
+            "if (isValid) { process(); } else { handleError(); }",
+            "const data = await fetch(url).then(res => res.json());",
+            "class User { constructor(name) { this.name = name; } }",
+            "const filtered = items.filter(item => item.active);",
+            "try { parseJSON(data); } catch (e) { console.error(e); }",
+            "const { name, age } = person;",
+            "const result = numbers.reduce((acc, n) => acc + n, 0);",
+            "setTimeout(() => { console.log('Done!'); }, 1000);",
+            "const unique = [...new Set(array)];",
+            "Object.keys(obj).forEach(key => console.log(key));",
+            "const sorted = arr.sort((a, b) => a - b);",
+            "localStorage.setItem('key', JSON.stringify(value));",
+            "document.querySelector('.btn').addEventListener('click', fn);",
+            "const clone = JSON.parse(JSON.stringify(original));",
+            "async function getData() { return await api.fetch(); }",
+            "const isEven = n => n % 2 === 0;"
+        ];
+
+        const commonWords = {
+            easy: ["the", "be", "to", "of", "and", "a", "in", "that", "have", "it", "for", "not", "on", "with", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her", "she", "or", "an", "will", "my", "one", "all", "would", "there", "their", "what", "so", "up", "out", "if", "about", "who", "get", "which", "go", "me", "when", "make", "can", "like", "time", "no", "just", "him", "know", "take", "people", "into", "year", "your", "good", "some", "them", "see", "other", "than", "then", "now", "look", "only", "come", "its", "over", "think", "also", "back", "after", "use", "two", "how", "our", "work", "first", "well", "way", "even", "new", "want", "because", "any", "these", "give", "day", "most", "us"],
+            medium: ["different", "another", "change", "answer", "found", "learn", "should", "world", "every", "school", "through", "still", "such", "where", "between", "city", "under", "story", "while", "might", "keep", "never", "great", "read", "begin", "those", "often", "become", "always", "second", "letter", "music", "spend", "create", "bring", "problem", "however", "business", "someone", "system", "include", "right", "during", "together", "without", "small", "important", "something", "example", "several", "human", "strong", "possible", "remember", "experience", "simple", "difficult", "building", "perhaps", "question", "special", "behind", "reason", "nature", "better", "before", "rather", "against", "sometimes", "morning", "language"],
+            hard: ["acknowledge", "accomplish", "characteristic", "circumstance", "comprehensive", "consequently", "contemporary", "controversial", "demonstrate", "development", "differentiate", "distribution", "environmental", "establishment", "extraordinary", "fundamental", "identification", "implementation", "infrastructure", "interpretation", "investigation", "knowledgeable", "manufacturing", "miscellaneous", "nevertheless", "notwithstanding", "organizational", "participation", "philosophical", "predominantly", "psychological", "recommendation", "representative", "responsibility", "sophisticated", "substantially", "technological", "transformation", "unprecedented", "vulnerability"]
+        };
+
+        // Sentence templates for dynamic generation
+        const templates = {
+            subjects: ["The developer", "A student", "The teacher", "My friend", "The scientist", "An artist", "The chef", "A musician", "The engineer", "The writer", "Our team", "The company", "A researcher", "The doctor", "An athlete"],
+            verbs: ["creates", "builds", "designs", "writes", "develops", "explores", "discovers", "teaches", "learns", "analyzes", "improves", "studies", "presents", "manages", "organizes"],
+            objects: ["new solutions", "interesting projects", "complex problems", "creative ideas", "innovative methods", "useful tools", "helpful resources", "important data", "valuable insights", "modern techniques"],
+            adverbs: ["quickly", "carefully", "efficiently", "successfully", "creatively", "methodically", "consistently", "effectively", "professionally", "enthusiastically"],
+            endings: ["every day.", "with great skill.", "for the team.", "in the morning.", "using modern tools.", "with dedication.", "to achieve goals.", "for better results.", "with precision.", "throughout the project."]
+        };
+
+        function generateRandomSentence() {
+            const subject = templates.subjects[Math.floor(Math.random() * templates.subjects.length)];
+            const adverb = templates.adverbs[Math.floor(Math.random() * templates.adverbs.length)];
+            const verb = templates.verbs[Math.floor(Math.random() * templates.verbs.length)];
+            const object = templates.objects[Math.floor(Math.random() * templates.objects.length)];
+            const ending = templates.endings[Math.floor(Math.random() * templates.endings.length)];
+            return `${subject} ${adverb} ${verb} ${object} ${ending}`;
+        }
+
+        // === GAME STATE ===
         let currentText = '';
+        let currentCategory = 'General';
         let charIndex = 0;
         let errors = 0;
+        let correctStreak = 0;
+        let maxStreak = 0;
         let totalTyped = 0;
         let startTime = null;
         let timer = null;
@@ -366,9 +672,11 @@
         let maxTime = 60;
         let isFinished = false;
         let difficulty = 'easy';
-        let mode = 'paragraph';
+        let mode = 'sentences';
         let soundEnabled = false;
+        let lastWPM = 0;
 
+        // === DOM ELEMENTS ===
         const textDisplay = document.getElementById('textDisplay');
         const typingInput = document.getElementById('typingInput');
         const wpmEl = document.getElementById('wpm');
@@ -376,8 +684,11 @@
         const timeEl = document.getElementById('time');
         const progressEl = document.getElementById('progress');
         const cpmEl = document.getElementById('cpm');
+        const errorsEl = document.getElementById('errors');
+        const streakEl = document.getElementById('streakIndicator');
+        const liveWpmEl = document.getElementById('liveWpm');
+        const categoryBadge = document.getElementById('categoryBadge');
 
-        // Audio context for sound effects
         let audioCtx = null;
 
         function init() {
@@ -388,7 +699,6 @@
                     btn.classList.add('active');
                     mode = btn.dataset.mode;
                     
-                    // Show/hide custom text area
                     const customArea = document.getElementById('customTextArea');
                     const diffSelector = document.getElementById('difficultySelector');
                     if (mode === 'custom') {
@@ -396,7 +706,7 @@
                         diffSelector.style.display = 'none';
                     } else {
                         customArea.classList.remove('visible');
-                        diffSelector.style.display = 'flex';
+                        diffSelector.style.display = mode === 'code' || mode === 'quotes' ? 'none' : 'flex';
                         restart();
                     }
                 });
@@ -427,6 +737,7 @@
                 const customText = document.getElementById('customInput').value.trim();
                 if (customText) {
                     currentText = customText;
+                    currentCategory = 'Custom';
                     resetState();
                 }
             });
@@ -436,7 +747,7 @@
                 soundEnabled = !soundEnabled;
                 const btn = document.getElementById('soundToggle');
                 btn.classList.toggle('active', soundEnabled);
-                btn.textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+                btn.textContent = soundEnabled ? '🔊' : '🔇';
                 if (soundEnabled && !audioCtx) {
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 }
@@ -456,23 +767,54 @@
                 }
             });
             
+            // Focus input on click anywhere in text display
+            textDisplay.addEventListener('click', () => typingInput.focus());
+            
             loadLeaderboard();
             restart();
         }
 
         function generateNewText() {
-            if (mode === 'paragraph') {
-                const textList = texts[difficulty];
-                currentText = textList[Math.floor(Math.random() * textList.length)];
+            if (mode === 'sentences') {
+                // Mix of preset sentences and generated ones
+                const sentenceList = sentences[difficulty];
+                const useGenerated = Math.random() < 0.3; // 30% chance of generated sentence
+                if (useGenerated && difficulty !== 'hard') {
+                    currentText = generateRandomSentence();
+                    currentCategory = 'Generated';
+                } else {
+                    currentText = sentenceList[Math.floor(Math.random() * sentenceList.length)];
+                    currentCategory = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+                }
+            } else if (mode === 'quotes') {
+                const quote = quotes[Math.floor(Math.random() * quotes.length)];
+                currentText = `"${quote.text}" - ${quote.author}`;
+                currentCategory = 'Quote';
             } else if (mode === 'words') {
-                // Generate random words
-                const wordCount = difficulty === 'easy' ? 20 : difficulty === 'medium' ? 35 : 50;
+                const wordList = commonWords[difficulty];
+                const wordCount = difficulty === 'easy' ? 25 : difficulty === 'medium' ? 40 : 30;
                 const words = [];
                 for (let i = 0; i < wordCount; i++) {
-                    words.push(commonWords[Math.floor(Math.random() * commonWords.length)]);
+                    words.push(wordList[Math.floor(Math.random() * wordList.length)]);
                 }
                 currentText = words.join(' ');
+                currentCategory = 'Words';
+            } else if (mode === 'code') {
+                // Pick 2-3 code snippets
+                const count = 2 + Math.floor(Math.random() * 2);
+                const snippets = [];
+                const used = new Set();
+                while (snippets.length < count) {
+                    const idx = Math.floor(Math.random() * codeSnippets.length);
+                    if (!used.has(idx)) {
+                        used.add(idx);
+                        snippets.push(codeSnippets[idx]);
+                    }
+                }
+                currentText = snippets.join(' ');
+                currentCategory = 'Code';
             }
+            categoryBadge.textContent = currentCategory;
         }
 
         function restart() {
@@ -485,24 +827,33 @@
         function resetState() {
             charIndex = 0;
             errors = 0;
+            correctStreak = 0;
+            maxStreak = 0;
             totalTyped = 0;
             startTime = null;
             timeLeft = maxTime;
             isFinished = false;
+            lastWPM = 0;
             
             clearInterval(timer);
             
             typingInput.value = '';
             typingInput.disabled = false;
+            typingInput.classList.remove('has-error');
             typingInput.focus();
             
             wpmEl.textContent = '0';
             cpmEl.textContent = '0';
+            errorsEl.textContent = '0';
             accuracyEl.textContent = '100%';
             timeEl.textContent = maxTime;
             progressEl.style.width = '0%';
+            streakEl.textContent = '🔥 0';
+            streakEl.classList.remove('hot');
+            liveWpmEl.style.display = 'none';
             
             renderText();
+            scrollToCurrentChar();
         }
 
         function renderText() {
@@ -515,8 +866,27 @@
                 } else {
                     className += ' pending';
                 }
-                return `<span class="${className}">${char === ' ' ? '&nbsp;' : char}</span>`;
+                if (char === ' ') {
+                    className += ' space';
+                }
+                const displayChar = char === ' ' ? '&nbsp;' : char.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="${className}" data-index="${i}">${displayChar}</span>`;
             }).join('');
+        }
+
+        function scrollToCurrentChar() {
+            const currentCharEl = textDisplay.querySelector('.char.current');
+            if (currentCharEl) {
+                const container = textDisplay;
+                const charTop = currentCharEl.offsetTop;
+                const charHeight = currentCharEl.offsetHeight;
+                const containerHeight = container.clientHeight;
+                const scrollTop = container.scrollTop;
+                
+                if (charTop < scrollTop || charTop + charHeight > scrollTop + containerHeight) {
+                    container.scrollTop = charTop - containerHeight / 2;
+                }
+            }
         }
 
         function handleTyping(e) {
@@ -525,16 +895,38 @@
             if (!startTime) {
                 startTime = Date.now();
                 startTimer();
+                liveWpmEl.style.display = 'block';
             }
             
             const typed = typingInput.value;
             const prevCharIndex = charIndex;
             charIndex = typed.length;
             
-            // Play sound
-            if (soundEnabled && audioCtx && charIndex > prevCharIndex) {
+            // Check if last character was correct
+            if (charIndex > prevCharIndex) {
                 const isCorrect = typed[charIndex - 1] === currentText[charIndex - 1];
-                playSound(isCorrect);
+                
+                if (isCorrect) {
+                    correctStreak++;
+                    maxStreak = Math.max(maxStreak, correctStreak);
+                    typingInput.classList.remove('has-error');
+                } else {
+                    correctStreak = 0;
+                    typingInput.classList.add('has-error');
+                }
+                
+                // Update streak display
+                streakEl.textContent = `🔥 ${correctStreak}`;
+                if (correctStreak >= 20) {
+                    streakEl.classList.add('hot');
+                } else {
+                    streakEl.classList.remove('hot');
+                }
+                
+                // Play sound
+                if (soundEnabled && audioCtx) {
+                    playSound(isCorrect);
+                }
             }
             
             totalTyped++;
@@ -546,8 +938,10 @@
                     errors++;
                 }
             }
+            errorsEl.textContent = errors;
             
             renderText();
+            scrollToCurrentChar();
             updateStats();
             
             // Check completion
@@ -559,24 +953,34 @@
         }
 
         function playSound(correct) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.frequency.value = correct ? 800 : 200;
-            osc.type = 'sine';
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-            
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.frequency.value = correct ? 600 + Math.random() * 200 : 150;
+                osc.type = correct ? 'sine' : 'square';
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.04);
+            } catch (e) {}
         }
 
         function startTimer() {
             timer = setInterval(() => {
                 timeLeft--;
                 timeEl.textContent = timeLeft;
+                
+                // Flash time when low
+                if (timeLeft <= 10) {
+                    timeEl.style.animation = 'none';
+                    timeEl.offsetHeight; // Trigger reflow
+                    timeEl.style.animation = 'pulse 0.5s ease-in-out';
+                }
+                
                 updateStats();
                 
                 if (timeLeft <= 0) {
@@ -588,7 +992,7 @@
         function updateStats() {
             const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
             const correctChars = charIndex - errors;
-            const wordsTyped = correctChars / 5; // standard: 5 chars = 1 word
+            const wordsTyped = correctChars / 5;
             const wpm = Math.round(wordsTyped / timeElapsed) || 0;
             const cpm = Math.round(correctChars / timeElapsed) || 0;
             const accuracy = charIndex > 0 ? Math.round((correctChars / charIndex) * 100) : 100;
@@ -596,36 +1000,68 @@
             wpmEl.textContent = wpm;
             cpmEl.textContent = cpm;
             accuracyEl.textContent = accuracy + '%';
+            liveWpmEl.textContent = `⚡ ${wpm} WPM`;
+            
+            // Color code accuracy
+            if (accuracy >= 98) {
+                accuracyEl.style.color = '#00ff88';
+            } else if (accuracy >= 95) {
+                accuracyEl.style.color = '#ffaa00';
+            } else {
+                accuracyEl.style.color = '#ff6b6b';
+            }
+            
+            lastWPM = wpm;
         }
 
         function finish() {
             isFinished = true;
             clearInterval(timer);
             typingInput.disabled = true;
+            liveWpmEl.style.display = 'none';
             
-            const timeElapsed = (Date.now() - startTime) / 1000 / 60;
+            const timeElapsed = startTime ? (Date.now() - startTime) / 1000 / 60 : 0.001;
             const correctChars = charIndex - errors;
             const wordsTyped = correctChars / 5;
             const finalWPM = Math.round(wordsTyped / timeElapsed) || 0;
             const finalCPM = Math.round(correctChars / timeElapsed) || 0;
             const finalAccuracy = charIndex > 0 ? Math.round((correctChars / charIndex) * 100) : 100;
             
-            // Save to leaderboard
             saveScore(finalWPM, finalAccuracy);
             
-            let message = '';
-            if (finalWPM >= 100) message = '🚀 Legendary!';
-            else if (finalWPM >= 80) message = '🏆 Incredible!';
-            else if (finalWPM >= 60) message = '🌟 Excellent!';
-            else if (finalWPM >= 40) message = '👍 Good job!';
-            else message = '💪 Keep practicing!';
+            let message = '', emoji = '';
+            if (finalWPM >= 120) { message = 'LEGENDARY!'; emoji = '🌟'; }
+            else if (finalWPM >= 100) { message = 'Incredible!'; emoji = '🚀'; }
+            else if (finalWPM >= 80) { message = 'Amazing!'; emoji = '🏆'; }
+            else if (finalWPM >= 60) { message = 'Great job!'; emoji = '⭐'; }
+            else if (finalWPM >= 40) { message = 'Good!'; emoji = '👍'; }
+            else { message = 'Keep practicing!'; emoji = '💪'; }
             
             textDisplay.innerHTML = `
                 <div class="results">
-                    <div class="result-label">${message}</div>
+                    <div class="result-label">${emoji} ${message}</div>
                     <div class="result-wpm">${finalWPM} WPM</div>
-                    <div style="margin-top: 15px; color: #888;">
-                        CPM: ${finalCPM} | Accuracy: ${finalAccuracy}% | Characters: ${charIndex} | Errors: ${errors}
+                    <div class="result-stats">
+                        <div class="result-stat">
+                            <div class="result-stat-value">${finalCPM}</div>
+                            <div class="result-stat-label">CPM</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${finalAccuracy}%</div>
+                            <div class="result-stat-label">Accuracy</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${charIndex}</div>
+                            <div class="result-stat-label">Characters</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${errors}</div>
+                            <div class="result-stat-label">Errors</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${maxStreak}</div>
+                            <div class="result-stat-label">Max Streak</div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -633,7 +1069,7 @@
 
         function saveScore(wpm, accuracy) {
             const scores = JSON.parse(localStorage.getItem('typing_scores') || '[]');
-            scores.push({ wpm, accuracy, date: new Date().toLocaleDateString(), time: maxTime });
+            scores.push({ wpm, accuracy, date: new Date().toLocaleDateString(), time: maxTime, mode });
             scores.sort((a, b) => b.wpm - a.wpm);
             localStorage.setItem('typing_scores', JSON.stringify(scores.slice(0, 10)));
             loadLeaderboard();
@@ -644,14 +1080,14 @@
             const container = document.getElementById('leaderboardContent');
             
             if (scores.length === 0) {
-                container.innerHTML = 'No records yet!';
+                container.innerHTML = 'No records yet! Start typing to set your first record.';
                 return;
             }
             
             container.innerHTML = scores.slice(0, 5).map((s, i) => `
                 <div class="leaderboard-entry">
-                    <span>${i + 1}. ${s.wpm} WPM (${s.accuracy}%)</span>
-                    <span style="color: #888;">${s.time}s - ${s.date}</span>
+                    <span>${['🥇','🥈','🥉','4.','5.'][i]} ${s.wpm} WPM (${s.accuracy}%)</span>
+                    <span style="color: #888;">${s.time}s • ${s.date}</span>
                 </div>
             `).join('');
         }
@@ -663,6 +1099,16 @@
                 document.exitFullscreen();
             }
         }
+
+        // Add keyboard shortcut for restart
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                restart();
+            }
+            if (e.ctrlKey && e.key === 'Enter') {
+                document.getElementById('newTextBtn').click();
+            }
+        });
 
         init();
     </script>

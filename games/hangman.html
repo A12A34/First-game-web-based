@@ -37,6 +37,8 @@
             font-size: 2.5rem;
             font-weight: bold;
             letter-spacing: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .letter-slot {
             width: 40px;
@@ -90,6 +92,8 @@
             display: flex;
             gap: 30px;
             margin: 15px 0;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .stat-box {
             text-align: center;
@@ -123,6 +127,8 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .mode-btn {
             padding: 10px 20px;
@@ -133,23 +139,32 @@
             cursor: pointer;
             transition: all 0.3s;
         }
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
         .mode-btn.active {
             background: #00ff88;
             color: #000;
+            border-color: #00ff88;
         }
-        .custom-setup {
+        .setup-panel {
             display: none;
             flex-direction: column;
             gap: 15px;
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
             padding: 20px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             margin-bottom: 15px;
         }
-        .custom-setup.visible {
+        .setup-panel.visible {
             display: flex;
+        }
+        .setup-title {
+            font-size: 1.1rem;
+            color: #ffaa00;
+            margin-bottom: 5px;
         }
         .custom-input {
             padding: 12px 15px;
@@ -162,6 +177,38 @@
         }
         .custom-input::placeholder {
             color: #666;
+        }
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        .category-btn {
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .category-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .category-btn.selected {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+        }
+        .category-icon {
+            font-size: 1.5rem;
+        }
+        .category-name {
+            font-size: 0.85rem;
         }
         .tries-selector {
             display: flex;
@@ -178,6 +225,10 @@
             color: #fff;
             font-size: 1.2rem;
             cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tries-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         .tries-display {
             font-size: 1.5rem;
@@ -205,6 +256,34 @@
         .fullscreen-btn:hover {
             background: rgba(255, 255, 255, 0.3);
         }
+        .difficulty-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .diff-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        .diff-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .diff-btn.active {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+        .hint-display {
+            font-size: 0.9rem;
+            color: #888;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -217,13 +296,30 @@
             
             <div class="hangman-container">
                 <div class="mode-selector">
-                    <button class="mode-btn active" data-mode="random">Random Word</button>
-                    <button class="mode-btn" data-mode="custom">Custom Word</button>
+                    <button class="mode-btn active" data-mode="random">🎲 Random</button>
+                    <button class="mode-btn" data-mode="category">📂 Choose Category</button>
+                    <button class="mode-btn" data-mode="custom">✏️ Custom Word</button>
                 </div>
                 
-                <div class="custom-setup" id="customSetup">
+                <!-- Category Selection Panel -->
+                <div class="setup-panel" id="categorySetup">
+                    <div class="setup-title">Choose a Category:</div>
+                    <div class="category-grid" id="categoryGrid"></div>
+                    <div class="difficulty-row">
+                        <button class="diff-btn active" data-diff="all">All Words</button>
+                        <button class="diff-btn" data-diff="easy">Easy (5-6 letters)</button>
+                        <button class="diff-btn" data-diff="hard">Hard (8+ letters)</button>
+                    </div>
+                    <button class="btn btn-primary" id="startCategoryBtn">Start Game</button>
+                </div>
+                
+                <!-- Custom Word Panel -->
+                <div class="setup-panel" id="customSetup">
+                    <div class="setup-title">Enter a Custom Word:</div>
                     <input type="password" class="custom-input" id="customWord" placeholder="Enter word to guess..." autocomplete="off">
-                    <input type="text" class="custom-input" id="customHint" placeholder="Hint (optional)">
+                    <div class="setup-title">Choose a Category (optional):</div>
+                    <div class="category-grid" id="customCategoryGrid"></div>
+                    <input type="text" class="custom-input" id="customHint" placeholder="Custom hint (optional)">
                     <div class="tries-selector">
                         <span>Max tries:</span>
                         <button class="tries-btn" id="triesDown">−</button>
@@ -252,6 +348,7 @@
                 </div>
                 
                 <div class="category" id="category"></div>
+                <div class="hint-display" id="hintDisplay"></div>
                 <div class="word-display" id="wordDisplay"></div>
                 <div class="message" id="message"></div>
                 
@@ -268,6 +365,10 @@
                         <div class="stat-label">Streak</div>
                         <div class="stat-value" id="streak">0</div>
                     </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Tries Left</div>
+                        <div class="stat-value" id="triesLeft">6</div>
+                    </div>
                 </div>
                 
                 <div class="keyboard" id="keyboard"></div>
@@ -277,18 +378,36 @@
             
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Guess the hidden word one letter at a time. You have 6 wrong guesses before the hangman is complete!</p>
+                <p>Guess the hidden word one letter at a time. Choose Random for a surprise, pick a Category, or create a Custom Word for a friend to guess!</p>
             </div>
         </div>
     </div>
 
     <script>
         const words = {
-            'Animals': ['elephant', 'giraffe', 'penguin', 'dolphin', 'kangaroo', 'butterfly', 'crocodile', 'octopus'],
-            'Countries': ['australia', 'brazil', 'canada', 'germany', 'japan', 'mexico', 'norway', 'thailand'],
-            'Sports': ['basketball', 'football', 'swimming', 'volleyball', 'tennis', 'baseball', 'hockey', 'cricket'],
-            'Food': ['hamburger', 'spaghetti', 'chocolate', 'sandwich', 'pancakes', 'broccoli', 'pineapple', 'strawberry'],
-            'Movies': ['inception', 'gladiator', 'titanic', 'avatar', 'frozen', 'joker', 'interstellar', 'superman']
+            'Animals': ['elephant', 'giraffe', 'penguin', 'dolphin', 'kangaroo', 'butterfly', 'crocodile', 'octopus', 'cheetah', 'gorilla', 'hamster', 'lobster', 'peacock', 'pelican', 'raccoon', 'squirrel', 'tortoise', 'flamingo', 'hedgehog', 'jellyfish'],
+            'Countries': ['australia', 'brazil', 'canada', 'germany', 'japan', 'mexico', 'norway', 'thailand', 'argentina', 'belgium', 'colombia', 'denmark', 'ethiopia', 'finland', 'greece', 'hungary', 'indonesia', 'jamaica', 'kenya', 'luxembourg'],
+            'Sports': ['basketball', 'football', 'swimming', 'volleyball', 'tennis', 'baseball', 'hockey', 'cricket', 'archery', 'badminton', 'boxing', 'cycling', 'fencing', 'golf', 'gymnastics', 'rowing', 'sailing', 'skiing', 'surfing', 'wrestling'],
+            'Food': ['hamburger', 'spaghetti', 'chocolate', 'sandwich', 'pancakes', 'broccoli', 'pineapple', 'strawberry', 'avocado', 'blueberry', 'burrito', 'cheesecake', 'croissant', 'doughnut', 'grapefruit', 'lasagna', 'mushroom', 'omelette', 'pretzel', 'watermelon'],
+            'Movies': ['inception', 'gladiator', 'titanic', 'avatar', 'frozen', 'joker', 'interstellar', 'superman', 'aliens', 'amelie', 'bambi', 'batman', 'casablanca', 'dumbo', 'jaws', 'platoon', 'psycho', 'ratatouille', 'rocky', 'shrek'],
+            'Technology': ['computer', 'software', 'internet', 'algorithm', 'database', 'keyboard', 'monitor', 'processor', 'bluetooth', 'ethernet', 'firewall', 'hardware', 'javascript', 'microchip', 'password', 'satellite', 'smartphone', 'streaming', 'touchscreen', 'wireless'],
+            'Nature': ['mountain', 'waterfall', 'volcano', 'rainbow', 'lightning', 'hurricane', 'earthquake', 'glacier', 'asteroid', 'avalanche', 'blizzard', 'canyon', 'desert', 'eclipse', 'forest', 'meadow', 'ocean', 'prairie', 'sunrise', 'tornado'],
+            'Music': ['guitar', 'piano', 'drums', 'violin', 'trumpet', 'saxophone', 'orchestra', 'symphony', 'accordion', 'banjo', 'clarinet', 'flute', 'harmonica', 'keyboard', 'mandolin', 'marimba', 'tambourine', 'trombone', 'ukulele', 'xylophone'],
+            'Science': ['chemistry', 'biology', 'physics', 'astronomy', 'molecule', 'electron', 'neutron', 'proton', 'atom', 'bacteria', 'catalyst', 'chromosome', 'dinosaur', 'ecosystem', 'fossil', 'genetics', 'hypothesis', 'isotope', 'nucleus', 'organism'],
+            'Professions': ['architect', 'engineer', 'scientist', 'musician', 'professor', 'detective', 'astronaut', 'journalist', 'accountant', 'carpenter', 'dentist', 'electrician', 'firefighter', 'librarian', 'mechanic', 'pharmacist', 'plumber', 'surgeon', 'teacher', 'veterinarian']
+        };
+
+        const categoryEmojis = {
+            'Animals': '🐾',
+            'Countries': '🌍',
+            'Sports': '⚽',
+            'Food': '🍕',
+            'Movies': '🎬',
+            'Technology': '💻',
+            'Nature': '🌿',
+            'Music': '🎵',
+            'Science': '🔬',
+            'Professions': '👔'
         };
 
         const bodyParts = ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg'];
@@ -296,6 +415,9 @@
         let currentWord = '';
         let currentCategory = '';
         let customHint = '';
+        let selectedCategory = null;
+        let selectedCustomCategory = null;
+        let selectedDifficulty = 'all';
         let guessedLetters = [];
         let wrongGuesses = 0;
         let maxTries = 6;
@@ -309,15 +431,19 @@
         const keyboard = document.getElementById('keyboard');
         const message = document.getElementById('message');
         const categoryEl = document.getElementById('category');
+        const hintDisplay = document.getElementById('hintDisplay');
         const winsEl = document.getElementById('wins');
         const lossesEl = document.getElementById('losses');
         const streakEl = document.getElementById('streak');
+        const triesLeftEl = document.getElementById('triesLeft');
         const newGameBtn = document.getElementById('newGameBtn');
         const customSetup = document.getElementById('customSetup');
+        const categorySetup = document.getElementById('categorySetup');
         const hangmanDrawing = document.getElementById('hangmanDrawing');
 
         function init() {
             createKeyboard();
+            createCategoryGrids();
             newGame();
             
             document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
@@ -329,15 +455,29 @@
                     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     gameMode = btn.dataset.mode;
+                    hideAllSetups();
                     
                     if (gameMode === 'custom') {
                         customSetup.classList.add('visible');
+                    } else if (gameMode === 'category') {
+                        categorySetup.classList.add('visible');
                     } else {
-                        customSetup.classList.remove('visible');
                         newGame();
                     }
                 });
             });
+            
+            // Difficulty buttons
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedDifficulty = btn.dataset.diff;
+                });
+            });
+            
+            // Category game start
+            document.getElementById('startCategoryBtn').addEventListener('click', startCategoryGame);
             
             // Custom game setup
             document.getElementById('startCustomBtn').addEventListener('click', startCustomGame);
@@ -363,6 +503,44 @@
             });
         }
 
+        function createCategoryGrids() {
+            const categoryGrid = document.getElementById('categoryGrid');
+            const customCategoryGrid = document.getElementById('customCategoryGrid');
+            
+            Object.keys(words).forEach(cat => {
+                // Main category grid
+                const btn = document.createElement('button');
+                btn.className = 'category-btn';
+                btn.innerHTML = `${categoryEmojis[cat] || '📁'} ${cat}`;
+                btn.addEventListener('click', () => {
+                    categoryGrid.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedCategory = cat;
+                });
+                categoryGrid.appendChild(btn);
+                
+                // Custom word category grid
+                const customBtn = document.createElement('button');
+                customBtn.className = 'category-btn';
+                customBtn.innerHTML = `${categoryEmojis[cat] || '📁'} ${cat}`;
+                customBtn.addEventListener('click', () => {
+                    customCategoryGrid.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+                    if (selectedCustomCategory === cat) {
+                        selectedCustomCategory = null;
+                    } else {
+                        customBtn.classList.add('selected');
+                        selectedCustomCategory = cat;
+                    }
+                });
+                customCategoryGrid.appendChild(customBtn);
+            });
+        }
+
+        function hideAllSetups() {
+            customSetup.classList.remove('visible');
+            categorySetup.classList.remove('visible');
+        }
+
         function createKeyboard() {
             keyboard.innerHTML = '';
             for (let i = 97; i <= 122; i++) {
@@ -373,6 +551,32 @@
                 btn.addEventListener('click', () => guessLetter(letter));
                 keyboard.appendChild(btn);
             }
+        }
+
+        function getFilteredWords(category) {
+            let wordList = words[category];
+            if (selectedDifficulty === 'easy') {
+                wordList = wordList.filter(w => w.length >= 5 && w.length <= 6);
+            } else if (selectedDifficulty === 'hard') {
+                wordList = wordList.filter(w => w.length >= 8);
+            }
+            return wordList.length > 0 ? wordList : words[category];
+        }
+
+        function startCategoryGame() {
+            if (!selectedCategory) {
+                alert('Please select a category!');
+                return;
+            }
+            
+            currentCategory = selectedCategory;
+            const wordList = getFilteredWords(currentCategory);
+            currentWord = wordList[Math.floor(Math.random() * wordList.length)];
+            customHint = '';
+            maxTries = 6;
+            
+            hideAllSetups();
+            startGame();
         }
 
         function startCustomGame() {
@@ -386,21 +590,28 @@
             
             currentWord = wordInput;
             customHint = hintInput;
-            currentCategory = customHint || 'Custom Word';
+            currentCategory = selectedCustomCategory || 'Custom Word';
             
             // Clear inputs
             document.getElementById('customWord').value = '';
             document.getElementById('customHint').value = '';
+            document.getElementById('customCategoryGrid').querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+            selectedCustomCategory = null;
             
-            // Hide setup
-            customSetup.classList.remove('visible');
-            
+            hideAllSetups();
             startGame();
         }
 
         function newGame() {
+            hideAllSetups();
+            
             if (gameMode === 'custom') {
                 customSetup.classList.add('visible');
+                return;
+            }
+            
+            if (gameMode === 'category') {
+                categorySetup.classList.add('visible');
                 return;
             }
             
@@ -408,6 +619,7 @@
             currentCategory = categories[Math.floor(Math.random() * categories.length)];
             const wordList = words[currentCategory];
             currentWord = wordList[Math.floor(Math.random() * wordList.length)];
+            customHint = '';
             maxTries = 6;
             
             startGame();
@@ -420,10 +632,19 @@
             message.textContent = '';
             message.className = 'message';
             
-            categoryEl.textContent = customHint ? `Hint: ${currentCategory}` : `Category: ${currentCategory}`;
+            const emoji = categoryEmojis[currentCategory] || '🔮';
+            categoryEl.textContent = `${emoji} Category: ${currentCategory}`;
+            
+            if (customHint) {
+                hintDisplay.textContent = `💡 Hint: ${customHint}`;
+                hintDisplay.style.display = 'block';
+            } else {
+                hintDisplay.style.display = 'none';
+            }
             
             // Update hangman SVG based on maxTries
             updateHangmanSVG();
+            updateTriesLeft();
             
             // Reset keyboard
             keyboard.querySelectorAll('.key-btn').forEach(btn => {
@@ -432,6 +653,10 @@
             });
             
             renderWord();
+        }
+
+        function updateTriesLeft() {
+            triesLeftEl.textContent = maxTries - wrongGuesses;
         }
 
         function updateHangmanSVG() {
@@ -495,6 +720,7 @@
                     if (part) part.classList.add('visible');
                 }
                 wrongGuesses++;
+                updateTriesLeft();
                 checkLose();
             }
         }
