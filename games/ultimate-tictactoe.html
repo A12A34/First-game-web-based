@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe Ultimate - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .ultimate-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 15px;
+        }
+        .mini-board {
+            display: grid;
+            grid-template-columns: repeat(3, 40px);
+            grid-template-rows: repeat(3, 40px);
+            gap: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .mini-board.active {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+        .mini-board.won-x {
+            background: rgba(255, 107, 107, 0.3);
+        }
+        .mini-board.won-o {
+            background: rgba(0, 255, 136, 0.3);
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 5px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cell:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .cell:disabled {
+            cursor: not-allowed;
+        }
+        .cell.x { color: #ff6b6b; }
+        .cell.o { color: #00ff88; }
+        .status {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 40px;
+        }
+        .status.x { color: #ff6b6b; }
+        .status.o { color: #00ff88; }
+        .won-marker {
+            font-size: 4rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .mini-board {
+            position: relative;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">⭕❌ Ultimate Tic-Tac-Toe</h1>
+            
+            <div class="game-container-inner">
+                <div class="status" id="status">X's turn</div>
+                
+                <div class="ultimate-grid" id="ultimateGrid"></div>
+                
+                <button id="restartBtn" class="btn btn-primary">New Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Win 3 mini-boards in a row to win! Your move determines which board your opponent plays in next. Play anywhere if sent to a won/full board.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let boards = [];
+        let boardWinners = [];
+        let currentPlayer = 'X';
+        let activeBoard = -1; // -1 means any board
+        let gameOver = false;
+
+        const ultimateGrid = document.getElementById('ultimateGrid');
+        const statusEl = document.getElementById('status');
+
+        function init() {
+            document.getElementById('restartBtn').addEventListener('click', newGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            newGame();
+        }
+
+        function newGame() {
+            boards = [];
+            boardWinners = [];
+            for (let i = 0; i < 9; i++) {
+                boards.push(['', '', '', '', '', '', '', '', '']);
+                boardWinners.push('');
+            }
+            currentPlayer = 'X';
+            activeBoard = -1;
+            gameOver = false;
+            render();
+            updateStatus();
+        }
+
+        function render() {
+            ultimateGrid.innerHTML = '';
+            
+            for (let b = 0; b < 9; b++) {
+                const miniBoard = document.createElement('div');
+                miniBoard.className = 'mini-board';
+                
+                if (boardWinners[b] === 'X') miniBoard.classList.add('won-x');
+                if (boardWinners[b] === 'O') miniBoard.classList.add('won-o');
+                if ((activeBoard === -1 || activeBoard === b) && !boardWinners[b] && !gameOver) {
+                    miniBoard.classList.add('active');
+                }
+                
+                if (boardWinners[b]) {
+                    const marker = document.createElement('div');
+                    marker.className = 'won-marker';
+                    marker.textContent = boardWinners[b];
+                    marker.style.color = boardWinners[b] === 'X' ? '#ff6b6b' : '#00ff88';
+                    miniBoard.appendChild(marker);
+                }
+                
+                for (let c = 0; c < 9; c++) {
+                    const cell = document.createElement('button');
+                    cell.className = 'cell';
+                    const value = boards[b][c];
+                    cell.textContent = value;
+                    if (value) cell.classList.add(value.toLowerCase());
+                    
+                    const canPlay = !gameOver && 
+                                   !boardWinners[b] && 
+                                   !value && 
+                                   (activeBoard === -1 || activeBoard === b);
+                    
+                    cell.disabled = !canPlay;
+                    cell.style.opacity = boardWinners[b] && !value ? '0.3' : '1';
+                    
+                    cell.addEventListener('click', () => makeMove(b, c));
+                    miniBoard.appendChild(cell);
+                }
+                
+                ultimateGrid.appendChild(miniBoard);
+            }
+        }
+
+        function makeMove(board, cell) {
+            if (gameOver || boards[board][cell] || boardWinners[board]) return;
+            if (activeBoard !== -1 && activeBoard !== board) return;
+            
+            boards[board][cell] = currentPlayer;
+            
+            // Check mini-board win
+            if (checkWin(boards[board])) {
+                boardWinners[board] = currentPlayer;
+            } else if (boards[board].every(c => c)) {
+                boardWinners[board] = 'T'; // Tie
+            }
+            
+            // Check ultimate win
+            if (checkWin(boardWinners)) {
+                gameOver = true;
+                statusEl.textContent = `${currentPlayer} wins the game!`;
+                statusEl.className = 'status ' + currentPlayer.toLowerCase();
+                render();
+                return;
+            }
+            
+            // Set next active board
+            activeBoard = boardWinners[cell] ? -1 : cell;
+            
+            // Check for tie
+            if (boardWinners.every(w => w)) {
+                gameOver = true;
+                statusEl.textContent = "It's a tie!";
+                render();
+                return;
+            }
+            
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStatus();
+            render();
+        }
+
+        function checkWin(board) {
+            const lines = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            
+            for (const [a, b, c] of lines) {
+                if (board[a] && board[a] !== 'T' && board[a] === board[b] && board[a] === board[c]) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updateStatus() {
+            statusEl.textContent = `${currentPlayer}'s turn`;
+            statusEl.className = 'status ' + currentPlayer.toLowerCase();
+            
+            if (activeBoard !== -1) {
+                statusEl.textContent += ` (play in board ${activeBoard + 1})`;
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

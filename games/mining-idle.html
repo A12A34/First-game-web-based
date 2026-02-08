@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mining Idle - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .mining-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .resources {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .resource {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            text-align: center;
+            min-width: 100px;
+        }
+        .resource-icon {
+            font-size: 2rem;
+        }
+        .resource-count {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .resource-count.gold { color: #ffd700; }
+        .resource-count.iron { color: #a0a0a0; }
+        .resource-count.copper { color: #b87333; }
+        .resource-count.diamond { color: #b9f2ff; }
+        .resource-count.coal { color: #444; }
+        .resource-name {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .mine-area {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .mine {
+            background: linear-gradient(180deg, #4a3728, #2a1f15);
+            border: 4px solid #5c4033;
+            border-radius: 15px;
+            padding: 20px;
+            width: 300px;
+            text-align: center;
+        }
+        .mine-title {
+            font-size: 1.3rem;
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+        .mine-rock {
+            font-size: 80px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            user-select: none;
+        }
+        .mine-rock:hover {
+            transform: scale(1.05);
+        }
+        .mine-rock:active {
+            transform: scale(0.9);
+        }
+        .mine-rock.cracked::after {
+            content: '💥';
+            position: absolute;
+            animation: crack 0.3s ease-out;
+        }
+        @keyframes crack {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(2); }
+        }
+        .mine-progress {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .mine-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00cc6a);
+            transition: width 0.1s;
+        }
+        .mine-stats {
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .upgrades-section {
+            width: 100%;
+        }
+        .upgrades-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+        .upgrades-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .upgrade {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upgrade:hover:not(.locked) {
+            border-color: #ffd700;
+            transform: translateY(-3px);
+        }
+        .upgrade.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .upgrade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .upgrade-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        .upgrade-level {
+            color: #00ff88;
+        }
+        .upgrade-cost {
+            display: flex;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+        .upgrade-cost span {
+            color: #ffd700;
+        }
+        .upgrade-effect {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .miners-display {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .miner {
+            font-size: 2rem;
+            animation: mine 1s infinite;
+        }
+        @keyframes mine {
+            0%, 100% { transform: rotate(-10deg); }
+            50% { transform: rotate(10deg); }
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+        .float-text {
+            position: fixed;
+            pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+        .prestige-section {
+            background: linear-gradient(135deg, #4a0080, #800080);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+        }
+        .prestige-title {
+            font-size: 1.3rem;
+            color: #ff88ff;
+        }
+        .prestige-points {
+            font-size: 2rem;
+            color: #ff88ff;
+            margin: 10px 0;
+        }
+        .prestige-info {
+            font-size: 0.9rem;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">⛏️ Mining Idle</h1>
+            
+            <div class="mining-container">
+                <div class="resources">
+                    <div class="resource">
+                        <div class="resource-icon">🪨</div>
+                        <div class="resource-count coal" id="coal">0</div>
+                        <div class="resource-name">Coal</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🥉</div>
+                        <div class="resource-count copper" id="copper">0</div>
+                        <div class="resource-name">Copper</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🪙</div>
+                        <div class="resource-count iron" id="iron">0</div>
+                        <div class="resource-name">Iron</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">🥇</div>
+                        <div class="resource-count gold" id="gold">0</div>
+                        <div class="resource-name">Gold</div>
+                    </div>
+                    <div class="resource">
+                        <div class="resource-icon">💎</div>
+                        <div class="resource-count diamond" id="diamond">0</div>
+                        <div class="resource-name">Diamond</div>
+                    </div>
+                </div>
+                
+                <div class="mine-area">
+                    <div class="mine">
+                        <div class="mine-title">⛏️ The Mine</div>
+                        <div class="mine-rock" id="rock">🪨</div>
+                        <div class="mine-progress">
+                            <div class="mine-progress-fill" id="rockProgress" style="width: 100%"></div>
+                        </div>
+                        <div class="mine-stats">
+                            <div>Click Power: <span id="clickPower">1</span></div>
+                            <div>Auto Mining: <span id="autoMining">0</span>/sec</div>
+                        </div>
+                        <div class="miners-display" id="miners"></div>
+                    </div>
+                </div>
+                
+                <div class="upgrades-section">
+                    <div class="upgrades-title">🔧 Upgrades</div>
+                    <div class="upgrades-grid" id="upgrades"></div>
+                </div>
+                
+                <div class="prestige-section">
+                    <div class="prestige-title">✨ Prestige</div>
+                    <div class="prestige-points">💫 <span id="prestigePoints">0</span> Gems</div>
+                    <div class="prestige-info">Reset for permanent bonuses! Gain <span id="prestigeGain">0</span> gems on prestige.</div>
+                    <button class="btn btn-primary" id="prestigeBtn">Prestige</button>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Click rocks to mine resources! Buy upgrades to mine faster and unlock auto-miners. Prestige to gain permanent bonuses!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Resources
+        let resources = {
+            coal: 0,
+            copper: 0,
+            iron: 0,
+            gold: 0,
+            diamond: 0
+        };
+        
+        // Game stats
+        let clickPower = 1;
+        let autoMining = 0;
+        let rockHealth = 100;
+        let maxRockHealth = 100;
+        let prestigePoints = 0;
+        let totalMined = 0;
+        
+        // Upgrades
+        const upgrades = [
+            { id: 'pickaxe', name: '⛏️ Better Pickaxe', baseCost: { coal: 10 }, effect: 'Click Power +1', level: 0, maxLevel: 50 },
+            { id: 'miner', name: '👷 Hire Miner', baseCost: { coal: 50 }, effect: 'Auto-mine +1/sec', level: 0, maxLevel: 100 },
+            { id: 'drill', name: '🔧 Mining Drill', baseCost: { coal: 200, copper: 20 }, effect: 'Auto-mine +5/sec', level: 0, maxLevel: 50 },
+            { id: 'dynamite', name: '🧨 Dynamite', baseCost: { coal: 500, iron: 50 }, effect: 'Click Power +10', level: 0, maxLevel: 25 },
+            { id: 'excavator', name: '🚜 Excavator', baseCost: { iron: 200, copper: 100 }, effect: 'Auto-mine +25/sec', level: 0, maxLevel: 20 },
+            { id: 'laser', name: '🔴 Laser Drill', baseCost: { gold: 100, diamond: 10 }, effect: 'Auto-mine +100/sec', level: 0, maxLevel: 10 }
+        ];
+        
+        // Resource drop rates based on rock depth
+        const dropRates = {
+            coal: { chance: 0.8, min: 1, max: 3 },
+            copper: { chance: 0.4, min: 1, max: 2 },
+            iron: { chance: 0.2, min: 1, max: 2 },
+            gold: { chance: 0.05, min: 1, max: 1 },
+            diamond: { chance: 0.01, min: 1, max: 1 }
+        };
+        
+        function init() {
+            document.getElementById('rock').addEventListener('click', mineRock);
+            document.getElementById('prestigeBtn').addEventListener('click', prestige);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            loadGame();
+            renderUpgrades();
+            updateDisplay();
+            
+            // Auto-mining loop
+            setInterval(() => {
+                if (autoMining > 0) {
+                    damageRock(autoMining / 10);
+                }
+            }, 100);
+            
+            // Save loop
+            setInterval(saveGame, 10000);
+        }
+        
+        function mineRock(e) {
+            const damage = clickPower * (1 + prestigePoints * 0.1);
+            damageRock(damage);
+            
+            // Visual effect
+            const rock = document.getElementById('rock');
+            rock.style.transform = 'scale(0.9)';
+            setTimeout(() => rock.style.transform = '', 100);
+            
+            // Float text
+            showFloatText(e.clientX, e.clientY, `-${Math.floor(damage)}`);
+        }
+        
+        function damageRock(damage) {
+            rockHealth -= damage;
+            
+            if (rockHealth <= 0) {
+                breakRock();
+            }
+            
+            updateRockProgress();
+        }
+        
+        function breakRock() {
+            // Award resources
+            const prestigeBonus = 1 + prestigePoints * 0.2;
+            
+            for (const [resource, rates] of Object.entries(dropRates)) {
+                if (Math.random() < rates.chance * prestigeBonus) {
+                    const amount = Math.floor((rates.min + Math.random() * (rates.max - rates.min + 1)) * prestigeBonus);
+                    resources[resource] += amount;
+                    totalMined += amount;
+                }
+            }
+            
+            // Reset rock
+            maxRockHealth = Math.min(maxRockHealth * 1.01, 10000);
+            rockHealth = maxRockHealth;
+            
+            updateDisplay();
+            renderUpgrades();
+        }
+        
+        function updateRockProgress() {
+            const percent = (rockHealth / maxRockHealth) * 100;
+            document.getElementById('rockProgress').style.width = percent + '%';
+        }
+        
+        function showFloatText(x, y, text) {
+            const el = document.createElement('div');
+            el.className = 'float-text';
+            el.textContent = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.color = '#ff6b6b';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+        
+        function renderUpgrades() {
+            const container = document.getElementById('upgrades');
+            container.innerHTML = '';
+            
+            upgrades.forEach(upgrade => {
+                const cost = getUpgradeCost(upgrade);
+                const canAfford = canAffordUpgrade(cost);
+                const maxed = upgrade.level >= upgrade.maxLevel;
+                
+                const div = document.createElement('div');
+                div.className = 'upgrade' + (!canAfford || maxed ? ' locked' : '');
+                div.innerHTML = `
+                    <div class="upgrade-header">
+                        <span class="upgrade-name">${upgrade.name}</span>
+                        <span class="upgrade-level">Lv. ${upgrade.level}${maxed ? ' MAX' : ''}</span>
+                    </div>
+                    <div class="upgrade-cost">
+                        ${Object.entries(cost).map(([res, amt]) => 
+                            `<span>${getResourceIcon(res)} ${formatNumber(amt)}</span>`
+                        ).join('')}
+                    </div>
+                    <div class="upgrade-effect">${upgrade.effect}</div>
+                `;
+                
+                if (!maxed) {
+                    div.addEventListener('click', () => buyUpgrade(upgrade));
+                }
+                
+                container.appendChild(div);
+            });
+        }
+        
+        function getUpgradeCost(upgrade) {
+            const cost = {};
+            for (const [resource, baseCost] of Object.entries(upgrade.baseCost)) {
+                cost[resource] = Math.floor(baseCost * Math.pow(1.15, upgrade.level));
+            }
+            return cost;
+        }
+        
+        function canAffordUpgrade(cost) {
+            for (const [resource, amount] of Object.entries(cost)) {
+                if (resources[resource] < amount) return false;
+            }
+            return true;
+        }
+        
+        function buyUpgrade(upgrade) {
+            if (upgrade.level >= upgrade.maxLevel) return;
+            
+            const cost = getUpgradeCost(upgrade);
+            if (!canAffordUpgrade(cost)) return;
+            
+            // Spend resources
+            for (const [resource, amount] of Object.entries(cost)) {
+                resources[resource] -= amount;
+            }
+            
+            upgrade.level++;
+            
+            // Apply effect
+            switch (upgrade.id) {
+                case 'pickaxe': clickPower += 1; break;
+                case 'miner': autoMining += 1; addMinerVisual(); break;
+                case 'drill': autoMining += 5; break;
+                case 'dynamite': clickPower += 10; break;
+                case 'excavator': autoMining += 25; break;
+                case 'laser': autoMining += 100; break;
+            }
+            
+            updateDisplay();
+            renderUpgrades();
+        }
+        
+        function addMinerVisual() {
+            const container = document.getElementById('miners');
+            if (container.children.length < 10) {
+                const miner = document.createElement('span');
+                miner.className = 'miner';
+                miner.textContent = '⛏️';
+                miner.style.animationDelay = Math.random() + 's';
+                container.appendChild(miner);
+            }
+        }
+        
+        function prestige() {
+            const gain = calculatePrestigeGain();
+            if (gain < 1) return;
+            
+            if (!confirm(`Prestige for ${gain} gems? This will reset your progress but give permanent bonuses!`)) return;
+            
+            prestigePoints += gain;
+            
+            // Reset
+            resources = { coal: 0, copper: 0, iron: 0, gold: 0, diamond: 0 };
+            clickPower = 1;
+            autoMining = 0;
+            rockHealth = 100;
+            maxRockHealth = 100;
+            totalMined = 0;
+            
+            upgrades.forEach(u => u.level = 0);
+            document.getElementById('miners').innerHTML = '';
+            
+            updateDisplay();
+            renderUpgrades();
+            saveGame();
+        }
+        
+        function calculatePrestigeGain() {
+            return Math.floor(Math.sqrt(totalMined / 1000));
+        }
+        
+        function updateDisplay() {
+            for (const resource of Object.keys(resources)) {
+                document.getElementById(resource).textContent = formatNumber(resources[resource]);
+            }
+            
+            document.getElementById('clickPower').textContent = formatNumber(Math.floor(clickPower * (1 + prestigePoints * 0.1)));
+            document.getElementById('autoMining').textContent = formatNumber(Math.floor(autoMining * (1 + prestigePoints * 0.1)));
+            document.getElementById('prestigePoints').textContent = formatNumber(prestigePoints);
+            document.getElementById('prestigeGain').textContent = formatNumber(calculatePrestigeGain());
+        }
+        
+        function getResourceIcon(resource) {
+            const icons = { coal: '🪨', copper: '🥉', iron: '🪙', gold: '🥇', diamond: '💎' };
+            return icons[resource] || '';
+        }
+        
+        function formatNumber(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+            return Math.floor(num).toString();
+        }
+        
+        function saveGame() {
+            const save = {
+                resources,
+                clickPower,
+                autoMining,
+                rockHealth,
+                maxRockHealth,
+                prestigePoints,
+                totalMined,
+                upgrades: upgrades.map(u => u.level)
+            };
+            localStorage.setItem('miningIdleSave', JSON.stringify(save));
+        }
+        
+        function loadGame() {
+            const save = localStorage.getItem('miningIdleSave');
+            if (!save) return;
+            
+            try {
+                const data = JSON.parse(save);
+                resources = data.resources || resources;
+                clickPower = data.clickPower || 1;
+                autoMining = data.autoMining || 0;
+                rockHealth = data.rockHealth || 100;
+                maxRockHealth = data.maxRockHealth || 100;
+                prestigePoints = data.prestigePoints || 0;
+                totalMined = data.totalMined || 0;
+                
+                if (data.upgrades) {
+                    data.upgrades.forEach((level, i) => {
+                        if (upgrades[i]) upgrades[i].level = level;
+                    });
+                }
+                
+                // Recreate miner visuals
+                const minerCount = Math.min(upgrades[1].level, 10);
+                for (let i = 0; i < minerCount; i++) {
+                    addMinerVisual();
+                }
+            } catch (e) {
+                console.error('Failed to load save:', e);
+            }
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>

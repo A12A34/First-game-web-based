@@ -119,6 +119,76 @@
         }
         .message.win { color: #00ff88; }
         .message.lose { color: #ff6b6b; }
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .mode-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .mode-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+        .custom-setup {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+        .custom-setup.visible {
+            display: flex;
+        }
+        .custom-input {
+            padding: 12px 15px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            text-align: center;
+        }
+        .custom-input::placeholder {
+            color: #666;
+        }
+        .tries-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+        .tries-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        .tries-display {
+            font-size: 1.5rem;
+            min-width: 40px;
+            text-align: center;
+        }
+        .hide-word-notice {
+            color: #ffaa00;
+            font-size: 0.9rem;
+            text-align: center;
+        }
         .fullscreen-btn {
             position: fixed;
             top: 20px;
@@ -146,7 +216,25 @@
             <h1 class="game-title">🪢 Hangman</h1>
             
             <div class="hangman-container">
-                <div class="hangman-drawing">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="random">Random Word</button>
+                    <button class="mode-btn" data-mode="custom">Custom Word</button>
+                </div>
+                
+                <div class="custom-setup" id="customSetup">
+                    <input type="password" class="custom-input" id="customWord" placeholder="Enter word to guess..." autocomplete="off">
+                    <input type="text" class="custom-input" id="customHint" placeholder="Hint (optional)">
+                    <div class="tries-selector">
+                        <span>Max tries:</span>
+                        <button class="tries-btn" id="triesDown">−</button>
+                        <span class="tries-display" id="triesDisplay">6</span>
+                        <button class="tries-btn" id="triesUp">+</button>
+                    </div>
+                    <div class="hide-word-notice">👀 Word is hidden - pass device to guesser!</div>
+                    <button class="btn btn-primary" id="startCustomBtn">Start Game</button>
+                </div>
+                
+                <div class="hangman-drawing" id="hangmanDrawing">
                     <svg viewBox="0 0 200 250">
                         <!-- Gallows -->
                         <line x1="20" y1="230" x2="100" y2="230" stroke="#fff" stroke-width="3"/>
@@ -207,12 +295,15 @@
         
         let currentWord = '';
         let currentCategory = '';
+        let customHint = '';
         let guessedLetters = [];
         let wrongGuesses = 0;
+        let maxTries = 6;
         let wins = 0;
         let losses = 0;
         let streak = 0;
         let gameOver = false;
+        let gameMode = 'random';
 
         const wordDisplay = document.getElementById('wordDisplay');
         const keyboard = document.getElementById('keyboard');
@@ -222,6 +313,8 @@
         const lossesEl = document.getElementById('losses');
         const streakEl = document.getElementById('streak');
         const newGameBtn = document.getElementById('newGameBtn');
+        const customSetup = document.getElementById('customSetup');
+        const hangmanDrawing = document.getElementById('hangmanDrawing');
 
         function init() {
             createKeyboard();
@@ -229,6 +322,39 @@
             
             document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
             newGameBtn.addEventListener('click', newGame);
+            
+            // Mode buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    gameMode = btn.dataset.mode;
+                    
+                    if (gameMode === 'custom') {
+                        customSetup.classList.add('visible');
+                    } else {
+                        customSetup.classList.remove('visible');
+                        newGame();
+                    }
+                });
+            });
+            
+            // Custom game setup
+            document.getElementById('startCustomBtn').addEventListener('click', startCustomGame);
+            
+            // Tries buttons
+            document.getElementById('triesUp').addEventListener('click', () => {
+                if (maxTries < 10) {
+                    maxTries++;
+                    document.getElementById('triesDisplay').textContent = maxTries;
+                }
+            });
+            document.getElementById('triesDown').addEventListener('click', () => {
+                if (maxTries > 3) {
+                    maxTries--;
+                    document.getElementById('triesDisplay').textContent = maxTries;
+                }
+            });
             
             document.addEventListener('keydown', (e) => {
                 if (e.key.match(/^[a-z]$/i) && !gameOver) {
@@ -249,24 +375,55 @@
             }
         }
 
+        function startCustomGame() {
+            const wordInput = document.getElementById('customWord').value.trim().toLowerCase();
+            const hintInput = document.getElementById('customHint').value.trim();
+            
+            if (!wordInput || !/^[a-z]+$/.test(wordInput)) {
+                alert('Please enter a valid word (letters only)');
+                return;
+            }
+            
+            currentWord = wordInput;
+            customHint = hintInput;
+            currentCategory = customHint || 'Custom Word';
+            
+            // Clear inputs
+            document.getElementById('customWord').value = '';
+            document.getElementById('customHint').value = '';
+            
+            // Hide setup
+            customSetup.classList.remove('visible');
+            
+            startGame();
+        }
+
         function newGame() {
+            if (gameMode === 'custom') {
+                customSetup.classList.add('visible');
+                return;
+            }
+            
             const categories = Object.keys(words);
             currentCategory = categories[Math.floor(Math.random() * categories.length)];
             const wordList = words[currentCategory];
             currentWord = wordList[Math.floor(Math.random() * wordList.length)];
+            maxTries = 6;
             
+            startGame();
+        }
+
+        function startGame() {
             guessedLetters = [];
             wrongGuesses = 0;
             gameOver = false;
             message.textContent = '';
             message.className = 'message';
             
-            categoryEl.textContent = `Category: ${currentCategory}`;
+            categoryEl.textContent = customHint ? `Hint: ${currentCategory}` : `Category: ${currentCategory}`;
             
-            // Reset hangman
-            bodyParts.forEach(part => {
-                document.getElementById(part).classList.remove('visible');
-            });
+            // Update hangman SVG based on maxTries
+            updateHangmanSVG();
             
             // Reset keyboard
             keyboard.querySelectorAll('.key-btn').forEach(btn => {
@@ -275,6 +432,35 @@
             });
             
             renderWord();
+        }
+
+        function updateHangmanSVG() {
+            hangmanDrawing.innerHTML = `
+                <svg viewBox="0 0 200 250">
+                    <!-- Gallows -->
+                    <line x1="20" y1="230" x2="100" y2="230" stroke="#fff" stroke-width="3"/>
+                    <line x1="60" y1="230" x2="60" y2="20" stroke="#fff" stroke-width="3"/>
+                    <line x1="60" y1="20" x2="140" y2="20" stroke="#fff" stroke-width="3"/>
+                    <line x1="140" y1="20" x2="140" y2="50" stroke="#fff" stroke-width="3"/>
+                    <!-- Body parts -->
+                    <circle cx="140" cy="70" r="20" class="part" id="head"/>
+                    <line x1="140" y1="90" x2="140" y2="150" class="part" id="body"/>
+                    <line x1="140" y1="110" x2="110" y2="140" class="part" id="leftArm"/>
+                    <line x1="140" y1="110" x2="170" y2="140" class="part" id="rightArm"/>
+                    <line x1="140" y1="150" x2="110" y2="200" class="part" id="leftLeg"/>
+                    <line x1="140" y1="150" x2="170" y2="200" class="part" id="rightLeg"/>
+                    <!-- Extra parts for more tries -->
+                    <circle cx="133" cy="65" r="3" class="part" id="leftEye"/>
+                    <circle cx="147" cy="65" r="3" class="part" id="rightEye"/>
+                    <path d="M 130 78 Q 140 85 150 78" class="part" id="mouth"/>
+                    <line x1="110" y1="200" x2="100" y2="210" class="part" id="leftFoot"/>
+                </svg>
+            `;
+        }
+
+        function getBodyPartsForTries() {
+            const allParts = ['head', 'body', 'leftArm', 'rightArm', 'leftLeg', 'rightLeg', 'leftEye', 'rightEye', 'mouth', 'leftFoot'];
+            return allParts.slice(0, maxTries);
         }
 
         function renderWord() {
@@ -303,7 +489,11 @@
                 checkWin();
             } else {
                 btn.classList.add('wrong');
-                document.getElementById(bodyParts[wrongGuesses]).classList.add('visible');
+                const parts = getBodyPartsForTries();
+                if (wrongGuesses < parts.length) {
+                    const part = document.getElementById(parts[wrongGuesses]);
+                    if (part) part.classList.add('visible');
+                }
                 wrongGuesses++;
                 checkLose();
             }
@@ -322,7 +512,7 @@
         }
 
         function checkLose() {
-            if (wrongGuesses >= 6) {
+            if (wrongGuesses >= maxTries) {
                 gameOver = true;
                 losses++;
                 streak = 0;

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Challenge - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .problem {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px 50px;
+            border-radius: 20px;
+        }
+        .answer-input {
+            font-size: 2rem;
+            padding: 15px 30px;
+            text-align: center;
+            width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: #fff;
+            outline: none;
+        }
+        .answer-input:focus {
+            border-color: #00ff88;
+        }
+        .timer-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #ff6b6b);
+            transition: width 0.1s linear;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stat-value.score { color: #00ff88; }
+        .stat-value.streak { color: #ffaa00; }
+        .stat-value.time { color: #ff6b6b; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .diff-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .diff-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
+        .message {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 40px;
+        }
+        .message.correct { color: #00ff88; }
+        .message.wrong { color: #ff6b6b; }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🧮 Math Challenge</h1>
+            
+            <div class="game-area">
+                <div class="difficulty-selector">
+                    <button class="diff-btn active" data-diff="easy">Easy</button>
+                    <button class="diff-btn" data-diff="medium">Medium</button>
+                    <button class="diff-btn" data-diff="hard">Hard</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value score" id="score">0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value streak" id="streak">0</div>
+                        <div class="stat-label">Streak</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value time" id="time">60</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                </div>
+                
+                <div class="timer-bar">
+                    <div class="timer-fill" id="timerFill" style="width: 100%"></div>
+                </div>
+                
+                <div class="problem" id="problem">? + ? = ?</div>
+                
+                <input type="number" class="answer-input" id="answerInput" placeholder="?" autocomplete="off">
+                
+                <div class="message" id="message"></div>
+                
+                <button id="startBtn" class="btn btn-primary">Start Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Solve as many math problems as you can before time runs out! Correct answers add time, wrong answers subtract.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let streak = 0;
+        let bestStreak = 0;
+        let timeLeft = 60;
+        let timer = null;
+        let currentAnswer = 0;
+        let difficulty = 'easy';
+        let gameRunning = false;
+
+        const problemEl = document.getElementById('problem');
+        const answerInput = document.getElementById('answerInput');
+        const messageEl = document.getElementById('message');
+        const scoreEl = document.getElementById('score');
+        const streakEl = document.getElementById('streak');
+        const timeEl = document.getElementById('time');
+        const timerFill = document.getElementById('timerFill');
+
+        function init() {
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            answerInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && gameRunning) {
+                    checkAnswer();
+                }
+            });
+            
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    difficulty = btn.dataset.diff;
+                });
+            });
+        }
+
+        function startGame() {
+            score = 0;
+            streak = 0;
+            timeLeft = 60;
+            gameRunning = true;
+            messageEl.textContent = '';
+            
+            document.getElementById('startBtn').style.display = 'none';
+            answerInput.disabled = false;
+            answerInput.focus();
+            
+            generateProblem();
+            startTimer();
+            updateDisplay();
+        }
+
+        function generateProblem() {
+            let a, b, op, answer;
+            
+            const ops = difficulty === 'easy' ? ['+', '-'] : 
+                        difficulty === 'medium' ? ['+', '-', '×'] : ['+', '-', '×', '÷'];
+            
+            const maxNum = difficulty === 'easy' ? 10 : difficulty === 'medium' ? 20 : 50;
+            
+            op = ops[Math.floor(Math.random() * ops.length)];
+            
+            switch (op) {
+                case '+':
+                    a = Math.floor(Math.random() * maxNum) + 1;
+                    b = Math.floor(Math.random() * maxNum) + 1;
+                    answer = a + b;
+                    break;
+                case '-':
+                    a = Math.floor(Math.random() * maxNum) + 1;
+                    b = Math.floor(Math.random() * a) + 1;
+                    answer = a - b;
+                    break;
+                case '×':
+                    a = Math.floor(Math.random() * 12) + 1;
+                    b = Math.floor(Math.random() * 12) + 1;
+                    answer = a * b;
+                    break;
+                case '÷':
+                    b = Math.floor(Math.random() * 12) + 1;
+                    answer = Math.floor(Math.random() * 12) + 1;
+                    a = b * answer;
+                    break;
+            }
+            
+            currentAnswer = answer;
+            problemEl.textContent = `${a} ${op} ${b} = ?`;
+            answerInput.value = '';
+        }
+
+        function checkAnswer() {
+            const userAnswer = parseInt(answerInput.value);
+            
+            if (isNaN(userAnswer)) return;
+            
+            if (userAnswer === currentAnswer) {
+                score += 10 + streak * 2;
+                streak++;
+                timeLeft = Math.min(60, timeLeft + 3);
+                messageEl.textContent = '✓ Correct!';
+                messageEl.className = 'message correct';
+            } else {
+                streak = 0;
+                timeLeft = Math.max(0, timeLeft - 2);
+                messageEl.textContent = `✗ Wrong! Answer: ${currentAnswer}`;
+                messageEl.className = 'message wrong';
+            }
+            
+            updateDisplay();
+            generateProblem();
+            answerInput.focus();
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timer);
+            answerInput.disabled = true;
+            
+            problemEl.textContent = 'Game Over!';
+            messageEl.textContent = `Final Score: ${score} | Best Streak: ${Math.max(streak, bestStreak)}`;
+            messageEl.className = 'message';
+            
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('startBtn').textContent = 'Play Again';
+        }
+
+        function updateDisplay() {
+            scoreEl.textContent = score;
+            streakEl.textContent = streak;
+            timeEl.textContent = timeLeft;
+            timerFill.style.width = `${(timeLeft / 60) * 100}%`;
+            
+            if (streak > bestStreak) bestStreak = streak;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

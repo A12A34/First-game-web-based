@@ -16,10 +16,16 @@
             border: 3px solid #535353;
             border-radius: 10px;
             background: #f7f7f7;
+            transition: filter 0.5s;
+        }
+        canvas.night {
+            filter: invert(1) hue-rotate(180deg);
         }
         .stats-bar {
             display: flex;
-            gap: 30px;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .stat-box {
             text-align: center;
@@ -33,10 +39,31 @@
         }
         .stat-value.score { color: #00ff88; }
         .stat-value.high { color: #ffaa00; }
+        .stat-value.coins { color: #ffd700; }
         .stat-label {
             font-size: 0.8rem;
             color: #888;
         }
+        .power-ups {
+            display: flex;
+            gap: 15px;
+        }
+        .power-up {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 1.5rem;
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+        .power-up.active {
+            opacity: 1;
+            box-shadow: 0 0 15px currentColor;
+        }
+        .power-up.shield { color: #00bfff; }
+        .power-up.slow { color: #ff69b4; }
+        .power-up.magnet { color: #ffd700; }
+        .power-up.double-jump { color: #9370db; }
         .fullscreen-btn {
             position: fixed;
             top: 20px;
@@ -52,6 +79,15 @@
         .controls-hint {
             color: #888;
             font-size: 0.9rem;
+        }
+        .shop-btn {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -73,18 +109,29 @@
                         <div class="stat-value high" id="highScore">0</div>
                         <div class="stat-label">High Score</div>
                     </div>
+                    <div class="stat-box">
+                        <div class="stat-value coins" id="totalCoins">0</div>
+                        <div class="stat-label">🪙 Coins</div>
+                    </div>
                 </div>
                 
-                <canvas id="gameCanvas" width="600" height="200"></canvas>
+                <div class="power-ups">
+                    <div class="power-up shield" id="shieldPower" title="Shield">🛡️</div>
+                    <div class="power-up slow" id="slowPower" title="Slow Motion">⏱️</div>
+                    <div class="power-up double-jump" id="doubleJumpPower" title="Double Jump">⬆️</div>
+                    <div class="power-up magnet" id="magnetPower" title="Coin Magnet">🧲</div>
+                </div>
                 
-                <p class="controls-hint">Press SPACE or tap to jump, DOWN to duck</p>
+                <canvas id="gameCanvas" width="700" height="250"></canvas>
+                
+                <p class="controls-hint">SPACE/UP: Jump (tap twice for double jump!) | DOWN: Duck | You can jump while ducking!</p>
                 
                 <button id="startBtn" class="btn btn-primary">Start Game</button>
             </div>
             
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Jump over cacti and duck under birds! The game speeds up as you go. How far can you run?</p>
+                <p>Jump over cacti and duck under birds! Collect coins and power-ups. The game speeds up as you go!</p>
             </div>
         </div>
     </div>
@@ -93,27 +140,43 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        const GROUND_Y = 160;
-        const GRAVITY = 0.8;
-        const JUMP_FORCE = -14;
+        const GROUND_Y = 190;
+        const GRAVITY = 0.9;
+        const JUMP_FORCE = -15;
         
         let dino = {
             x: 50,
             y: GROUND_Y,
-            width: 40,
+            width: 44,
             height: 50,
             velocityY: 0,
             isJumping: false,
-            isDucking: false
+            isDucking: false,
+            jumpCount: 0,
+            maxJumps: 1
         };
         
         let obstacles = [];
         let clouds = [];
+        let coins = [];
+        let powerUpItems = [];
         let score = 0;
         let highScore = 0;
-        let gameSpeed = 5;
+        let totalCoins = 0;
+        let gameSpeed = 6;
         let gameRunning = false;
         let groundOffset = 0;
+        let isNight = false;
+        let nightTimer = 0;
+        
+        // Active power-ups
+        let activePowers = {
+            shield: false,
+            slow: false,
+            doubleJump: false,
+            magnet: false
+        };
+        let powerTimers = {};
 
         function init() {
             document.getElementById('startBtn').addEventListener('click', startGame);
@@ -121,14 +184,13 @@
             
             document.addEventListener('keydown', handleKeyDown);
             document.addEventListener('keyup', handleKeyUp);
-            canvas.addEventListener('touchstart', () => {
-                if (!gameRunning) startGame();
-                else jump();
-            });
+            canvas.addEventListener('touchstart', handleTouch);
             
-            // Load high score
+            // Load saves
             highScore = parseInt(localStorage.getItem('dinoHighScore') || '0');
+            totalCoins = parseInt(localStorage.getItem('dinoCoins') || '0');
             document.getElementById('highScore').textContent = highScore;
+            document.getElementById('totalCoins').textContent = totalCoins;
             
             drawStartScreen();
         }
@@ -141,7 +203,9 @@
             }
             if (e.code === 'ArrowDown') {
                 e.preventDefault();
-                dino.isDucking = true;
+                if (!dino.isJumping) {
+                    dino.isDucking = true;
+                }
             }
         }
 
@@ -150,11 +214,25 @@
                 dino.isDucking = false;
             }
         }
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            if (!gameRunning) startGame();
+            else jump();
+        }
 
         function jump() {
-            if (!dino.isJumping && !dino.isDucking) {
+            const maxJumps = activePowers.doubleJump ? 2 : dino.maxJumps;
+            
+            // Allow jumping while ducking
+            if (dino.isDucking && !dino.isJumping) {
+                dino.isDucking = false;
+            }
+            
+            if (dino.jumpCount < maxJumps) {
                 dino.velocityY = JUMP_FORCE;
                 dino.isJumping = true;
+                dino.jumpCount++;
             }
         }
 
@@ -163,12 +241,27 @@
             dino.velocityY = 0;
             dino.isJumping = false;
             dino.isDucking = false;
+            dino.jumpCount = 0;
+            dino.height = 50;
             
             obstacles = [];
             clouds = [];
+            coins = [];
+            powerUpItems = [];
             score = 0;
-            gameSpeed = 5;
+            gameSpeed = 6;
             gameRunning = true;
+            isNight = false;
+            nightTimer = 0;
+            
+            // Reset powers
+            for (const power in activePowers) {
+                activePowers[power] = false;
+                clearTimeout(powerTimers[power]);
+            }
+            updatePowerDisplay();
+            
+            canvas.classList.remove('night');
             
             document.getElementById('startBtn').textContent = 'Playing...';
             document.getElementById('startBtn').disabled = true;
@@ -177,7 +270,7 @@
             for (let i = 0; i < 3; i++) {
                 clouds.push({
                     x: 200 + i * 200,
-                    y: 30 + Math.random() * 40,
+                    y: 30 + Math.random() * 50,
                     speed: 1 + Math.random()
                 });
             }
@@ -194,8 +287,18 @@
         }
 
         function update() {
+            const speedMult = activePowers.slow ? 0.5 : 1;
+            const currentSpeed = gameSpeed * speedMult;
+            
+            // Day/Night cycle
+            nightTimer++;
+            if (nightTimer % 1000 === 0) {
+                isNight = !isNight;
+                canvas.classList.toggle('night', isNight);
+            }
+            
             // Dino physics
-            if (dino.isDucking) {
+            if (dino.isDucking && !dino.isJumping) {
                 dino.height = 30;
                 dino.y = GROUND_Y + 20;
             } else {
@@ -208,75 +311,166 @@
                         dino.y = GROUND_Y;
                         dino.velocityY = 0;
                         dino.isJumping = false;
+                        dino.jumpCount = 0;
                     }
                 }
             }
             
             // Spawn obstacles
-            if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 200 - Math.random() * 200) {
+            if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 250 - Math.random() * 200) {
                 spawnObstacle();
+            }
+            
+            // Spawn coins
+            if (Math.random() < 0.02 && (coins.length === 0 || coins[coins.length - 1].x < canvas.width - 100)) {
+                spawnCoin();
+            }
+            
+            // Spawn power-ups
+            if (Math.random() < 0.003 && powerUpItems.length < 1) {
+                spawnPowerUp();
             }
             
             // Update obstacles
             obstacles = obstacles.filter(obs => {
-                obs.x -= gameSpeed;
+                obs.x -= currentSpeed;
                 return obs.x > -obs.width;
+            });
+            
+            // Update coins
+            coins = coins.filter(coin => {
+                coin.x -= currentSpeed;
+                
+                // Magnet effect
+                if (activePowers.magnet) {
+                    const dx = dino.x - coin.x;
+                    const dy = dino.y - coin.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) {
+                        coin.x += dx * 0.1;
+                        coin.y += dy * 0.1;
+                    }
+                }
+                
+                // Collect
+                if (checkCollision(dino, { x: coin.x - 10, y: coin.y - 10, width: 20, height: 20 })) {
+                    totalCoins++;
+                    score += 50;
+                    document.getElementById('totalCoins').textContent = totalCoins;
+                    localStorage.setItem('dinoCoins', totalCoins);
+                    return false;
+                }
+                
+                return coin.x > -20;
+            });
+            
+            // Update power-ups
+            powerUpItems = powerUpItems.filter(power => {
+                power.x -= currentSpeed;
+                
+                if (checkCollision(dino, { x: power.x - 15, y: power.y - 15, width: 30, height: 30 })) {
+                    activatePower(power.type);
+                    return false;
+                }
+                
+                return power.x > -30;
             });
             
             // Update clouds
             clouds.forEach(cloud => {
-                cloud.x -= cloud.speed;
+                cloud.x -= cloud.speed * speedMult;
                 if (cloud.x < -50) {
                     cloud.x = canvas.width + 50;
-                    cloud.y = 30 + Math.random() * 40;
+                    cloud.y = 30 + Math.random() * 50;
                 }
             });
             
             // Collision detection
-            for (const obs of obstacles) {
-                if (checkCollision(dino, obs)) {
-                    gameOver();
-                    return;
+            if (!activePowers.shield) {
+                for (const obs of obstacles) {
+                    if (checkCollision(dino, obs)) {
+                        gameOver();
+                        return;
+                    }
                 }
             }
             
             // Update score and speed
             score++;
-            if (score % 100 === 0) {
-                gameSpeed += 0.5;
+            if (score % 100 === 0 && gameSpeed < 15) {
+                gameSpeed += 0.3;
             }
             
             document.getElementById('score').textContent = Math.floor(score / 10);
             
-            groundOffset = (groundOffset + gameSpeed) % 20;
+            groundOffset = (groundOffset + currentSpeed) % 20;
         }
 
         function spawnObstacle() {
-            const types = ['cactus', 'cactus', 'cactus', 'bird'];
+            const types = ['cactus', 'cactus', 'cactus', 'cactus', 'bird'];
             const type = types[Math.floor(Math.random() * types.length)];
             
             if (type === 'cactus') {
-                const height = 30 + Math.random() * 30;
+                const height = 35 + Math.random() * 30;
+                const isDouble = Math.random() < 0.3;
                 obstacles.push({
                     x: canvas.width,
                     y: GROUND_Y + 50 - height,
-                    width: 20 + Math.random() * 20,
+                    width: isDouble ? 40 : 25,
                     height: height,
-                    type: 'cactus'
+                    type: 'cactus',
+                    isDouble
                 });
             } else {
+                // Bird at different heights
+                const heights = [GROUND_Y - 60, GROUND_Y - 30, GROUND_Y];
                 obstacles.push({
                     x: canvas.width,
-                    y: GROUND_Y - 50 - Math.random() * 30,
-                    width: 40,
+                    y: heights[Math.floor(Math.random() * heights.length)],
+                    width: 45,
                     height: 30,
                     type: 'bird'
                 });
             }
         }
+        
+        function spawnCoin() {
+            coins.push({
+                x: canvas.width,
+                y: GROUND_Y - 20 - Math.random() * 60,
+                rotation: 0
+            });
+        }
+        
+        function spawnPowerUp() {
+            const types = ['shield', 'slow', 'doubleJump', 'magnet'];
+            powerUpItems.push({
+                x: canvas.width,
+                y: GROUND_Y - 40 - Math.random() * 40,
+                type: types[Math.floor(Math.random() * types.length)]
+            });
+        }
+        
+        function activatePower(type) {
+            activePowers[type] = true;
+            updatePowerDisplay();
+            
+            clearTimeout(powerTimers[type]);
+            powerTimers[type] = setTimeout(() => {
+                activePowers[type] = false;
+                updatePowerDisplay();
+            }, type === 'shield' ? 5000 : 8000);
+        }
+        
+        function updatePowerDisplay() {
+            document.getElementById('shieldPower').classList.toggle('active', activePowers.shield);
+            document.getElementById('slowPower').classList.toggle('active', activePowers.slow);
+            document.getElementById('doubleJumpPower').classList.toggle('active', activePowers.doubleJump);
+            document.getElementById('magnetPower').classList.toggle('active', activePowers.magnet);
+        }
 
         function checkCollision(a, b) {
-            const padding = 5;
+            const padding = 8;
             return a.x + padding < b.x + b.width - padding &&
                    a.x + a.width - padding > b.x + padding &&
                    a.y + padding < b.y + b.height - padding &&
@@ -285,11 +479,11 @@
 
         function draw() {
             // Clear
-            ctx.fillStyle = '#f7f7f7';
+            ctx.fillStyle = isNight ? '#1a1a2e' : '#f7f7f7';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Draw clouds
-            ctx.fillStyle = '#ddd';
+            ctx.fillStyle = isNight ? '#333' : '#ddd';
             clouds.forEach(cloud => {
                 ctx.beginPath();
                 ctx.arc(cloud.x, cloud.y, 20, 0, Math.PI * 2);
@@ -299,65 +493,114 @@
             });
             
             // Draw ground
-            ctx.fillStyle = '#535353';
-            ctx.fillRect(0, GROUND_Y + 50, canvas.width, 2);
+            ctx.fillStyle = isNight ? '#444' : '#535353';
+            ctx.fillRect(0, GROUND_Y + 50, canvas.width, 3);
             
             // Ground texture
-            ctx.fillStyle = '#888';
+            ctx.fillStyle = isNight ? '#555' : '#888';
             for (let x = -groundOffset; x < canvas.width; x += 20) {
-                ctx.fillRect(x, GROUND_Y + 55, 10, 2);
+                ctx.fillRect(x, GROUND_Y + 56, 10, 2);
             }
             
+            // Draw coins
+            ctx.fillStyle = '#ffd700';
+            coins.forEach(coin => {
+                coin.rotation += 0.1;
+                ctx.save();
+                ctx.translate(coin.x, coin.y);
+                ctx.scale(Math.cos(coin.rotation), 1);
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffaa00';
+                ctx.beginPath();
+                ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffd700';
+                ctx.restore();
+            });
+            
+            // Draw power-ups
+            powerUpItems.forEach(power => {
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                const icons = { shield: '🛡️', slow: '⏱️', doubleJump: '⬆️', magnet: '🧲' };
+                ctx.fillText(icons[power.type], power.x, power.y);
+            });
+            
             // Draw dino
-            ctx.fillStyle = '#535353';
+            if (activePowers.shield) {
+                ctx.fillStyle = 'rgba(0, 191, 255, 0.3)';
+                ctx.beginPath();
+                ctx.arc(dino.x + dino.width/2, dino.y + dino.height/2, 40, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.fillStyle = isNight ? '#00ff88' : '#535353';
             if (dino.isDucking) {
                 // Ducking dino
-                ctx.fillRect(dino.x, dino.y, dino.width + 10, dino.height);
+                ctx.fillRect(dino.x, dino.y, dino.width + 15, dino.height);
                 // Eye
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(dino.x + 35, dino.y + 5, 8, 8);
-                ctx.fillStyle = '#000';
-                ctx.fillRect(dino.x + 40, dino.y + 7, 4, 4);
+                ctx.fillRect(dino.x + 42, dino.y + 5, 10, 10);
+                ctx.fillStyle = isNight ? '#ff6b6b' : '#000';
+                ctx.fillRect(dino.x + 47, dino.y + 7, 5, 5);
             } else {
-                // Standing dino
+                // Standing dino body
                 ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
                 // Head
-                ctx.fillRect(dino.x + 20, dino.y - 15, 25, 25);
+                ctx.fillRect(dino.x + 22, dino.y - 18, 28, 28);
                 // Eye
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(dino.x + 32, dino.y - 10, 8, 8);
-                ctx.fillStyle = '#000';
-                ctx.fillRect(dino.x + 36, dino.y - 8, 4, 4);
-                // Legs (animated)
-                ctx.fillStyle = '#535353';
-                const legOffset = Math.sin(Date.now() / 50) * 5;
-                ctx.fillRect(dino.x + 8, dino.y + dino.height, 8, 15 + legOffset);
-                ctx.fillRect(dino.x + 24, dino.y + dino.height, 8, 15 - legOffset);
+                ctx.fillRect(dino.x + 36, dino.y - 12, 10, 10);
+                ctx.fillStyle = isNight ? '#ff6b6b' : '#000';
+                ctx.fillRect(dino.x + 40, dino.y - 10, 5, 5);
+                
+                // Animated legs
+                ctx.fillStyle = isNight ? '#00ff88' : '#535353';
+                const legOffset = dino.isJumping ? 0 : Math.sin(Date.now() / 50) * 6;
+                ctx.fillRect(dino.x + 8, dino.y + dino.height, 10, 18 + legOffset);
+                ctx.fillRect(dino.x + 26, dino.y + dino.height, 10, 18 - legOffset);
+                
+                // Tail
+                ctx.fillRect(dino.x - 12, dino.y + 15, 15, 12);
+                
+                // Arms
+                ctx.fillRect(dino.x + 35, dino.y + 20, 8, 15);
             }
             
             // Draw obstacles
             obstacles.forEach(obs => {
                 if (obs.type === 'cactus') {
-                    ctx.fillStyle = '#2d5016';
+                    ctx.fillStyle = isNight ? '#00cc6a' : '#2d5016';
                     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
                     // Spikes
-                    if (obs.width > 25) {
-                        ctx.fillRect(obs.x - 8, obs.y + 10, 8, 5);
-                        ctx.fillRect(obs.x + obs.width, obs.y + 15, 8, 5);
+                    if (obs.width > 30 || obs.isDouble) {
+                        ctx.fillRect(obs.x - 10, obs.y + 12, 10, 6);
+                        ctx.fillRect(obs.x + obs.width, obs.y + 18, 10, 6);
                     }
                 } else {
                     // Bird
-                    ctx.fillStyle = '#535353';
-                    ctx.fillRect(obs.x + 10, obs.y + 10, 25, 15);
+                    ctx.fillStyle = isNight ? '#ff6b6b' : '#535353';
+                    ctx.fillRect(obs.x + 12, obs.y + 12, 28, 18);
                     // Wings (animated)
-                    const wingY = Math.sin(Date.now() / 100) * 5;
-                    ctx.fillRect(obs.x, obs.y + wingY, 15, 8);
-                    ctx.fillRect(obs.x + 25, obs.y + wingY, 15, 8);
+                    const wingY = Math.sin(Date.now() / 80) * 8;
+                    ctx.fillRect(obs.x, obs.y + wingY + 5, 18, 10);
+                    ctx.fillRect(obs.x + 28, obs.y + wingY + 5, 18, 10);
                     // Beak
                     ctx.fillStyle = '#ff6b6b';
-                    ctx.fillRect(obs.x + 35, obs.y + 12, 8, 5);
+                    ctx.fillRect(obs.x + 40, obs.y + 15, 10, 6);
+                    // Eye
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(obs.x + 32, obs.y + 14, 6, 6);
                 }
             });
+            
+            // Score milestone flash
+            if (Math.floor(score / 10) % 100 === 0 && score > 0 && score % 10 < 30) {
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
         }
 
         function drawStartScreen() {
@@ -365,11 +608,16 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             ctx.fillStyle = '#535353';
-            ctx.font = '24px Arial';
+            ctx.font = 'bold 28px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('🦖 Press SPACE or Tap to Start', canvas.width / 2, canvas.height / 2);
+            ctx.fillText('🦖 Press SPACE or Tap to Start', canvas.width / 2, canvas.height / 2 - 20);
             
-            ctx.fillRect(0, GROUND_Y + 50, canvas.width, 2);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#888';
+            ctx.fillText('Collect coins and power-ups! Double jump available!', canvas.width / 2, canvas.height / 2 + 20);
+            
+            ctx.fillStyle = '#535353';
+            ctx.fillRect(0, GROUND_Y + 50, canvas.width, 3);
         }
 
         function gameOver() {
@@ -384,15 +632,18 @@
             }
             
             // Draw game over
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             ctx.fillStyle = '#fff';
-            ctx.font = '30px Arial';
+            ctx.font = 'bold 36px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
-            ctx.font = '20px Arial';
-            ctx.fillText(`Score: ${finalScore}`, canvas.width / 2, canvas.height / 2 + 20);
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 30);
+            ctx.font = '24px Arial';
+            ctx.fillText(`Score: ${finalScore}`, canvas.width / 2, canvas.height / 2 + 10);
+            ctx.font = '18px Arial';
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(`Total Coins: ${totalCoins} 🪙`, canvas.width / 2, canvas.height / 2 + 45);
             
             document.getElementById('startBtn').textContent = 'Play Again';
             document.getElementById('startBtn').disabled = false;

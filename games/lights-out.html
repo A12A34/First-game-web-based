@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lights Out - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-board {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 60px);
+            gap: 5px;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            background: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .cell.on {
+            background: linear-gradient(135deg, #ffea00, #ffc107);
+            box-shadow: 0 0 20px rgba(255, 234, 0, 0.6);
+        }
+        .cell:hover {
+            transform: scale(1.05);
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffea00;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .message {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #00ff88;
+            min-height: 40px;
+        }
+        .difficulty-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .diff-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .diff-btn.active {
+            background: #ffea00;
+            border-color: #ffea00;
+            color: #000;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">💡 Lights Out</h1>
+            
+            <div class="game-board">
+                <div class="difficulty-selector">
+                    <button class="diff-btn active" data-level="5">5 Moves</button>
+                    <button class="diff-btn" data-level="10">10 Moves</button>
+                    <button class="diff-btn" data-level="15">15 Moves</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value" id="moves">0</div>
+                        <div class="stat-label">Moves</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="lightsOn">0</div>
+                        <div class="stat-label">Lights On</div>
+                    </div>
+                </div>
+                
+                <div class="grid" id="grid"></div>
+                
+                <div class="message" id="message"></div>
+                
+                <button id="newGameBtn" class="btn btn-primary">New Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Turn off all the lights! Clicking a cell toggles it and all adjacent cells (up, down, left, right).</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SIZE = 5;
+        let grid = [];
+        let moves = 0;
+        let difficulty = 5;
+
+        const gridEl = document.getElementById('grid');
+        const movesEl = document.getElementById('moves');
+        const lightsOnEl = document.getElementById('lightsOn');
+        const messageEl = document.getElementById('message');
+
+        function init() {
+            document.getElementById('newGameBtn').addEventListener('click', newGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            document.querySelectorAll('.diff-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    difficulty = parseInt(btn.dataset.level);
+                    newGame();
+                });
+            });
+            
+            newGame();
+        }
+
+        function newGame() {
+            grid = Array(SIZE).fill(null).map(() => Array(SIZE).fill(false));
+            moves = 0;
+            messageEl.textContent = '';
+            
+            // Randomly toggle cells to create a solvable puzzle
+            for (let i = 0; i < difficulty; i++) {
+                const r = Math.floor(Math.random() * SIZE);
+                const c = Math.floor(Math.random() * SIZE);
+                toggleCell(r, c, false);
+            }
+            
+            moves = 0;
+            updateStats();
+            renderGrid();
+        }
+
+        function toggleCell(row, col, countMove = true) {
+            const directions = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (const [dr, dc] of directions) {
+                const r = row + dr;
+                const c = col + dc;
+                if (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
+                    grid[r][c] = !grid[r][c];
+                }
+            }
+            if (countMove) {
+                moves++;
+                updateStats();
+                checkWin();
+            }
+        }
+
+        function renderGrid() {
+            gridEl.innerHTML = '';
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (grid[r][c] ? ' on' : '');
+                    cell.addEventListener('click', () => {
+                        toggleCell(r, c);
+                        renderGrid();
+                    });
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+
+        function updateStats() {
+            movesEl.textContent = moves;
+            let count = 0;
+            for (const row of grid) {
+                for (const cell of row) {
+                    if (cell) count++;
+                }
+            }
+            lightsOnEl.textContent = count;
+        }
+
+        function checkWin() {
+            for (const row of grid) {
+                for (const cell of row) {
+                    if (cell) return;
+                }
+            }
+            messageEl.textContent = `🎉 You won in ${moves} moves!`;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

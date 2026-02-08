@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spin the Wheel - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .wheel-container {
+            position: relative;
+            width: 350px;
+            height: 350px;
+        }
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        .segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            left: 50%;
+            top: 0;
+            transform-origin: 0% 100%;
+            clip-path: polygon(0% 100%, 100% 0%, 0% 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .segment-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            transform: rotate(-22.5deg) translateY(35px);
+            font-size: 1rem;
+        }
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #ff6b6b;
+            z-index: 10;
+            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3));
+        }
+        .center-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #333, #111);
+            border-radius: 50%;
+            z-index: 5;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        .result {
+            font-size: 2rem;
+            color: #00ff88;
+            min-height: 50px;
+            text-align: center;
+        }
+        .edit-section {
+            width: 100%;
+            max-width: 400px;
+        }
+        .items-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        .items-input::placeholder {
+            color: #666;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🎡 Spin the Wheel</h1>
+            
+            <div class="game-area">
+                <div class="wheel-container">
+                    <div class="pointer"></div>
+                    <div class="wheel" id="wheel"></div>
+                    <div class="center-circle"></div>
+                </div>
+                
+                <div class="result" id="result">Spin to decide!</div>
+                
+                <div class="btn-row">
+                    <button id="spinBtn" class="btn btn-primary">🎲 Spin!</button>
+                </div>
+                
+                <div class="edit-section">
+                    <h3>Customize Options</h3>
+                    <textarea class="items-input" id="itemsInput" placeholder="Enter options (one per line):
+Pizza
+Burger
+Sushi
+Tacos
+Pasta
+Salad"></textarea>
+                    <div class="btn-row" style="margin-top: 10px;">
+                        <button id="updateBtn" class="btn btn-secondary">Update Wheel</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Use</h3>
+                <p>Click Spin to randomly select an option! Customize the wheel with your own choices.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const colors = [
+            '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4',
+            '#ffeaa7', '#dfe6e9', '#ff7675', '#74b9ff',
+            '#a29bfe', '#fd79a8', '#00b894', '#e17055'
+        ];
+        
+        let items = ['Pizza', 'Burger', 'Sushi', 'Tacos', 'Pasta', 'Salad'];
+        let spinning = false;
+        let currentRotation = 0;
+
+        function init() {
+            document.getElementById('spinBtn').addEventListener('click', spin);
+            document.getElementById('updateBtn').addEventListener('click', updateWheel);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            document.getElementById('itemsInput').value = items.join('\n');
+            
+            createWheel();
+        }
+
+        function createWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            
+            if (items.length === 0) return;
+            
+            const segmentAngle = 360 / items.length;
+            
+            // Create SVG wheel for better control
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.setAttribute('viewBox', '-175 -175 350 350');
+            
+            items.forEach((item, i) => {
+                const startAngle = i * segmentAngle - 90;
+                const endAngle = startAngle + segmentAngle;
+                
+                const startRad = (startAngle * Math.PI) / 180;
+                const endRad = (endAngle * Math.PI) / 180;
+                
+                const x1 = 170 * Math.cos(startRad);
+                const y1 = 170 * Math.sin(startRad);
+                const x2 = 170 * Math.cos(endRad);
+                const y2 = 170 * Math.sin(endRad);
+                
+                const largeArc = segmentAngle > 180 ? 1 : 0;
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M 0 0 L ${x1} ${y1} A 170 170 0 ${largeArc} 1 ${x2} ${y2} Z`);
+                path.setAttribute('fill', colors[i % colors.length]);
+                path.setAttribute('stroke', '#fff');
+                path.setAttribute('stroke-width', '2');
+                svg.appendChild(path);
+                
+                // Add text
+                const textAngle = startAngle + segmentAngle / 2;
+                const textRad = (textAngle * Math.PI) / 180;
+                const textX = 100 * Math.cos(textRad);
+                const textY = 100 * Math.sin(textRad);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', textX);
+                text.setAttribute('y', textY);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.setAttribute('fill', '#fff');
+                text.setAttribute('font-size', Math.min(16, 150 / items.length));
+                text.setAttribute('font-weight', 'bold');
+                text.setAttribute('transform', `rotate(${textAngle + 90}, ${textX}, ${textY})`);
+                text.textContent = item.length > 12 ? item.substring(0, 10) + '...' : item;
+                svg.appendChild(text);
+            });
+            
+            wheel.appendChild(svg);
+        }
+
+        function spin() {
+            if (spinning || items.length === 0) return;
+            
+            spinning = true;
+            document.getElementById('result').textContent = '🎲 Spinning...';
+            
+            const spins = 5 + Math.random() * 5;
+            const extraDegrees = Math.random() * 360;
+            const totalRotation = currentRotation + spins * 360 + extraDegrees;
+            
+            const wheel = document.getElementById('wheel');
+            wheel.style.transform = `rotate(${totalRotation}deg)`;
+            currentRotation = totalRotation;
+            
+            setTimeout(() => {
+                // Calculate which segment is at top
+                const normalizedRotation = totalRotation % 360;
+                const segmentAngle = 360 / items.length;
+                const winningIndex = Math.floor((360 - normalizedRotation + segmentAngle / 2) / segmentAngle) % items.length;
+                
+                document.getElementById('result').textContent = `🎉 ${items[winningIndex]}!`;
+                spinning = false;
+            }, 4000);
+        }
+
+        function updateWheel() {
+            const input = document.getElementById('itemsInput').value;
+            const newItems = input.split('\n')
+                .map(item => item.trim())
+                .filter(item => item.length > 0);
+            
+            if (newItems.length < 2) {
+                document.getElementById('result').textContent = 'Add at least 2 options!';
+                return;
+            }
+            
+            items = newItems;
+            currentRotation = 0;
+            document.getElementById('wheel').style.transition = 'none';
+            document.getElementById('wheel').style.transform = 'rotate(0deg)';
+            
+            setTimeout(() => {
+                document.getElementById('wheel').style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+            }, 50);
+            
+            createWheel();
+            document.getElementById('result').textContent = 'Wheel updated! Spin to decide!';
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

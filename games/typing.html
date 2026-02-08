@@ -18,6 +18,7 @@
             display: flex;
             justify-content: center;
             gap: 40px;
+            flex-wrap: wrap;
         }
         .stat-box {
             text-align: center;
@@ -46,6 +47,7 @@
             line-height: 1.8;
             text-align: left;
             width: 100%;
+            min-height: 100px;
         }
         .text-display .char {
             transition: all 0.1s;
@@ -82,11 +84,13 @@
         .typing-input:disabled {
             opacity: 0.5;
         }
-        .difficulty-selector {
+        .mode-selector, .difficulty-selector {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
-        .diff-btn {
+        .mode-btn, .diff-btn {
             padding: 8px 20px;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -95,9 +99,35 @@
             cursor: pointer;
             transition: all 0.3s;
         }
+        .mode-btn.active {
+            background: #00ff88;
+            border-color: #00ff88;
+            color: #000;
+        }
         .diff-btn.active {
             background: #ff6b6b;
             border-color: #ff6b6b;
+        }
+        .custom-text-area {
+            display: none;
+            width: 100%;
+        }
+        .custom-text-area.visible {
+            display: block;
+        }
+        .custom-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            resize: vertical;
+        }
+        .custom-input::placeholder {
+            color: #666;
         }
         .results {
             text-align: center;
@@ -127,6 +157,61 @@
             background: linear-gradient(90deg, #00ff88, #00d9ff);
             transition: width 0.3s;
         }
+        .time-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .time-btn {
+            padding: 5px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .time-btn.active {
+            background: #ffaa00;
+            color: #000;
+        }
+        .leaderboard {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+        }
+        .leaderboard h3 {
+            margin-bottom: 15px;
+            color: #ffaa00;
+        }
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .leaderboard-entry:last-child {
+            border-bottom: none;
+        }
+        .settings-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .toggle-btn {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .toggle-btn.active {
+            background: #00ff88;
+            color: #000;
+        }
         .fullscreen-btn {
             position: fixed;
             top: 20px;
@@ -139,6 +224,10 @@
             cursor: pointer;
             font-size: 1.5rem;
         }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -150,10 +239,32 @@
             <h1 class="game-title">⌨️ Typing Speed Test</h1>
             
             <div class="typing-container">
-                <div class="difficulty-selector">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="paragraph">Paragraph</button>
+                    <button class="mode-btn" data-mode="words">Words</button>
+                    <button class="mode-btn" data-mode="custom">Custom Text</button>
+                </div>
+                
+                <div class="difficulty-selector" id="difficultySelector">
                     <button class="diff-btn active" data-diff="easy">Easy</button>
                     <button class="diff-btn" data-diff="medium">Medium</button>
                     <button class="diff-btn" data-diff="hard">Hard</button>
+                </div>
+                
+                <div class="custom-text-area" id="customTextArea">
+                    <textarea class="custom-input" id="customInput" placeholder="Enter your custom text here..."></textarea>
+                    <button class="btn btn-secondary" id="applyCustomBtn" style="margin-top: 10px;">Apply Custom Text</button>
+                </div>
+                
+                <div class="settings-row">
+                    <div class="time-selector">
+                        <span>Time:</span>
+                        <button class="time-btn" data-time="15">15s</button>
+                        <button class="time-btn" data-time="30">30s</button>
+                        <button class="time-btn active" data-time="60">60s</button>
+                        <button class="time-btn" data-time="120">120s</button>
+                    </div>
+                    <button class="toggle-btn" id="soundToggle">🔊 Sound</button>
                 </div>
                 
                 <div class="stats-bar">
@@ -169,6 +280,10 @@
                         <div class="stat-value time" id="time">60</div>
                         <div class="stat-label">Seconds</div>
                     </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="cpm" style="color: #00d9ff;">0</div>
+                        <div class="stat-label">CPM</div>
+                    </div>
                 </div>
                 
                 <div class="progress-bar">
@@ -179,12 +294,20 @@
                 
                 <input type="text" class="typing-input" id="typingInput" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 
-                <button id="restartBtn" class="btn btn-primary">Restart</button>
+                <div class="btn-row">
+                    <button id="restartBtn" class="btn btn-primary">Restart</button>
+                    <button id="newTextBtn" class="btn btn-secondary">New Text</button>
+                </div>
+                
+                <div class="leaderboard" id="leaderboard">
+                    <h3>🏆 Personal Best</h3>
+                    <div id="leaderboardContent">No records yet!</div>
+                </div>
             </div>
             
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Type the text as fast and accurately as you can! Your WPM (words per minute) and accuracy will be calculated in real-time.</p>
+                <p>Type the text as fast and accurately as you can! Choose between paragraph mode, random words, or paste your own custom text.</p>
             </div>
         </div>
     </div>
@@ -195,20 +318,43 @@
                 "The quick brown fox jumps over the lazy dog near the river bank.",
                 "A happy cat sat on the warm mat and watched the birds fly by.",
                 "The sun was bright and the sky was blue on this lovely day.",
-                "She sells sea shells by the sea shore every summer morning."
+                "She sells sea shells by the sea shore every summer morning.",
+                "The dog ran fast and jumped over the fence to catch the ball.",
+                "I love to read books and learn new things every single day.",
+                "The garden was full of colorful flowers and buzzing bees.",
+                "We went to the park and had a picnic under the big oak tree."
             ],
             medium: [
                 "Programming is the art of telling a computer what to do through a series of instructions called code.",
                 "The internet has revolutionized how we communicate, learn, and share information across the globe.",
                 "Artificial intelligence is transforming industries from healthcare to transportation with remarkable speed.",
-                "Climate change presents one of the greatest challenges facing humanity in the twenty-first century."
+                "Climate change presents one of the greatest challenges facing humanity in the twenty-first century.",
+                "The human brain contains approximately eighty-six billion neurons that form trillions of connections.",
+                "Space exploration has yielded countless technological innovations that benefit our daily lives.",
+                "Renewable energy sources like solar and wind power are becoming increasingly cost-effective solutions.",
+                "The invention of the printing press fundamentally changed how knowledge was preserved and distributed."
             ],
             hard: [
                 "Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to perform calculations exponentially faster than classical computers for specific problems.",
                 "The electromagnetic spectrum encompasses all frequencies of electromagnetic radiation, from low-frequency radio waves through microwaves, infrared, visible light, ultraviolet, X-rays, to high-frequency gamma rays.",
-                "Cryptocurrency utilizes blockchain technology to create decentralized, cryptographically secured digital currencies that operate independently of traditional banking institutions."
+                "Cryptocurrency utilizes blockchain technology to create decentralized, cryptographically secured digital currencies that operate independently of traditional banking institutions.",
+                "The mitochondria, often described as the powerhouse of the cell, generates adenosine triphosphate through oxidative phosphorylation, a complex biochemical process essential for cellular metabolism.",
+                "Neuroplasticity refers to the brain's remarkable ability to reorganize itself by forming new neural connections throughout life, enabling learning and recovery from injuries."
             ]
         };
+
+        const commonWords = [
+            "the", "be", "to", "of", "and", "a", "in", "that", "have", "I",
+            "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
+            "this", "but", "his", "by", "from", "they", "we", "say", "her", "she",
+            "or", "an", "will", "my", "one", "all", "would", "there", "their", "what",
+            "so", "up", "out", "if", "about", "who", "get", "which", "go", "me",
+            "when", "make", "can", "like", "time", "no", "just", "him", "know", "take",
+            "people", "into", "year", "your", "good", "some", "could", "them", "see", "other",
+            "than", "then", "now", "look", "only", "come", "its", "over", "think", "also",
+            "back", "after", "use", "two", "how", "our", "work", "first", "well", "way",
+            "even", "new", "want", "because", "any", "these", "give", "day", "most", "us"
+        ];
 
         let currentText = '';
         let charIndex = 0;
@@ -217,8 +363,11 @@
         let startTime = null;
         let timer = null;
         let timeLeft = 60;
+        let maxTime = 60;
         let isFinished = false;
         let difficulty = 'easy';
+        let mode = 'paragraph';
+        let soundEnabled = false;
 
         const textDisplay = document.getElementById('textDisplay');
         const typingInput = document.getElementById('typingInput');
@@ -226,8 +375,34 @@
         const accuracyEl = document.getElementById('accuracy');
         const timeEl = document.getElementById('time');
         const progressEl = document.getElementById('progress');
+        const cpmEl = document.getElementById('cpm');
+
+        // Audio context for sound effects
+        let audioCtx = null;
 
         function init() {
+            // Mode buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mode = btn.dataset.mode;
+                    
+                    // Show/hide custom text area
+                    const customArea = document.getElementById('customTextArea');
+                    const diffSelector = document.getElementById('difficultySelector');
+                    if (mode === 'custom') {
+                        customArea.classList.add('visible');
+                        diffSelector.style.display = 'none';
+                    } else {
+                        customArea.classList.remove('visible');
+                        diffSelector.style.display = 'flex';
+                        restart();
+                    }
+                });
+            });
+            
+            // Difficulty buttons
             document.querySelectorAll('.diff-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
@@ -237,7 +412,41 @@
                 });
             });
             
+            // Time buttons
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    maxTime = parseInt(btn.dataset.time);
+                    restart();
+                });
+            });
+            
+            // Custom text
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const customText = document.getElementById('customInput').value.trim();
+                if (customText) {
+                    currentText = customText;
+                    resetState();
+                }
+            });
+            
+            // Sound toggle
+            document.getElementById('soundToggle').addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                const btn = document.getElementById('soundToggle');
+                btn.classList.toggle('active', soundEnabled);
+                btn.textContent = soundEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+                if (soundEnabled && !audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            });
+            
             document.getElementById('restartBtn').addEventListener('click', restart);
+            document.getElementById('newTextBtn').addEventListener('click', () => {
+                generateNewText();
+                resetState();
+            });
             document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
             
             typingInput.addEventListener('input', handleTyping);
@@ -247,17 +456,38 @@
                 }
             });
             
+            loadLeaderboard();
             restart();
         }
 
+        function generateNewText() {
+            if (mode === 'paragraph') {
+                const textList = texts[difficulty];
+                currentText = textList[Math.floor(Math.random() * textList.length)];
+            } else if (mode === 'words') {
+                // Generate random words
+                const wordCount = difficulty === 'easy' ? 20 : difficulty === 'medium' ? 35 : 50;
+                const words = [];
+                for (let i = 0; i < wordCount; i++) {
+                    words.push(commonWords[Math.floor(Math.random() * commonWords.length)]);
+                }
+                currentText = words.join(' ');
+            }
+        }
+
         function restart() {
-            const textList = texts[difficulty];
-            currentText = textList[Math.floor(Math.random() * textList.length)];
+            if (mode !== 'custom') {
+                generateNewText();
+            }
+            resetState();
+        }
+
+        function resetState() {
             charIndex = 0;
             errors = 0;
             totalTyped = 0;
             startTime = null;
-            timeLeft = 60;
+            timeLeft = maxTime;
             isFinished = false;
             
             clearInterval(timer);
@@ -267,8 +497,9 @@
             typingInput.focus();
             
             wpmEl.textContent = '0';
+            cpmEl.textContent = '0';
             accuracyEl.textContent = '100%';
-            timeEl.textContent = '60';
+            timeEl.textContent = maxTime;
             progressEl.style.width = '0%';
             
             renderText();
@@ -297,7 +528,15 @@
             }
             
             const typed = typingInput.value;
+            const prevCharIndex = charIndex;
             charIndex = typed.length;
+            
+            // Play sound
+            if (soundEnabled && audioCtx && charIndex > prevCharIndex) {
+                const isCorrect = typed[charIndex - 1] === currentText[charIndex - 1];
+                playSound(isCorrect);
+            }
+            
             totalTyped++;
             
             // Count errors
@@ -319,6 +558,21 @@
             progressEl.style.width = `${(charIndex / currentText.length) * 100}%`;
         }
 
+        function playSound(correct) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.frequency.value = correct ? 800 : 200;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
         function startTimer() {
             timer = setInterval(() => {
                 timeLeft--;
@@ -333,11 +587,14 @@
 
         function updateStats() {
             const timeElapsed = (Date.now() - startTime) / 1000 / 60; // in minutes
-            const wordsTyped = (charIndex - errors) / 5; // standard: 5 chars = 1 word
+            const correctChars = charIndex - errors;
+            const wordsTyped = correctChars / 5; // standard: 5 chars = 1 word
             const wpm = Math.round(wordsTyped / timeElapsed) || 0;
-            const accuracy = Math.round(((charIndex - errors) / charIndex) * 100) || 100;
+            const cpm = Math.round(correctChars / timeElapsed) || 0;
+            const accuracy = charIndex > 0 ? Math.round((correctChars / charIndex) * 100) : 100;
             
             wpmEl.textContent = wpm;
+            cpmEl.textContent = cpm;
             accuracyEl.textContent = accuracy + '%';
         }
 
@@ -347,12 +604,18 @@
             typingInput.disabled = true;
             
             const timeElapsed = (Date.now() - startTime) / 1000 / 60;
-            const wordsTyped = (charIndex - errors) / 5;
+            const correctChars = charIndex - errors;
+            const wordsTyped = correctChars / 5;
             const finalWPM = Math.round(wordsTyped / timeElapsed) || 0;
-            const finalAccuracy = Math.round(((charIndex - errors) / charIndex) * 100) || 100;
+            const finalCPM = Math.round(correctChars / timeElapsed) || 0;
+            const finalAccuracy = charIndex > 0 ? Math.round((correctChars / charIndex) * 100) : 100;
+            
+            // Save to leaderboard
+            saveScore(finalWPM, finalAccuracy);
             
             let message = '';
-            if (finalWPM >= 80) message = '🏆 Incredible!';
+            if (finalWPM >= 100) message = '🚀 Legendary!';
+            else if (finalWPM >= 80) message = '🏆 Incredible!';
             else if (finalWPM >= 60) message = '🌟 Excellent!';
             else if (finalWPM >= 40) message = '👍 Good job!';
             else message = '💪 Keep practicing!';
@@ -362,10 +625,35 @@
                     <div class="result-label">${message}</div>
                     <div class="result-wpm">${finalWPM} WPM</div>
                     <div style="margin-top: 15px; color: #888;">
-                        Accuracy: ${finalAccuracy}% | Characters: ${charIndex} | Errors: ${errors}
+                        CPM: ${finalCPM} | Accuracy: ${finalAccuracy}% | Characters: ${charIndex} | Errors: ${errors}
                     </div>
                 </div>
             `;
+        }
+
+        function saveScore(wpm, accuracy) {
+            const scores = JSON.parse(localStorage.getItem('typing_scores') || '[]');
+            scores.push({ wpm, accuracy, date: new Date().toLocaleDateString(), time: maxTime });
+            scores.sort((a, b) => b.wpm - a.wpm);
+            localStorage.setItem('typing_scores', JSON.stringify(scores.slice(0, 10)));
+            loadLeaderboard();
+        }
+
+        function loadLeaderboard() {
+            const scores = JSON.parse(localStorage.getItem('typing_scores') || '[]');
+            const container = document.getElementById('leaderboardContent');
+            
+            if (scores.length === 0) {
+                container.innerHTML = 'No records yet!';
+                return;
+            }
+            
+            container.innerHTML = scores.slice(0, 5).map((s, i) => `
+                <div class="leaderboard-entry">
+                    <span>${i + 1}. ${s.wpm} WPM (${s.accuracy}%)</span>
+                    <span style="color: #888;">${s.time}s - ${s.date}</span>
+                </div>
+            `).join('');
         }
 
         function toggleFullscreen() {

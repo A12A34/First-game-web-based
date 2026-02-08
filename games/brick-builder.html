@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brick Builder - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        canvas {
+            border: 3px solid #333;
+            border-radius: 5px;
+            background: #87ceeb;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .stat-value.score { color: #00ff88; }
+        .stat-value.height { color: #ffaa00; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🧱 Brick Builder</h1>
+            
+            <div class="game-area">
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value score" id="score">0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value height" id="height">0</div>
+                        <div class="stat-label">Height</div>
+                    </div>
+                </div>
+                
+                <canvas id="gameCanvas" width="400" height="500"></canvas>
+                
+                <p style="color: #888;">Click or press SPACE to place brick!</p>
+                
+                <button id="startBtn" class="btn btn-primary">Start Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Stack bricks perfectly! Time your click to place the moving brick. Misaligned parts fall off!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let blocks = [];
+        let currentBlock = null;
+        let score = 0;
+        let gameRunning = false;
+        let speed = 3;
+        let fallingPieces = [];
+
+        const COLORS = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9', '#fd79a8', '#a29bfe'];
+
+        function init() {
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            canvas.addEventListener('click', placeBrick);
+            document.addEventListener('keydown', e => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    placeBrick();
+                }
+            });
+            
+            drawStartScreen();
+        }
+
+        function startGame() {
+            blocks = [];
+            fallingPieces = [];
+            score = 0;
+            speed = 3;
+            gameRunning = true;
+            
+            // Base block
+            blocks.push({
+                x: canvas.width / 2 - 60,
+                y: canvas.height - 30,
+                width: 120,
+                height: 25,
+                color: COLORS[0]
+            });
+            
+            spawnBlock();
+            updateDisplay();
+            
+            document.getElementById('startBtn').textContent = 'Playing...';
+            document.getElementById('startBtn').disabled = true;
+            
+            gameLoop();
+        }
+
+        function spawnBlock() {
+            const lastBlock = blocks[blocks.length - 1];
+            const direction = Math.random() > 0.5 ? 1 : -1;
+            
+            currentBlock = {
+                x: direction > 0 ? -lastBlock.width : canvas.width,
+                y: lastBlock.y - 25,
+                width: lastBlock.width,
+                height: 25,
+                direction: direction,
+                color: COLORS[blocks.length % COLORS.length]
+            };
+            
+            // Camera scroll up
+            if (currentBlock.y < canvas.height / 2) {
+                const shift = canvas.height / 2 - currentBlock.y;
+                blocks.forEach(b => b.y += shift);
+                currentBlock.y += shift;
+            }
+        }
+
+        function placeBrick() {
+            if (!gameRunning || !currentBlock) return;
+            
+            const lastBlock = blocks[blocks.length - 1];
+            
+            // Calculate overlap
+            const overlapStart = Math.max(currentBlock.x, lastBlock.x);
+            const overlapEnd = Math.min(currentBlock.x + currentBlock.width, lastBlock.x + lastBlock.width);
+            const overlapWidth = overlapEnd - overlapStart;
+            
+            if (overlapWidth <= 0) {
+                // Missed completely
+                gameOver();
+                return;
+            }
+            
+            // Perfect placement bonus
+            if (Math.abs(currentBlock.x - lastBlock.x) < 5) {
+                score += 50;
+                // Flash effect could go here
+            }
+            
+            // Create falling piece if not perfect
+            if (currentBlock.x < lastBlock.x) {
+                // Overhang on left
+                const fallWidth = lastBlock.x - currentBlock.x;
+                fallingPieces.push({
+                    x: currentBlock.x,
+                    y: currentBlock.y,
+                    width: fallWidth,
+                    height: 25,
+                    velocityY: 0,
+                    color: currentBlock.color
+                });
+            }
+            if (currentBlock.x + currentBlock.width > lastBlock.x + lastBlock.width) {
+                // Overhang on right
+                const fallWidth = (currentBlock.x + currentBlock.width) - (lastBlock.x + lastBlock.width);
+                fallingPieces.push({
+                    x: lastBlock.x + lastBlock.width,
+                    y: currentBlock.y,
+                    width: fallWidth,
+                    height: 25,
+                    velocityY: 0,
+                    color: currentBlock.color
+                });
+            }
+            
+            // Add the overlapping part as new block
+            blocks.push({
+                x: overlapStart,
+                y: currentBlock.y,
+                width: overlapWidth,
+                height: 25,
+                color: currentBlock.color
+            });
+            
+            score += 10;
+            speed = Math.min(8, 3 + blocks.length * 0.2);
+            
+            updateDisplay();
+            spawnBlock();
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            if (currentBlock) {
+                currentBlock.x += speed * currentBlock.direction;
+                
+                // Bounce
+                if (currentBlock.x + currentBlock.width > canvas.width) {
+                    currentBlock.direction = -1;
+                }
+                if (currentBlock.x < 0) {
+                    currentBlock.direction = 1;
+                }
+            }
+            
+            // Update falling pieces
+            fallingPieces = fallingPieces.filter(piece => {
+                piece.velocityY += 0.5;
+                piece.y += piece.velocityY;
+                return piece.y < canvas.height + 50;
+            });
+        }
+
+        function draw() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#16213e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw blocks
+            blocks.forEach(block => {
+                ctx.fillStyle = block.color;
+                ctx.fillRect(block.x, block.y, block.width, block.height);
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.strokeRect(block.x, block.y, block.width, block.height);
+            });
+            
+            // Draw current block
+            if (currentBlock) {
+                ctx.fillStyle = currentBlock.color;
+                ctx.fillRect(currentBlock.x, currentBlock.y, currentBlock.width, currentBlock.height);
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.strokeRect(currentBlock.x, currentBlock.y, currentBlock.width, currentBlock.height);
+            }
+            
+            // Draw falling pieces
+            fallingPieces.forEach(piece => {
+                ctx.fillStyle = piece.color;
+                ctx.globalAlpha = 0.7;
+                ctx.fillRect(piece.x, piece.y, piece.width, piece.height);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function drawStartScreen() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#1a1a2e');
+            gradient.addColorStop(1, '#16213e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🧱 BRICK BUILDER 🧱', canvas.width / 2, canvas.height / 2);
+            ctx.font = '16px Arial';
+            ctx.fillText('Press Start to Play', canvas.width / 2, canvas.height / 2 + 40);
+            ctx.textAlign = 'left';
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#ff6b6b';
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Height: ${blocks.length - 1} | Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+            ctx.textAlign = 'left';
+            
+            document.getElementById('startBtn').textContent = 'Play Again';
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('height').textContent = blocks.length - 1;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

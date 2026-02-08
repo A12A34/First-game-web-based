@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aim Trainer - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .arena {
+            width: 600px;
+            height: 400px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 3px solid #333;
+            border-radius: 15px;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+        .target {
+            position: absolute;
+            border-radius: 50%;
+            cursor: crosshair;
+            transition: transform 0.1s;
+        }
+        .target:hover {
+            transform: scale(1.1);
+        }
+        .target-inner {
+            position: absolute;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .stat-value.hits { color: #00ff88; }
+        .stat-value.accuracy { color: #ffaa00; }
+        .stat-value.time { color: #ff6b6b; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .mode-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+        }
+        .mode-btn.active {
+            background: #ff6b6b;
+            color: #fff;
+        }
+        .hit-marker {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: fadeOut 0.3s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.5); }
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🎯 Aim Trainer</h1>
+            
+            <div class="game-area">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="classic">Classic</button>
+                    <button class="mode-btn" data-mode="speed">Speed</button>
+                    <button class="mode-btn" data-mode="precision">Precision</button>
+                </div>
+                
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value hits" id="hits">0</div>
+                        <div class="stat-label">Hits</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value accuracy" id="accuracy">100%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value time" id="time">30</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                </div>
+                
+                <div class="arena" id="arena"></div>
+                
+                <button id="startBtn" class="btn btn-primary">Start Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Click on targets as fast as you can! Different modes test different skills.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let hits = 0;
+        let misses = 0;
+        let timeLeft = 30;
+        let timer = null;
+        let gameRunning = false;
+        let mode = 'classic';
+        let targets = [];
+
+        const arena = document.getElementById('arena');
+
+        function init() {
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            arena.addEventListener('click', handleMiss);
+            
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    mode = btn.dataset.mode;
+                });
+            });
+        }
+
+        function startGame() {
+            hits = 0;
+            misses = 0;
+            timeLeft = 30;
+            targets = [];
+            gameRunning = true;
+            
+            arena.innerHTML = '';
+            document.getElementById('startBtn').style.display = 'none';
+            
+            updateDisplay();
+            spawnTarget();
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function spawnTarget() {
+            if (!gameRunning) return;
+            
+            const size = mode === 'precision' ? 30 : mode === 'speed' ? 60 : 50;
+            const margin = size;
+            
+            const x = margin + Math.random() * (arena.offsetWidth - margin * 2);
+            const y = margin + Math.random() * (arena.offsetHeight - margin * 2);
+            
+            const target = document.createElement('div');
+            target.className = 'target';
+            target.style.width = size + 'px';
+            target.style.height = size + 'px';
+            target.style.left = (x - size/2) + 'px';
+            target.style.top = (y - size/2) + 'px';
+            target.style.background = '#ff6b6b';
+            
+            // Inner rings
+            const inner1 = document.createElement('div');
+            inner1.className = 'target-inner';
+            inner1.style.width = (size * 0.6) + 'px';
+            inner1.style.height = (size * 0.6) + 'px';
+            inner1.style.background = '#fff';
+            target.appendChild(inner1);
+            
+            const inner2 = document.createElement('div');
+            inner2.className = 'target-inner';
+            inner2.style.width = (size * 0.3) + 'px';
+            inner2.style.height = (size * 0.3) + 'px';
+            inner2.style.background = '#ff6b6b';
+            target.appendChild(inner2);
+            
+            target.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleHit(target, e);
+            });
+            
+            arena.appendChild(target);
+            targets.push(target);
+            
+            // In speed mode, spawn multiple targets
+            if (mode === 'speed' && targets.length < 3) {
+                setTimeout(() => spawnTarget(), 200);
+            }
+            
+            // Target timeout
+            if (mode === 'speed') {
+                setTimeout(() => {
+                    if (targets.includes(target) && target.parentNode) {
+                        targets = targets.filter(t => t !== target);
+                        target.remove();
+                        if (gameRunning && targets.length === 0) spawnTarget();
+                    }
+                }, 2000);
+            }
+        }
+
+        function handleHit(target, e) {
+            if (!gameRunning) return;
+            
+            hits++;
+            
+            // Show hit marker
+            const marker = document.createElement('div');
+            marker.className = 'hit-marker';
+            marker.textContent = '✓';
+            marker.style.left = e.offsetX + 'px';
+            marker.style.top = e.offsetY + 'px';
+            marker.style.color = '#00ff88';
+            target.appendChild(marker);
+            
+            setTimeout(() => {
+                targets = targets.filter(t => t !== target);
+                target.remove();
+                
+                if (gameRunning) {
+                    spawnTarget();
+                }
+            }, 100);
+            
+            updateDisplay();
+        }
+
+        function handleMiss(e) {
+            if (!gameRunning) return;
+            if (e.target !== arena) return;
+            
+            misses++;
+            
+            // Show miss marker
+            const marker = document.createElement('div');
+            marker.className = 'hit-marker';
+            marker.textContent = '✗';
+            marker.style.left = e.offsetX + 'px';
+            marker.style.top = e.offsetY + 'px';
+            marker.style.color = '#ff6b6b';
+            arena.appendChild(marker);
+            setTimeout(() => marker.remove(), 300);
+            
+            updateDisplay();
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timer);
+            
+            arena.innerHTML = `
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <div style="font-size: 2rem; color: #fff;">Game Over!</div>
+                    <div style="font-size: 1.5rem; color: #00ff88; margin-top: 10px;">Hits: ${hits}</div>
+                    <div style="font-size: 1.2rem; color: #888;">Accuracy: ${((hits / (hits + misses)) * 100 || 0).toFixed(1)}%</div>
+                </div>
+            `;
+            
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('startBtn').textContent = 'Play Again';
+        }
+
+        function updateDisplay() {
+            document.getElementById('hits').textContent = hits;
+            document.getElementById('time').textContent = timeLeft;
+            
+            const accuracy = hits + misses > 0 ? ((hits / (hits + misses)) * 100).toFixed(0) : 100;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

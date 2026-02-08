@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card War - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .battle-field {
+            display: flex;
+            gap: 100px;
+            align-items: center;
+        }
+        .player-side {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .player-label {
+            font-size: 1.2rem;
+            color: #888;
+        }
+        .card {
+            width: 100px;
+            height: 150px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 3px solid #333;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card.face-down {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+        }
+        .card.face-down::after {
+            content: '🎴';
+            font-size: 3rem;
+        }
+        .card.winner {
+            box-shadow: 0 0 30px #00ff88;
+            transform: scale(1.1);
+        }
+        .card.red {
+            color: #ff6b6b;
+        }
+        .card.black {
+            color: #333;
+        }
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .card-suit {
+            font-size: 2rem;
+        }
+        .deck-count {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .vs {
+            font-size: 2rem;
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .scores {
+            display: flex;
+            gap: 60px;
+        }
+        .score-box {
+            text-align: center;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+        .score-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        .score-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .war-cards {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .war-card {
+            width: 40px;
+            height: 60px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            border-radius: 5px;
+        }
+        .message {
+            font-size: 1.5rem;
+            color: #ffaa00;
+            min-height: 40px;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">⚔️ Card War</h1>
+            
+            <div class="game-area">
+                <div class="scores">
+                    <div class="score-box">
+                        <div class="score-value" id="playerScore">26</div>
+                        <div class="score-label">Your Cards</div>
+                    </div>
+                    <div class="score-box">
+                        <div class="score-value" id="cpuScore">26</div>
+                        <div class="score-label">CPU Cards</div>
+                    </div>
+                </div>
+                
+                <div class="battle-field">
+                    <div class="player-side">
+                        <div class="player-label">You</div>
+                        <div class="card face-down" id="playerCard"></div>
+                        <div class="war-cards" id="playerWarCards"></div>
+                    </div>
+                    
+                    <div class="vs">VS</div>
+                    
+                    <div class="player-side">
+                        <div class="player-label">CPU</div>
+                        <div class="card face-down" id="cpuCard"></div>
+                        <div class="war-cards" id="cpuWarCards"></div>
+                    </div>
+                </div>
+                
+                <div class="message" id="message">Click "Draw" to battle!</div>
+                
+                <button id="drawBtn" class="btn btn-primary">Draw Cards</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Draw cards and the higher card wins! When cards tie, it's WAR - place 3 face-down cards and draw again!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const suits = ['♠', '♥', '♦', '♣'];
+        const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        let playerDeck = [];
+        let cpuDeck = [];
+        let warPile = [];
+        let gameOver = false;
+
+        function init() {
+            document.getElementById('drawBtn').addEventListener('click', draw);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            startGame();
+        }
+
+        function createDeck() {
+            const deck = [];
+            for (const suit of suits) {
+                for (let i = 0; i < values.length; i++) {
+                    deck.push({ suit, value: values[i], rank: i });
+                }
+            }
+            return shuffle(deck);
+        }
+
+        function shuffle(deck) {
+            const shuffled = [...deck];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function startGame() {
+            const deck = createDeck();
+            playerDeck = deck.slice(0, 26);
+            cpuDeck = deck.slice(26);
+            warPile = [];
+            gameOver = false;
+            
+            updateDisplay();
+            resetCards();
+            document.getElementById('message').textContent = 'Click "Draw" to battle!';
+            document.getElementById('drawBtn').textContent = 'Draw Cards';
+        }
+
+        function draw() {
+            if (gameOver) {
+                startGame();
+                return;
+            }
+            
+            if (playerDeck.length === 0 || cpuDeck.length === 0) {
+                endGame();
+                return;
+            }
+            
+            clearWarCards();
+            
+            const playerCard = playerDeck.shift();
+            const cpuCard = cpuDeck.shift();
+            
+            showCard('playerCard', playerCard);
+            showCard('cpuCard', cpuCard);
+            
+            warPile.push(playerCard, cpuCard);
+            
+            if (playerCard.rank > cpuCard.rank) {
+                playerWins();
+            } else if (cpuCard.rank > playerCard.rank) {
+                cpuWins();
+            } else {
+                war();
+            }
+            
+            updateDisplay();
+        }
+
+        function war() {
+            document.getElementById('message').textContent = '⚔️ WAR! ⚔️';
+            
+            // Place 3 cards face down each (or all remaining)
+            const playerWarCount = Math.min(3, playerDeck.length);
+            const cpuWarCount = Math.min(3, cpuDeck.length);
+            
+            if (playerWarCount === 0 || cpuWarCount === 0) {
+                if (playerWarCount === 0) {
+                    cpuWins();
+                } else {
+                    playerWins();
+                }
+                return;
+            }
+            
+            for (let i = 0; i < playerWarCount; i++) {
+                warPile.push(playerDeck.shift());
+                addWarCard('playerWarCards');
+            }
+            
+            for (let i = 0; i < cpuWarCount; i++) {
+                warPile.push(cpuDeck.shift());
+                addWarCard('cpuWarCards');
+            }
+            
+            updateDisplay();
+            
+            // Auto-draw after war animation
+            setTimeout(() => {
+                if (!gameOver && playerDeck.length > 0 && cpuDeck.length > 0) {
+                    const playerCard = playerDeck.shift();
+                    const cpuCard = cpuDeck.shift();
+                    
+                    showCard('playerCard', playerCard);
+                    showCard('cpuCard', cpuCard);
+                    
+                    warPile.push(playerCard, cpuCard);
+                    
+                    if (playerCard.rank > cpuCard.rank) {
+                        playerWins();
+                    } else if (cpuCard.rank > playerCard.rank) {
+                        cpuWins();
+                    } else {
+                        war();
+                    }
+                    
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function playerWins() {
+            document.getElementById('message').textContent = '✓ You win this round!';
+            document.getElementById('playerCard').classList.add('winner');
+            document.getElementById('cpuCard').classList.remove('winner');
+            
+            // Shuffle war pile and add to player deck
+            playerDeck.push(...shuffle(warPile));
+            warPile = [];
+            
+            checkGameEnd();
+        }
+
+        function cpuWins() {
+            document.getElementById('message').textContent = '✗ CPU wins this round!';
+            document.getElementById('cpuCard').classList.add('winner');
+            document.getElementById('playerCard').classList.remove('winner');
+            
+            // Shuffle war pile and add to CPU deck
+            cpuDeck.push(...shuffle(warPile));
+            warPile = [];
+            
+            checkGameEnd();
+        }
+
+        function checkGameEnd() {
+            if (playerDeck.length === 0) {
+                gameOver = true;
+                document.getElementById('message').textContent = '😢 Game Over - CPU Wins!';
+                document.getElementById('drawBtn').textContent = 'Play Again';
+            } else if (cpuDeck.length === 0) {
+                gameOver = true;
+                document.getElementById('message').textContent = '🎉 You Win the Game!';
+                document.getElementById('drawBtn').textContent = 'Play Again';
+            }
+        }
+
+        function endGame() {
+            checkGameEnd();
+        }
+
+        function showCard(elementId, card) {
+            const el = document.getElementById(elementId);
+            el.classList.remove('face-down', 'winner');
+            const isRed = card.suit === '♥' || card.suit === '♦';
+            el.className = 'card ' + (isRed ? 'red' : 'black');
+            el.innerHTML = `
+                <div class="card-value">${card.value}</div>
+                <div class="card-suit">${card.suit}</div>
+            `;
+        }
+
+        function resetCards() {
+            document.getElementById('playerCard').className = 'card face-down';
+            document.getElementById('playerCard').innerHTML = '';
+            document.getElementById('cpuCard').className = 'card face-down';
+            document.getElementById('cpuCard').innerHTML = '';
+        }
+
+        function addWarCard(containerId) {
+            const container = document.getElementById(containerId);
+            const card = document.createElement('div');
+            card.className = 'war-card';
+            container.appendChild(card);
+        }
+
+        function clearWarCards() {
+            document.getElementById('playerWarCards').innerHTML = '';
+            document.getElementById('cpuWarCards').innerHTML = '';
+        }
+
+        function updateDisplay() {
+            document.getElementById('playerScore').textContent = playerDeck.length;
+            document.getElementById('cpuScore').textContent = cpuDeck.length;
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

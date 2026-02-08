@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Game - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .track-container {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 15px;
+            position: relative;
+        }
+        .track {
+            width: 80px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hit-zone {
+            position: absolute;
+            bottom: 30px;
+            left: 5px;
+            right: 5px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+        }
+        .note {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            height: 40px;
+            border-radius: 8px;
+            transition: top 0.05s linear;
+        }
+        .key-hint {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .track.pressed .hit-zone {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .hit-effect {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            animation: fadeUp 0.5s ease-out forwards;
+        }
+        @keyframes fadeUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-30px); }
+        }
+        .perfect { color: #00ff88; }
+        .good { color: #ffaa00; }
+        .miss { color: #ff6b6b; }
+        .stats-bar {
+            display: flex;
+            gap: 30px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .stat-value.score { color: #00ff88; }
+        .stat-value.combo { color: #ffaa00; }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .combo-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ffaa00;
+            min-height: 50px;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        
+        <div class="game-container">
+            <h1 class="game-title">🎵 Rhythm Game</h1>
+            
+            <div class="game-area">
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value score" id="score">0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value combo" id="combo">0</div>
+                        <div class="stat-label">Combo</div>
+                    </div>
+                </div>
+                
+                <div class="combo-display" id="comboDisplay"></div>
+                
+                <div class="track-container" id="trackContainer">
+                    <div class="track" data-key="d">
+                        <div class="hit-zone"></div>
+                        <div class="key-hint">D</div>
+                    </div>
+                    <div class="track" data-key="f">
+                        <div class="hit-zone"></div>
+                        <div class="key-hint">F</div>
+                    </div>
+                    <div class="track" data-key="j">
+                        <div class="hit-zone"></div>
+                        <div class="key-hint">J</div>
+                    </div>
+                    <div class="track" data-key="k">
+                        <div class="hit-zone"></div>
+                        <div class="key-hint">K</div>
+                    </div>
+                </div>
+                
+                <button id="startBtn" class="btn btn-primary">Start Game</button>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Press the keys (D, F, J, K) when notes reach the hit zone. Time your hits perfectly for maximum points!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TRACK_COLORS = ['#ff6b6b', '#00ff88', '#00bfff', '#ffaa00'];
+        const KEYS = ['d', 'f', 'j', 'k'];
+        const HIT_ZONE_Y = 330;
+        const NOTE_SPEED = 5;
+        
+        let notes = [];
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let gameRunning = false;
+        let spawnTimer = null;
+        let noteId = 0;
+
+        const tracks = document.querySelectorAll('.track');
+
+        function init() {
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            document.addEventListener('keydown', e => {
+                const key = e.key.toLowerCase();
+                if (KEYS.includes(key) && gameRunning) {
+                    e.preventDefault();
+                    hitKey(key);
+                }
+            });
+            
+            document.addEventListener('keyup', e => {
+                const key = e.key.toLowerCase();
+                const track = document.querySelector(`.track[data-key="${key}"]`);
+                if (track) track.classList.remove('pressed');
+            });
+        }
+
+        function startGame() {
+            notes = [];
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            gameRunning = true;
+            noteId = 0;
+            
+            document.getElementById('startBtn').style.display = 'none';
+            updateDisplay();
+            
+            // Clear existing notes
+            document.querySelectorAll('.note').forEach(n => n.remove());
+            
+            // Start spawning
+            spawnTimer = setInterval(spawnNote, 500);
+            
+            // End after 60 seconds
+            setTimeout(endGame, 60000);
+            
+            gameLoop();
+        }
+
+        function spawnNote() {
+            if (!gameRunning) return;
+            
+            // Random track, sometimes multiple
+            const tracksToSpawn = Math.random() > 0.7 ? 2 : 1;
+            const usedTracks = [];
+            
+            for (let i = 0; i < tracksToSpawn; i++) {
+                let trackIdx;
+                do {
+                    trackIdx = Math.floor(Math.random() * 4);
+                } while (usedTracks.includes(trackIdx));
+                usedTracks.push(trackIdx);
+                
+                const note = {
+                    id: noteId++,
+                    track: trackIdx,
+                    y: -40,
+                    hit: false
+                };
+                
+                notes.push(note);
+                
+                // Create DOM element
+                const noteEl = document.createElement('div');
+                noteEl.className = 'note';
+                noteEl.id = `note-${note.id}`;
+                noteEl.style.background = TRACK_COLORS[trackIdx];
+                noteEl.style.top = note.y + 'px';
+                tracks[trackIdx].appendChild(noteEl);
+            }
+        }
+
+        function hitKey(key) {
+            const trackIdx = KEYS.indexOf(key);
+            const track = tracks[trackIdx];
+            track.classList.add('pressed');
+            
+            // Find closest note in hit zone
+            let closestNote = null;
+            let closestDist = Infinity;
+            
+            for (const note of notes) {
+                if (note.track === trackIdx && !note.hit) {
+                    const dist = Math.abs(note.y - HIT_ZONE_Y);
+                    if (dist < closestDist && dist < 60) {
+                        closestDist = dist;
+                        closestNote = note;
+                    }
+                }
+            }
+            
+            if (closestNote) {
+                closestNote.hit = true;
+                const noteEl = document.getElementById(`note-${closestNote.id}`);
+                if (noteEl) noteEl.remove();
+                
+                let rating, points;
+                if (closestDist < 15) {
+                    rating = 'perfect';
+                    points = 100;
+                } else if (closestDist < 35) {
+                    rating = 'good';
+                    points = 50;
+                } else {
+                    rating = 'good';
+                    points = 25;
+                }
+                
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                score += points * (1 + combo * 0.1);
+                
+                showHitEffect(track, rating);
+                updateDisplay();
+            }
+        }
+
+        function showHitEffect(track, rating) {
+            const effect = document.createElement('div');
+            effect.className = `hit-effect ${rating}`;
+            effect.textContent = rating.toUpperCase();
+            track.appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Update notes
+            notes = notes.filter(note => {
+                if (note.hit) return false;
+                
+                note.y += NOTE_SPEED;
+                
+                const noteEl = document.getElementById(`note-${note.id}`);
+                if (noteEl) {
+                    noteEl.style.top = note.y + 'px';
+                }
+                
+                // Missed
+                if (note.y > 400) {
+                    if (noteEl) noteEl.remove();
+                    combo = 0;
+                    showHitEffect(tracks[note.track], 'miss');
+                    updateDisplay();
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(spawnTimer);
+            
+            document.getElementById('comboDisplay').textContent = 
+                `Game Over! Score: ${Math.floor(score)} | Max Combo: ${maxCombo}`;
+            
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('startBtn').textContent = 'Play Again';
+        }
+
+        function updateDisplay() {
+            document.getElementById('score').textContent = Math.floor(score);
+            document.getElementById('combo').textContent = combo;
+            
+            if (combo >= 10) {
+                document.getElementById('comboDisplay').textContent = `🔥 ${combo}x Combo!`;
+            } else {
+                document.getElementById('comboDisplay').textContent = '';
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
