@@ -760,13 +760,13 @@
                 document.getElementById('notesBtn').classList.toggle('active', notesMode);
             }
             
-            // Arrow key navigation
+            // Arrow key and WASD navigation
             if (selectedCell !== null) {
                 let newCell = selectedCell;
-                if (e.key === 'ArrowUp' && selectedCell >= 9) newCell -= 9;
-                if (e.key === 'ArrowDown' && selectedCell < 72) newCell += 9;
-                if (e.key === 'ArrowLeft' && selectedCell % 9 > 0) newCell -= 1;
-                if (e.key === 'ArrowRight' && selectedCell % 9 < 8) newCell += 1;
+                if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && selectedCell >= 9) newCell -= 9;
+                if ((e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') && selectedCell < 72) newCell += 9;
+                if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') && selectedCell % 9 > 0) newCell -= 1;
+                if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') && selectedCell % 9 < 8) newCell += 1;
                 
                 if (newCell !== selectedCell) {
                     e.preventDefault();

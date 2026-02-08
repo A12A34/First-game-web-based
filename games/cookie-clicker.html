@@ -2,15 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cookie Clicker - Game Hub</title>
     <link rel="stylesheet" href="../css/styles.css">
     <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            overflow-x: hidden;
+        }
         .clicker-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
+            padding: 10px;
         }
         .cookie-wrapper {
             position: relative;
@@ -19,7 +27,7 @@
             align-items: center;
         }
         .cookie {
-            font-size: 150px;
+            font-size: clamp(100px, 25vw, 180px);
             cursor: pointer;
             transition: transform 0.1s;
             user-select: none;
@@ -27,6 +35,7 @@
             z-index: 2;
             filter: drop-shadow(0 0 20px rgba(255, 193, 7, 0.3));
             animation: cookie-pulse 2s ease-in-out infinite;
+            touch-action: manipulation;
         }
         @keyframes cookie-pulse {
             0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 193, 7, 0.3)); }
@@ -41,8 +50,8 @@
         }
         .cookie-glow {
             position: absolute;
-            width: 200px;
-            height: 200px;
+            width: clamp(150px, 30vw, 250px);
+            height: clamp(150px, 30vw, 250px);
             background: radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%);
             border-radius: 50%;
             animation: glow-rotate 10s linear infinite;
@@ -52,67 +61,108 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        .milk-layer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 0%;
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.3), transparent);
+            border-radius: 0 0 20px 20px;
+            pointer-events: none;
+            transition: height 0.5s ease;
+        }
         .cookie-count {
-            font-size: 3rem;
+            font-size: clamp(1.5rem, 5vw, 3rem);
             font-weight: bold;
             color: #ffc107;
             text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            text-align: center;
+            word-break: break-word;
         }
         .per-second {
-            font-size: 1rem;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
             color: #888;
         }
         .multiplier-info {
-            font-size: 0.9rem;
+            font-size: clamp(0.75rem, 2vw, 0.9rem);
             color: #ff6b6b;
             margin-top: 5px;
+            text-align: center;
+        }
+        .sugar-lump-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            color: #e91e63;
+            cursor: pointer;
+            padding: 8px 15px;
+            background: rgba(233, 30, 99, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(233, 30, 99, 0.3);
+        }
+        .sugar-lump-display:hover {
+            background: rgba(233, 30, 99, 0.2);
         }
         .game-layout {
             display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 30px;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
             max-width: 1200px;
             width: 100%;
         }
         @media (max-width: 900px) {
             .game-layout {
                 grid-template-columns: 1fr;
+                gap: 15px;
             }
         }
         .main-area {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
         }
         .side-panel {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
         .panel-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
-            padding: 15px;
+            padding: 12px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .panel-title {
-            font-size: 1.1rem;
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
             font-weight: bold;
             color: #ffc107;
             margin-bottom: 10px;
             display: flex;
             align-items: center;
             gap: 8px;
+            cursor: pointer;
         }
-        .buy-amount-toggle {
+        .panel-title .toggle-icon {
+            margin-left: auto;
+            transition: transform 0.3s;
+        }
+        .panel-section.collapsed .panel-content {
+            display: none;
+        }
+        .panel-section.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .tabs {
             display: flex;
             gap: 5px;
-            margin-bottom: 15px;
-            justify-content: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
         }
-        .buy-btn {
-            padding: 8px 16px;
+        .tab-btn {
+            padding: 8px 12px;
             border: 2px solid rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.1);
             color: #fff;
@@ -120,6 +170,37 @@
             cursor: pointer;
             transition: all 0.3s;
             font-weight: bold;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
+            flex: 1;
+            min-width: 60px;
+            text-align: center;
+        }
+        .tab-btn:hover {
+            border-color: #ffc107;
+        }
+        .tab-btn.active {
+            background: #ffc107;
+            color: #000;
+            border-color: #ffc107;
+        }
+        .buy-amount-toggle {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .buy-btn {
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
+            min-width: 45px;
         }
         .buy-btn:hover {
             border-color: #ffc107;
@@ -132,26 +213,37 @@
         .upgrades {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            max-height: 400px;
+            gap: 8px;
+            max-height: 350px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .upgrade {
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            padding: 12px;
+            padding: 10px;
             cursor: pointer;
             transition: all 0.3s;
             display: grid;
-            grid-template-columns: 40px 1fr auto;
-            gap: 10px;
+            grid-template-columns: 35px 1fr auto;
+            gap: 8px;
             align-items: center;
+            touch-action: manipulation;
         }
         .upgrade:hover:not(.locked) {
             border-color: #ffc107;
             transform: translateX(5px);
             background: rgba(255, 193, 7, 0.1);
+        }
+        @media (hover: none) {
+            .upgrade:hover:not(.locked) {
+                transform: none;
+            }
+            .upgrade:active:not(.locked) {
+                transform: scale(0.98);
+                background: rgba(255, 193, 7, 0.2);
+            }
         }
         .upgrade.locked {
             opacity: 0.5;
@@ -162,24 +254,28 @@
             box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
         }
         .upgrade-icon {
-            font-size: 1.8rem;
+            font-size: clamp(1.4rem, 4vw, 1.8rem);
         }
         .upgrade-info {
             display: flex;
             flex-direction: column;
             gap: 2px;
+            min-width: 0;
         }
         .upgrade-name {
-            font-size: 1rem;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
             font-weight: bold;
             color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .upgrade-cost {
             color: #ffc107;
-            font-size: 0.85rem;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
         }
         .upgrade-desc {
-            font-size: 0.75rem;
+            font-size: clamp(0.65rem, 1.8vw, 0.75rem);
             color: #888;
         }
         .upgrade-right {
@@ -188,17 +284,17 @@
         .upgrade-owned {
             color: #00ff88;
             font-weight: bold;
-            font-size: 1.2rem;
+            font-size: clamp(1rem, 3vw, 1.2rem);
         }
         .upgrade-production {
-            font-size: 0.75rem;
+            font-size: clamp(0.65rem, 1.8vw, 0.75rem);
             color: #888;
         }
         .click-effect {
             position: fixed;
             pointer-events: none;
             animation: float-up 1s ease-out forwards;
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 3vw, 1.5rem);
             font-weight: bold;
             color: #ffc107;
             text-shadow: 0 0 10px rgba(255, 193, 7, 0.8);
@@ -223,26 +319,27 @@
         .stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 8px;
         }
         .stat-box {
             text-align: center;
-            padding: 10px;
+            padding: 8px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
         }
-        .stat-value { color: #00ff88; font-weight: bold; font-size: 1.1rem; }
-        .stat-label { font-size: 0.7rem; color: #888; }
+        .stat-value { color: #00ff88; font-weight: bold; font-size: clamp(0.9rem, 2.5vw, 1.1rem); }
+        .stat-label { font-size: clamp(0.6rem, 1.8vw, 0.7rem); color: #888; }
         .golden-cookie {
             position: fixed;
-            font-size: 60px;
+            font-size: clamp(40px, 10vw, 60px);
             cursor: pointer;
             animation: golden-shimmer 0.5s ease-in-out infinite alternate, golden-float 3s ease-in-out infinite;
             z-index: 1001;
             filter: drop-shadow(0 0 20px gold);
             transition: transform 0.2s;
+            touch-action: manipulation;
         }
-        .golden-cookie:hover {
+        .golden-cookie:hover, .golden-cookie:active {
             transform: scale(1.2);
         }
         @keyframes golden-shimmer {
@@ -258,7 +355,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 2rem;
+            font-size: clamp(1.2rem, 4vw, 2rem);
             font-weight: bold;
             color: gold;
             text-shadow: 0 0 20px gold;
@@ -266,6 +363,8 @@
             z-index: 1002;
             text-align: center;
             pointer-events: none;
+            padding: 20px;
+            max-width: 90vw;
         }
         @keyframes golden-announce {
             0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
@@ -273,20 +372,51 @@
             80% { opacity: 1; }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
         }
+        /* Wrinkler styles */
+        .wrinkler {
+            position: absolute;
+            font-size: 40px;
+            cursor: pointer;
+            animation: wrinkler-suck 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px rgba(139, 69, 19, 0.5));
+            transition: transform 0.2s;
+            z-index: 10;
+        }
+        .wrinkler:hover {
+            transform: scale(1.3);
+            filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.8));
+        }
+        @keyframes wrinkler-suck {
+            0%, 100% { transform: scale(1) rotate(-5deg); }
+            50% { transform: scale(1.1) rotate(5deg); }
+        }
+        .wrinkler-pop {
+            position: fixed;
+            pointer-events: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #8b4513;
+            animation: wrinkler-pop-anim 1.5s ease-out forwards;
+            z-index: 1000;
+        }
+        @keyframes wrinkler-pop-anim {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(2) translateY(-50px); }
+        }
         .achievements-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+            gap: 6px;
         }
         .achievement {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             filter: grayscale(1) opacity(0.3);
             transition: all 0.3s;
             cursor: help;
@@ -306,7 +436,7 @@
             color: #fff;
             padding: 5px 10px;
             border-radius: 5px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             white-space: nowrap;
             z-index: 100;
         }
@@ -316,12 +446,14 @@
             right: 20px;
             background: linear-gradient(135deg, #ffc107, #ff9800);
             color: #000;
-            padding: 15px 25px;
+            padding: 12px 20px;
             border-radius: 10px;
             font-weight: bold;
             animation: achievement-slide 3s ease-in-out forwards;
             z-index: 1003;
             box-shadow: 0 5px 20px rgba(255, 193, 7, 0.5);
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            max-width: 90vw;
         }
         @keyframes achievement-slide {
             0% { transform: translateX(100%); opacity: 0; }
@@ -333,12 +465,14 @@
             background: linear-gradient(135deg, #9c27b0, #673ab7);
             border: none;
             color: #fff;
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s;
             width: 100%;
+            font-size: clamp(0.8rem, 2.5vw, 1rem);
+            touch-action: manipulation;
         }
         .prestige-btn:hover:not(:disabled) {
             transform: scale(1.05);
@@ -349,7 +483,7 @@
             cursor: not-allowed;
         }
         .prestige-info {
-            font-size: 0.8rem;
+            font-size: clamp(0.7rem, 2vw, 0.8rem);
             color: #888;
             margin-top: 8px;
             text-align: center;
@@ -358,23 +492,30 @@
             color: #e040fb;
             font-weight: bold;
         }
-        .fullscreen-btn, .sound-btn {
+        .fullscreen-btn, .sound-btn, .settings-btn {
             position: fixed;
-            top: 20px;
+            top: 15px;
             z-index: 1000;
             background: rgba(255, 255, 255, 0.2);
             border: none;
             border-radius: 8px;
-            padding: 10px 15px;
+            padding: 8px 12px;
             cursor: pointer;
-            font-size: 1.5rem;
+            font-size: clamp(1rem, 3vw, 1.5rem);
             transition: all 0.3s;
+            touch-action: manipulation;
         }
-        .fullscreen-btn:hover, .sound-btn:hover {
+        .fullscreen-btn:hover, .sound-btn:hover, .settings-btn:hover {
             background: rgba(255, 255, 255, 0.3);
         }
-        .fullscreen-btn { right: 20px; }
-        .sound-btn { right: 70px; }
+        .fullscreen-btn { right: 15px; }
+        .sound-btn { right: 55px; }
+        .settings-btn { right: 95px; }
+        @media (max-width: 600px) {
+            .fullscreen-btn { right: 10px; top: 10px; }
+            .sound-btn { right: 50px; top: 10px; }
+            .settings-btn { right: 90px; top: 10px; }
+        }
         .frenzy-active {
             animation: frenzy-bg 0.5s ease-in-out infinite alternate;
         }
@@ -382,22 +523,74 @@
             from { background-color: rgba(255, 193, 7, 0.1); }
             to { background-color: rgba(255, 193, 7, 0.2); }
         }
+        /* Building Upgrades */
+        .building-upgrades-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+            justify-content: center;
+        }
+        .building-upgrade {
+            width: 45px;
+            height: 45px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            position: relative;
+        }
+        .building-upgrade:hover:not(.locked):not(.purchased) {
+            border-color: #ffc107;
+            transform: scale(1.1);
+        }
+        .building-upgrade.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .building-upgrade.purchased {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+        .building-upgrade:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            z-index: 100;
+            max-width: 200px;
+            white-space: normal;
+            text-align: center;
+        }
         .click-upgrades-section {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 15px;
+            gap: 6px;
+            margin-bottom: 12px;
             justify-content: center;
         }
         .click-upgrade {
-            padding: 10px 15px;
+            padding: 8px 12px;
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
             text-align: center;
-            min-width: 100px;
+            min-width: 80px;
+            touch-action: manipulation;
         }
         .click-upgrade:hover:not(.locked):not(.purchased) {
             border-color: #ffc107;
@@ -413,9 +606,9 @@
         }
         .news-ticker {
             background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
+            padding: 8px 12px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             overflow: hidden;
             white-space: nowrap;
         }
@@ -423,6 +616,7 @@
             display: inline-block;
             animation: ticker 15s linear infinite;
             color: #ffc107;
+            font-size: clamp(0.75rem, 2vw, 0.9rem);
         }
         @keyframes ticker {
             0% { transform: translateX(100%); }
@@ -442,19 +636,195 @@
         }
         .buttons-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             justify-content: center;
         }
         .btn-small {
-            padding: 8px 16px;
+            padding: 8px 12px;
+            font-size: clamp(0.7rem, 2vw, 0.85rem);
+            touch-action: manipulation;
+        }
+        /* Season indicator */
+        .season-indicator {
+            position: fixed;
+            top: 60px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 20px;
             font-size: 0.85rem;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        .season-indicator:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        /* Mobile bottom navigation */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 10px;
+            z-index: 1000;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .mobile-nav-items {
+            display: flex;
+            justify-content: space-around;
+            gap: 5px;
+        }
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #888;
+            font-size: 0.7rem;
+            flex: 1;
+            touch-action: manipulation;
+        }
+        .mobile-nav-item.active {
+            color: #ffc107;
+            background: rgba(255, 193, 7, 0.1);
+        }
+        .mobile-nav-item span:first-child {
+            font-size: 1.3rem;
+        }
+        @media (max-width: 768px) {
+            .mobile-nav {
+                display: block;
+            }
+            body {
+                padding-bottom: 80px;
+            }
+            .side-panel {
+                display: none;
+            }
+            .side-panel.mobile-visible {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 70px;
+                z-index: 999;
+                background: rgba(0, 0, 0, 0.98);
+                padding: 60px 15px 15px;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 10px;
+            }
+            .back-btn {
+                font-size: 0.8rem;
+                padding: 8px 12px;
+            }
+        }
+        /* Settings Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: #1a1a2e;
+            border-radius: 20px;
+            padding: 25px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffc107;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .setting-label {
+            color: #fff;
+        }
+        .toggle-switch {
+            width: 50px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 13px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s;
+        }
+        .toggle-switch.active {
+            background: #00ff88;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+        }
+        .toggle-switch.active::after {
+            left: 26px;
         }
     </style>
 </head>
 <body>
+    <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
     <button id="soundBtn" class="sound-btn" title="Toggle Sound">🔊</button>
     <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+    
+    <div class="season-indicator" id="seasonIndicator" style="display: none;">
+        <span id="seasonIcon">🎄</span>
+        <span id="seasonName">Christmas</span>
+    </div>
+    
     <div class="container">
         <a href="../index.html" class="back-btn">← Back to Games</a>
         
@@ -472,76 +842,166 @@
                         <div class="per-second">per second: <span id="cps">0</span></div>
                         <div class="multiplier-info" id="multiplierInfo"></div>
                         
-                        <div class="cookie-wrapper">
+                        <div class="sugar-lump-display" id="sugarLumpDisplay" title="Click to harvest when ripe!">
+                            <span>🍬</span>
+                            <span id="sugarLumps">0</span> Sugar Lumps
+                            <span id="sugarLumpTimer" style="font-size: 0.8rem; color: #888;"></span>
+                        </div>
+                        
+                        <div class="cookie-wrapper" id="cookieWrapper">
                             <div class="cookie-glow"></div>
+                            <div class="milk-layer" id="milkLayer"></div>
                             <div class="cookie" id="cookie">🍪</div>
                         </div>
                         
-                        <div class="buy-amount-toggle">
-                            <button class="buy-btn active" data-amount="1">x1</button>
-                            <button class="buy-btn" data-amount="10">x10</button>
-                            <button class="buy-btn" data-amount="100">x100</button>
-                            <button class="buy-btn" data-amount="max">Max</button>
+                        <div class="tabs">
+                            <button class="tab-btn active" data-tab="buildings">🏭 Buildings</button>
+                            <button class="tab-btn" data-tab="upgrades">⬆️ Upgrades</button>
                         </div>
                         
-                        <h4>🖱️ Click Power Upgrades</h4>
-                        <div class="click-upgrades-section" id="clickUpgrades"></div>
+                        <div id="buildingsTab">
+                            <div class="buy-amount-toggle">
+                                <button class="buy-btn active" data-amount="1">x1</button>
+                                <button class="buy-btn" data-amount="10">x10</button>
+                                <button class="buy-btn" data-amount="100">x100</button>
+                                <button class="buy-btn" data-amount="max">Max</button>
+                            </div>
+                            <div class="upgrades" id="upgrades"></div>
+                        </div>
                         
-                        <h4>🏭 Buildings</h4>
-                        <div class="upgrades" id="upgrades"></div>
+                        <div id="upgradesTab" style="display: none;">
+                            <h4 style="margin-bottom: 10px;">🖱️ Click Upgrades</h4>
+                            <div class="click-upgrades-section" id="clickUpgrades"></div>
+                            
+                            <h4 style="margin: 15px 0 10px;">🏭 Building Upgrades</h4>
+                            <div class="building-upgrades-section" id="buildingUpgrades"></div>
+                        </div>
                     </div>
                     
-                    <div class="side-panel">
+                    <div class="side-panel" id="sidePanel">
                         <div class="panel-section">
-                            <div class="panel-title">📊 Statistics</div>
-                            <div class="stats">
-                                <div class="stat-box">
-                                    <div class="stat-value" id="totalClicks">0</div>
-                                    <div class="stat-label">Total Clicks</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-value" id="clickPower">1</div>
-                                    <div class="stat-label">Per Click</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-value" id="totalCookies">0</div>
-                                    <div class="stat-label">All Time</div>
-                                </div>
-                                <div class="stat-box">
-                                    <div class="stat-value" id="goldenClicks">0</div>
-                                    <div class="stat-label">Golden Clicks</div>
+                            <div class="panel-title" onclick="togglePanel(this)">
+                                📊 Statistics
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="panel-content">
+                                <div class="stats">
+                                    <div class="stat-box">
+                                        <div class="stat-value" id="totalClicks">0</div>
+                                        <div class="stat-label">Total Clicks</div>
+                                    </div>
+                                    <div class="stat-box">
+                                        <div class="stat-value" id="clickPower">1</div>
+                                        <div class="stat-label">Per Click</div>
+                                    </div>
+                                    <div class="stat-box">
+                                        <div class="stat-value" id="totalCookies">0</div>
+                                        <div class="stat-label">All Time</div>
+                                    </div>
+                                    <div class="stat-box">
+                                        <div class="stat-value" id="goldenClicks">0</div>
+                                        <div class="stat-label">Golden Clicks</div>
+                                    </div>
+                                    <div class="stat-box">
+                                        <div class="stat-value" id="wrinklersCookies">0</div>
+                                        <div class="stat-label">Wrinkler Cookies</div>
+                                    </div>
+                                    <div class="stat-box">
+                                        <div class="stat-value" id="buildingsOwned">0</div>
+                                        <div class="stat-label">Buildings</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="panel-section">
-                            <div class="panel-title">🏆 Achievements <span id="achievementCount">(0/20)</span></div>
-                            <div class="achievements-grid" id="achievements"></div>
+                            <div class="panel-title" onclick="togglePanel(this)">
+                                🏆 Achievements <span id="achievementCount">(0/30)</span>
+                                <span class="toggle-icon">▼</span>
+                            </div>
+                            <div class="panel-content">
+                                <div class="achievements-grid" id="achievements"></div>
+                            </div>
                         </div>
                         
                         <div class="panel-section">
-                            <div class="panel-title">✨ Prestige</div>
-                            <div class="prestige-info">
-                                Heavenly Chips: <span class="heavenly-chips" id="heavenlyChips">0</span><br>
-                                <small>(+<span id="heavenlyBonus">0</span>% CPS bonus)</small>
+                            <div class="panel-title" onclick="togglePanel(this)">
+                                ✨ Prestige
+                                <span class="toggle-icon">▼</span>
                             </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="prestigeProgress" style="width: 0%"></div>
+                            <div class="panel-content">
+                                <div class="prestige-info">
+                                    Heavenly Chips: <span class="heavenly-chips" id="heavenlyChips">0</span><br>
+                                    <small>(+<span id="heavenlyBonus">0</span>% CPS bonus)</small>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="prestigeProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="prestige-info">
+                                    Prestige for: <span class="heavenly-chips" id="prestigeGain">0</span> chips
+                                </div>
+                                <button class="prestige-btn" id="prestigeBtn" disabled>Ascend ✨</button>
                             </div>
-                            <div class="prestige-info">
-                                Prestige for: <span class="heavenly-chips" id="prestigeGain">0</span> chips
-                            </div>
-                            <button class="prestige-btn" id="prestigeBtn" disabled>Ascend ✨</button>
                         </div>
                         
                         <div class="panel-section">
                             <div class="buttons-row">
                                 <button id="saveBtn" class="btn btn-secondary btn-small">💾 Save</button>
+                                <button id="exportBtn" class="btn btn-secondary btn-small">📤 Export</button>
+                                <button id="importBtn" class="btn btn-secondary btn-small">📥 Import</button>
                                 <button id="resetBtn" class="btn btn-secondary btn-small">🗑️ Reset</button>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <div class="mobile-nav-items">
+            <div class="mobile-nav-item active" data-view="cookie">
+                <span>🍪</span>
+                <span>Cookie</span>
+            </div>
+            <div class="mobile-nav-item" data-view="shop">
+                <span>🏪</span>
+                <span>Shop</span>
+            </div>
+            <div class="mobile-nav-item" data-view="stats">
+                <span>📊</span>
+                <span>Stats</span>
+            </div>
+            <div class="mobile-nav-item" data-view="prestige">
+                <span>✨</span>
+                <span>Prestige</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-title">⚙️ Settings</div>
+            <div class="setting-row">
+                <span class="setting-label">Sound Effects</span>
+                <div class="toggle-switch active" id="soundToggle"></div>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Particle Effects</span>
+                <div class="toggle-switch active" id="particlesToggle"></div>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Wrinklers Enabled</span>
+                <div class="toggle-switch active" id="wrinklersToggle"></div>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Short Numbers</span>
+                <div class="toggle-switch" id="shortNumbersToggle"></div>
+            </div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-primary" onclick="closeSettings()">Close</button>
             </div>
         </div>
     </div>
@@ -1022,6 +1482,12 @@
             heavenlyChipsEl.textContent = formatNumber(heavenlyChips);
             heavenlyBonusEl.textContent = heavenlyChips;
             
+            // Update extra stats
+            const buildingsOwnedEl = document.getElementById('buildingsOwned');
+            if (buildingsOwnedEl) buildingsOwnedEl.textContent = getTotalBuildings();
+            const wrinklersCookiesEl = document.getElementById('wrinklersCookies');
+            if (wrinklersCookiesEl) wrinklersCookiesEl.textContent = '0';
+            
             const prestigeGain = calculatePrestigeGain();
             prestigeGainEl.textContent = formatNumber(prestigeGain);
             prestigeBtn.disabled = prestigeGain < 1;
@@ -1122,6 +1588,19 @@
             newsTickerEl.textContent = NEWS_MESSAGES[Math.floor(Math.random() * NEWS_MESSAGES.length)];
         }
 
+        // === UI HELPERS ===
+        function togglePanel(titleEl) {
+            titleEl.parentElement.classList.toggle('collapsed');
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
         // === GAME LOOP ===
         function tick() {
             const gain = (cps * frenzyMultiplier) / 10;
@@ -1175,6 +1654,78 @@
                 document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
             });
             prestigeBtn.addEventListener('click', prestige);
+            
+            // Settings button
+            document.getElementById('settingsBtn').addEventListener('click', openSettings);
+            
+            // Export / Import
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                const save = localStorage.getItem('cookieClicker2');
+                if (save) {
+                    navigator.clipboard.writeText(btoa(save)).then(() => alert('Save copied to clipboard!'));
+                }
+            });
+            document.getElementById('importBtn').addEventListener('click', () => {
+                const input = prompt('Paste your save string:');
+                if (input) {
+                    try {
+                        const data = atob(input);
+                        JSON.parse(data); // validate
+                        localStorage.setItem('cookieClicker2', data);
+                        location.reload();
+                    } catch (e) {
+                        alert('Invalid save string!');
+                    }
+                }
+            });
+            
+            // Settings toggles
+            document.getElementById('soundToggle').addEventListener('click', function() {
+                this.classList.toggle('active');
+                soundEnabled = this.classList.contains('active');
+                document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+            });
+            document.getElementById('particlesToggle').addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+            document.getElementById('wrinklersToggle').addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+            document.getElementById('shortNumbersToggle').addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+            
+            // Tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const tab = btn.dataset.tab;
+                    document.getElementById('buildingsTab').style.display = tab === 'buildings' ? '' : 'none';
+                    document.getElementById('upgradesTab').style.display = tab === 'upgrades' ? '' : 'none';
+                });
+            });
+            
+            // Mobile navigation
+            document.querySelectorAll('.mobile-nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    const view = item.dataset.view;
+                    const mainArea = document.querySelector('.main-area');
+                    const sidePanel = document.getElementById('sidePanel');
+                    if (view === 'cookie') {
+                        mainArea.style.display = '';
+                        sidePanel.classList.remove('mobile-visible');
+                    } else if (view === 'shop') {
+                        mainArea.style.display = '';
+                        sidePanel.classList.remove('mobile-visible');
+                        document.querySelector('.tab-btn[data-tab="buildings"]').click();
+                    } else if (view === 'stats' || view === 'prestige') {
+                        sidePanel.classList.add('mobile-visible');
+                    }
+                });
+            });
             
             // Initial render
             renderBuildings();

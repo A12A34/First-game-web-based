@@ -75,7 +75,7 @@
                     </div>
                 </div>
                 
-                <canvas id="gameCanvas" width="600" height="500"></canvas>
+                <canvas id="gameCanvas" width="900" height="700"></canvas>
                 
                 <p class="controls-hint">Arrow keys to move, SPACE to shoot</p>
                 
@@ -194,9 +194,9 @@
 
         function update() {
             // Ship controls
-            if (keys['ArrowLeft']) ship.angle -= 0.08;
-            if (keys['ArrowRight']) ship.angle += 0.08;
-            if (keys['ArrowUp']) {
+            if (keys['ArrowLeft'] || keys['KeyA']) ship.angle -= 0.08;
+            if (keys['ArrowRight'] || keys['KeyD']) ship.angle += 0.08;
+            if (keys['ArrowUp'] || keys['KeyW']) {
                 ship.velocityX += Math.cos(ship.angle) * 0.15;
                 ship.velocityY += Math.sin(ship.angle) * 0.15;
             }
@@ -338,7 +338,7 @@
                 ctx.stroke();
                 
                 // Thrust
-                if (keys['ArrowUp']) {
+                if (keys['ArrowUp'] || keys['KeyW']) {
                     ctx.strokeStyle = '#ff6600';
                     ctx.beginPath();
                     ctx.moveTo(ship.x + Math.cos(ship.angle + 2.8) * 10, ship.y + Math.sin(ship.angle + 2.8) * 10);

@@ -83,7 +83,7 @@
                 </div>
             </div>
             
-            <canvas id="gameCanvas" width="480" height="400"></canvas>
+            <canvas id="gameCanvas" width="720" height="600"></canvas>
             
             <button id="startBtn" class="btn btn-primary" style="margin-top: 15px;">Start Game</button>
             
@@ -198,10 +198,10 @@
 
         function update() {
             // Player movement
-            if (keys['ArrowLeft'] && player.x > 0) {
+            if ((keys['ArrowLeft'] || keys['a'] || keys['A']) && player.x > 0) {
                 player.x -= 5;
             }
-            if (keys['ArrowRight'] && player.x < canvas.width - player.width) {
+            if ((keys['ArrowRight'] || keys['d'] || keys['D']) && player.x < canvas.width - player.width) {
                 player.x += 5;
             }
             if (keys[' ']) {
