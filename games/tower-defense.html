@@ -326,27 +326,31 @@
                 MAP.push(new Array(COLS).fill(0));
             }
 
-            // Define a winding path using the full grid
-            const waypoints = [
-                {x: 0, y: 2},
-                {x: 5, y: 2},
-                {x: 5, y: 5},
-                {x: 1, y: 5},
-                {x: 1, y: 8},
-                {x: 7, y: 8},
-                {x: 7, y: 3},
-                {x: 10, y: 3},
-                {x: 10, y: 10},
-                {x: 14, y: 10},
-                {x: 14, y: 6},
-                {x: 11, y: 6},
-                {x: 11, y: 1},
-                {x: 17, y: 1},
-                {x: 17, y: 7},
-                {x: 20, y: 7},
-                {x: 20, y: 3},
-                {x: 21, y: 3}
+            // Multiple map layouts
+            const MAPS = [
+                // Map 0: Original winding path
+                [
+                    {x: 0, y: 2}, {x: 5, y: 2}, {x: 5, y: 5}, {x: 1, y: 5},
+                    {x: 1, y: 8}, {x: 7, y: 8}, {x: 7, y: 3}, {x: 10, y: 3},
+                    {x: 10, y: 10}, {x: 14, y: 10}, {x: 14, y: 6}, {x: 11, y: 6},
+                    {x: 11, y: 1}, {x: 17, y: 1}, {x: 17, y: 7}, {x: 20, y: 7},
+                    {x: 20, y: 3}, {x: 21, y: 3}
+                ],
+                // Map 1: Spiral inward
+                [
+                    {x: 0, y: 0}, {x: 20, y: 0}, {x: 20, y: 13}, {x: 2, y: 13},
+                    {x: 2, y: 2}, {x: 18, y: 2}, {x: 18, y: 11}, {x: 4, y: 11},
+                    {x: 4, y: 4}, {x: 16, y: 4}, {x: 16, y: 9}, {x: 6, y: 9},
+                    {x: 6, y: 6}, {x: 14, y: 6}, {x: 14, y: 7}, {x: 10, y: 7}
+                ],
+                // Map 2: Zigzag vertical
+                [
+                    {x: 0, y: 7}, {x: 4, y: 7}, {x: 4, y: 1}, {x: 8, y: 1},
+                    {x: 8, y: 13}, {x: 12, y: 13}, {x: 12, y: 1}, {x: 16, y: 1},
+                    {x: 16, y: 13}, {x: 20, y: 13}, {x: 20, y: 7}, {x: 21, y: 7}
+                ]
             ];
+            const waypoints = MAPS[mapIndex];
 
             // Build path tile by tile between waypoints
             for (let w = 0; w < waypoints.length - 1; w++) {
@@ -396,6 +400,10 @@
         let selectedTower, selectedPlacedTower, waveInProgress, gameRunning, paused, gameSpeed;
         let hoverTile, enemiesSpawned, totalEnemiesThisWave;
         let lastFrameTime = 0;
+        let gameTime = 0;
+        let spawnQueue = [];
+        let spawnTimer = 0;
+        let mapIndex = -1;
 
         function init() {
             document.getElementById('startWaveBtn').addEventListener('click', startWave);
@@ -431,6 +439,7 @@
         }
 
         function newGame() {
+            mapIndex = (mapIndex + 1) % 3;
             generateMap();
             gold = 200;
             lives = 20;
@@ -450,6 +459,9 @@
             hoverTile = null;
             enemiesSpawned = 0;
             totalEnemiesThisWave = 0;
+            gameTime = 0;
+            spawnQueue = [];
+            spawnTimer = 0;
             document.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
             document.getElementById('pauseBtn').textContent = 'Pause';
             document.getElementById('pauseBtn').classList.remove('active');
@@ -670,7 +682,7 @@
             waveInProgress = true;
 
             const composition = getWaveComposition(wave);
-            const spawnQueue = [];
+            spawnQueue = [];
 
             for (const group of composition) {
                 for (let i = 0; i < group.count; i++) {
@@ -688,36 +700,7 @@
 
             totalEnemiesThisWave = spawnQueue.length;
             enemiesSpawned = 0;
-
-            const baseHealth = 30 + wave * 12;
-            const baseSpeed = 1.0 + wave * 0.03;
-
-            for (let i = 0; i < spawnQueue.length; i++) {
-                setTimeout(() => {
-                    if (!gameRunning) return;
-                    const type = spawnQueue[i];
-                    const eData = ENEMY_TYPES[type];
-                    const health = Math.round(baseHealth * eData.healthMult);
-                    enemies.push({
-                        pathIndex: 0,
-                        x: PATH[0].x * TILE + TILE / 2,
-                        y: PATH[0].y * TILE + TILE / 2,
-                        health: health,
-                        maxHealth: health,
-                        speed: baseSpeed * eData.speedMult,
-                        color: eData.color,
-                        radius: eData.radius,
-                        type: type,
-                        reward: Math.round((5 + wave) * eData.reward),
-                        slowTimer: 0,
-                        slowAmount: 1,
-                        burnTimer: 0,
-                        burnDamage: 0,
-                        lastBurnTick: 0
-                    });
-                    enemiesSpawned++;
-                }, i * (type === 'boss' ? 800 : 450));
-            }
+            spawnTimer = 0;
 
             updateDisplay();
             updateWavePreview();
@@ -739,14 +722,46 @@
         function update() {
             if (!gameRunning) return;
 
-            const now = Date.now();
+            const TICK = 16;
+            gameTime += TICK;
+
+            // Spawn enemies from queue
+            if (spawnQueue.length > 0) {
+                spawnTimer += TICK;
+                const nextType = spawnQueue[0];
+                const spawnDelay = nextType === 'boss' ? 800 : 450;
+                if (spawnTimer >= spawnDelay) {
+                    spawnTimer -= spawnDelay;
+                    const type = spawnQueue.shift();
+                    const eData = ENEMY_TYPES[type];
+                    const baseHealth = 30 + wave * 12;
+                    const baseSpeed = 1.0 + wave * 0.03;
+                    const health = Math.round(baseHealth * eData.healthMult);
+                    enemies.push({
+                        pathIndex: 0,
+                        x: PATH[0].x * TILE + TILE / 2,
+                        y: PATH[0].y * TILE + TILE / 2,
+                        health, maxHealth: health,
+                        speed: baseSpeed * eData.speedMult,
+                        color: eData.color,
+                        radius: eData.radius,
+                        type: type,
+                        reward: Math.round((5 + wave) * eData.reward),
+                        slowTimer: 0, slowAmount: 1,
+                        burnTimer: 0, burnDamage: 0, lastBurnTick: 0
+                    });
+                    enemiesSpawned++;
+                }
+            }
 
             // Update enemies
             enemies = enemies.filter(enemy => {
+                if (enemy.dead) return false;
+
                 // Burn damage over time
-                if (enemy.burnTimer > now && now - enemy.lastBurnTick >= 500) {
+                if (enemy.burnTimer > gameTime && gameTime - enemy.lastBurnTick >= 500) {
                     enemy.health -= enemy.burnDamage;
-                    enemy.lastBurnTick = now;
+                    enemy.lastBurnTick = gameTime;
                     spawnParticles(enemy.x, enemy.y, '#ff4500', 2);
                     if (enemy.health <= 0) {
                         onEnemyKilled(enemy);
@@ -756,7 +771,7 @@
 
                 // Calculate actual speed with slow effect
                 let speed = enemy.speed;
-                if (enemy.slowTimer > now) {
+                if (enemy.slowTimer > gameTime) {
                     speed *= enemy.slowAmount;
                 }
 
@@ -788,7 +803,7 @@
 
             // Towers fire
             towers.forEach(tower => {
-                if (now - tower.lastFire < tower.rate) return;
+                if (gameTime - tower.lastFire < tower.rate) return;
 
                 // Find closest enemy in range
                 let target = null;
@@ -797,6 +812,7 @@
                 const tcy = tower.y * TILE + TILE / 2;
 
                 for (const enemy of enemies) {
+                    if (enemy.dead) continue;
                     const dx = enemy.x - tcx;
                     const dy = enemy.y - tcy;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -808,16 +824,13 @@
                 }
 
                 if (target) {
-                    tower.lastFire = now;
+                    tower.lastFire = gameTime;
 
                     if (tower.chain) {
-                        // Lightning: instant chain damage
                         handleChainLightning(tower, target, tcx, tcy);
                     } else {
                         projectiles.push({
-                            x: tcx,
-                            y: tcy,
-                            target,
+                            x: tcx, y: tcy, target,
                             damage: tower.damage,
                             slow: tower.slow || 0,
                             slowDuration: tower.slowDuration || 0,
@@ -833,8 +846,7 @@
 
             // Update projectiles
             projectiles = projectiles.filter(proj => {
-                // Check if target still exists
-                if (!enemies.includes(proj.target)) {
+                if (!enemies.includes(proj.target) || proj.target.dead) {
                     return false;
                 }
 
@@ -870,7 +882,7 @@
             });
 
             // Check wave end
-            if (waveInProgress && enemies.length === 0 && enemiesSpawned >= totalEnemiesThisWave) {
+            if (waveInProgress && enemies.length === 0 && spawnQueue.length === 0 && enemiesSpawned >= totalEnemiesThisWave) {
                 waveInProgress = false;
                 const bonus = wave * 15;
                 gold += bonus;
@@ -890,7 +902,7 @@
             if (proj.splash > 0) {
                 spawnParticles(target.x, target.y, '#ff8800', 8);
                 for (const enemy of enemies) {
-                    if (enemy === target) continue;
+                    if (enemy === target || enemy.dead) continue;
                     const dx = enemy.x - target.x;
                     const dy = enemy.y - target.y;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -899,7 +911,8 @@
                         if (splashDmg > 0) {
                             enemy.health -= splashDmg;
                             spawnDamageNumber(enemy.x, enemy.y, splashDmg, '#ff8800');
-                            if (enemy.health <= 0) {
+                            if (enemy.health <= 0 && !enemy.dead) {
+                                enemy.dead = true;
                                 onEnemyKilled(enemy);
                             }
                         }
@@ -909,20 +922,21 @@
 
             // Slow effect
             if (proj.slow > 0) {
-                target.slowTimer = Date.now() + proj.slowDuration;
+                target.slowTimer = gameTime + proj.slowDuration;
                 target.slowAmount = proj.slow;
                 spawnParticles(target.x, target.y, '#00bfff', 3);
             }
 
             // Burn DOT
             if (proj.burn > 0) {
-                target.burnTimer = Date.now() + proj.burnDuration;
+                target.burnTimer = gameTime + proj.burnDuration;
                 target.burnDamage = proj.burn;
-                target.lastBurnTick = Date.now();
+                target.lastBurnTick = gameTime;
             }
 
             // Check kill
-            if (target.health <= 0) {
+            if (target.health <= 0 && !target.dead) {
+                target.dead = true;
                 onEnemyKilled(target);
                 enemies = enemies.filter(e => e !== target);
             }
@@ -938,7 +952,8 @@
             drawLightningBolt(prevX, prevY, firstTarget.x, firstTarget.y);
             firstTarget.health -= tower.damage;
             spawnDamageNumber(firstTarget.x, firstTarget.y, tower.damage, '#ffff00');
-            if (firstTarget.health <= 0) {
+            if (firstTarget.health <= 0 && !firstTarget.dead) {
+                firstTarget.dead = true;
                 onEnemyKilled(firstTarget);
                 enemies = enemies.filter(e => e !== firstTarget);
             }
@@ -967,7 +982,8 @@
                 const chainDmg = Math.round(tower.damage * 0.7);
                 nearest.health -= chainDmg;
                 spawnDamageNumber(nearest.x, nearest.y, chainDmg, '#ffff00');
-                if (nearest.health <= 0) {
+                if (nearest.health <= 0 && !nearest.dead) {
+                    nearest.dead = true;
                     onEnemyKilled(nearest);
                     enemies = enemies.filter(e => e !== nearest);
                 }
@@ -1341,5 +1357,6 @@
 
         init();
     </script>
+    <script src="../js/accounts.js"></script>
 </body>
 </html>
