@@ -98,7 +98,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        const TILE = 20;
+        const TILE = 30;
         const COLS = 21;
         const ROWS = 23;
         
@@ -358,12 +358,12 @@
                     } else if (cell === 2) {
                         ctx.fillStyle = '#ffb8ae';
                         ctx.beginPath();
-                        ctx.arc(px + TILE/2, py + TILE/2, 3, 0, Math.PI * 2);
+                        ctx.arc(px + TILE/2, py + TILE/2, 4, 0, Math.PI * 2);
                         ctx.fill();
                     } else if (cell === 3) {
                         ctx.fillStyle = '#ffb8ae';
                         ctx.beginPath();
-                        ctx.arc(px + TILE/2, py + TILE/2, 8, 0, Math.PI * 2);
+                        ctx.arc(px + TILE/2, py + TILE/2, 10, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
@@ -401,14 +401,14 @@
                 // Eyes
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(gx + TILE/3, gy + TILE/2 - 2, 4, 0, Math.PI * 2);
-                ctx.arc(gx + TILE * 2/3, gy + TILE/2 - 2, 4, 0, Math.PI * 2);
+                ctx.arc(gx + TILE/3, gy + TILE/2 - 2, 5, 0, Math.PI * 2);
+                ctx.arc(gx + TILE * 2/3, gy + TILE/2 - 2, 5, 0, Math.PI * 2);
                 ctx.fill();
-                
+
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.arc(gx + TILE/3 + 1, gy + TILE/2 - 1, 2, 0, Math.PI * 2);
-                ctx.arc(gx + TILE * 2/3 + 1, gy + TILE/2 - 1, 2, 0, Math.PI * 2);
+                ctx.arc(gx + TILE/3 + 1, gy + TILE/2 - 1, 3, 0, Math.PI * 2);
+                ctx.arc(gx + TILE * 2/3 + 1, gy + TILE/2 - 1, 3, 0, Math.PI * 2);
                 ctx.fill();
             });
         }

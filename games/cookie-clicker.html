@@ -1057,22 +1057,32 @@
             { id: 'click100', name: 'Click Master', icon: '✌️', condition: () => totalClicks >= 100 },
             { id: 'click1000', name: 'Click Lord', icon: '🖐️', condition: () => totalClicks >= 1000 },
             { id: 'click10000', name: 'Click God', icon: '👊', condition: () => totalClicks >= 10000 },
+            { id: 'click100000', name: 'Click Deity', icon: '🫵', condition: () => totalClicks >= 100000 },
             { id: 'cookie100', name: 'Baker', icon: '🍪', condition: () => totalCookiesBaked >= 100 },
             { id: 'cookie10000', name: 'Cookie Factory', icon: '🏭', condition: () => totalCookiesBaked >= 10000 },
             { id: 'cookie1m', name: 'Cookie Empire', icon: '👑', condition: () => totalCookiesBaked >= 1000000 },
             { id: 'cookie1b', name: 'Cookie Billionaire', icon: '💰', condition: () => totalCookiesBaked >= 1000000000 },
+            { id: 'cookie1t', name: 'Cookie Trillionaire', icon: '💎', condition: () => totalCookiesBaked >= 1000000000000 },
             { id: 'cps10', name: 'Speed Baker', icon: '⚡', condition: () => cps >= 10 },
             { id: 'cps100', name: 'Turbo Baker', icon: '🚀', condition: () => cps >= 100 },
             { id: 'cps10000', name: 'Hyperspeed', icon: '💫', condition: () => cps >= 10000 },
+            { id: 'cps1m', name: 'Light Speed', icon: '☄️', condition: () => cps >= 1000000 },
             { id: 'golden1', name: 'Lucky', icon: '🍀', condition: () => goldenClicks >= 1 },
             { id: 'golden10', name: 'Very Lucky', icon: '🌟', condition: () => goldenClicks >= 10 },
             { id: 'golden50', name: 'Fortune', icon: '🎰', condition: () => goldenClicks >= 50 },
             { id: 'build10', name: 'Builder', icon: '🔨', condition: () => getTotalBuildings() >= 10 },
             { id: 'build50', name: 'Architect', icon: '🏗️', condition: () => getTotalBuildings() >= 50 },
             { id: 'build100', name: 'Industrialist', icon: '🏛️', condition: () => getTotalBuildings() >= 100 },
+            { id: 'build200', name: 'Mogul', icon: '🌆', condition: () => getTotalBuildings() >= 200 },
             { id: 'prestige1', name: 'Ascended', icon: '✨', condition: () => heavenlyChips >= 1 },
             { id: 'prestige100', name: 'Enlightened', icon: '🌅', condition: () => heavenlyChips >= 100 },
-            { id: 'prestige1000', name: 'Transcendent', icon: '🌌', condition: () => heavenlyChips >= 1000 }
+            { id: 'prestige1000', name: 'Transcendent', icon: '🌌', condition: () => heavenlyChips >= 1000 },
+            { id: 'wrinkler1', name: 'Disgusting', icon: '🐛', condition: () => totalWrinklerCookies >= 1000 },
+            { id: 'wrinkler1m', name: 'Parasitic', icon: '🪱', condition: () => totalWrinklerCookies >= 1000000 },
+            { id: 'sugar1', name: 'Sweet Tooth', icon: '🍬', condition: () => sugarLumps >= 1 },
+            { id: 'sugar10', name: 'Sugar Rush', icon: '🍭', condition: () => sugarLumps >= 10 },
+            { id: 'season1', name: 'Seasonal', icon: '🎄', condition: () => seasonsUnlocked >= 1 },
+            { id: 'allupgrades', name: 'Completionist', icon: '🏅', condition: () => Object.values(purchasedClickUpgrades).every(v => v) && Object.values(purchasedBuildingUpgrades).filter(v => v).length >= 10 }
         ];
 
         const NEWS_MESSAGES = [
@@ -1085,14 +1095,28 @@
             "Cookie mines uncover rare chocolate chip vein!",
             "Space mission returns with extraterrestrial cookies!",
             "Economists: Cookie-based economy most stable ever!",
-            "New study: Clicking increases cookie production!"
+            "New study: Clicking increases cookie production!",
+            "Wrinklers sighted near cookie factory!",
+            "Sugar lump harvest season approaches!",
+            "Portal researchers discover cookie dimension!",
+            "Bank introduces cookie-backed currency!",
+            "Alchemy lab turns lead into chocolate chips!"
         ];
 
         const GOLDEN_EFFECTS = [
             { name: 'Frenzy', desc: 'Cookie production x7 for 77 seconds!', duration: 77000, multiplier: 7 },
             { name: 'Lucky', desc: 'Gained cookies worth 13 seconds of production!', instant: true },
             { name: 'Click Frenzy', desc: 'Clicking power x777 for 13 seconds!', duration: 13000, clickMultiplier: 777 },
-            { name: 'Cookie Storm', desc: 'Cookies are raining!', storm: true }
+            { name: 'Cookie Storm', desc: 'Cookies are raining!', storm: true },
+            { name: 'Building Rush', desc: 'All buildings produce x3 for 30 seconds!', duration: 30000, multiplier: 3 },
+            { name: 'Sweet Windfall', desc: 'Gained a bonus sugar lump!', sugarBonus: true }
+        ];
+
+        const SEASONS = [
+            { id: 'christmas', name: 'Christmas', icon: '🎄', months: [11, 0] },
+            { id: 'valentines', name: "Valentine's", icon: '💝', months: [1] },
+            { id: 'easter', name: 'Easter', icon: '🥚', months: [2, 3] },
+            { id: 'halloween', name: 'Halloween', icon: '🎃', months: [9] }
         ];
 
         // === GAME STATE ===
@@ -1104,6 +1128,7 @@
         let cps = 0;
         let baseCps = 0;
         let owned = {};
+        let buildingLevels = {};
         let purchasedClickUpgrades = {};
         let purchasedBuildingUpgrades = {};
         let unlockedAchievements = {};
@@ -1111,7 +1136,26 @@
         let goldenClicks = 0;
         let buyAmount = 1;
         let soundEnabled = true;
-        
+        let particlesEnabled = true;
+        let wrinklersEnabled = true;
+        let shortNumbers = false;
+
+        // Sugar Lumps
+        let sugarLumps = 0;
+        let sugarLumpGrowStart = Date.now();
+        const SUGAR_LUMP_GROW_TIME = 600000; // 10 minutes to ripen
+
+        // Wrinklers
+        let wrinklers = [];
+        let totalWrinklerCookies = 0;
+        const MAX_WRINKLERS = 5;
+        const WRINKLER_SPAWN_INTERVAL = 120000; // 2 minutes
+
+        // Seasons
+        let currentSeason = null;
+        let seasonsUnlocked = 0;
+        let seasonCookiesCollected = {};
+
         // Active effects
         let frenzyMultiplier = 1;
         let clickFrenzyMultiplier = 1;
@@ -1119,7 +1163,14 @@
         let clickFrenzyTimeout = null;
         let goldenCookieTimeout = null;
 
-        BUILDINGS.forEach(u => owned[u.id] = 0);
+        // Frenzy timers for display
+        let frenzyEndTime = 0;
+        let clickFrenzyEndTime = 0;
+
+        // Audio context reuse
+        let audioCtx = null;
+
+        BUILDINGS.forEach(u => { owned[u.id] = 0; buildingLevels[u.id] = 0; });
         CLICK_UPGRADES.forEach(u => purchasedClickUpgrades[u.id] = false);
         BUILDING_UPGRADES.forEach(u => purchasedBuildingUpgrades[u.id] = false);
         ACHIEVEMENTS.forEach(a => unlockedAchievements[a.id] = false);
@@ -1142,6 +1193,9 @@
         const prestigeBtn = document.getElementById('prestigeBtn');
         const multiplierInfoEl = document.getElementById('multiplierInfo');
         const newsTickerEl = document.getElementById('newsTicker');
+        const milkLayerEl = document.getElementById('milkLayer');
+        const sugarLumpsEl = document.getElementById('sugarLumps');
+        const sugarLumpTimerEl = document.getElementById('sugarLumpTimer');
 
         // === HELPER FUNCTIONS ===
         function getTotalBuildings() {
@@ -1149,11 +1203,31 @@
         }
 
         function formatNumber(n) {
-            if (n >= 1e15) return (n / 1e15).toFixed(2) + ' Qa';
-            if (n >= 1e12) return (n / 1e12).toFixed(2) + ' T';
-            if (n >= 1e9) return (n / 1e9).toFixed(2) + ' B';
-            if (n >= 1e6) return (n / 1e6).toFixed(2) + ' M';
-            if (n >= 1e3) return (n / 1e3).toFixed(2) + ' K';
+            if (shortNumbers) {
+                if (n >= 1e33) return (n / 1e33).toFixed(2) + ' Dc';
+                if (n >= 1e30) return (n / 1e30).toFixed(2) + ' No';
+                if (n >= 1e27) return (n / 1e27).toFixed(2) + ' Oc';
+                if (n >= 1e24) return (n / 1e24).toFixed(2) + ' Sp';
+                if (n >= 1e21) return (n / 1e21).toFixed(2) + ' Sx';
+                if (n >= 1e18) return (n / 1e18).toFixed(2) + ' Qi';
+                if (n >= 1e15) return (n / 1e15).toFixed(2) + ' Qa';
+                if (n >= 1e12) return (n / 1e12).toFixed(2) + ' T';
+                if (n >= 1e9) return (n / 1e9).toFixed(2) + ' B';
+                if (n >= 1e6) return (n / 1e6).toFixed(2) + ' M';
+                if (n >= 1e3) return (n / 1e3).toFixed(2) + ' K';
+            } else {
+                if (n >= 1e33) return (n / 1e33).toFixed(2) + ' decillion';
+                if (n >= 1e30) return (n / 1e30).toFixed(2) + ' nonillion';
+                if (n >= 1e27) return (n / 1e27).toFixed(2) + ' octillion';
+                if (n >= 1e24) return (n / 1e24).toFixed(2) + ' septillion';
+                if (n >= 1e21) return (n / 1e21).toFixed(2) + ' sextillion';
+                if (n >= 1e18) return (n / 1e18).toFixed(2) + ' quintillion';
+                if (n >= 1e15) return (n / 1e15).toFixed(2) + ' quadrillion';
+                if (n >= 1e12) return (n / 1e12).toFixed(2) + ' trillion';
+                if (n >= 1e9) return (n / 1e9).toFixed(2) + ' billion';
+                if (n >= 1e6) return (n / 1e6).toFixed(2) + ' million';
+                if (n >= 1e3) return (n / 1e3).toFixed(2) + ' thousand';
+            }
             return Math.floor(n).toLocaleString();
         }
 
@@ -1182,44 +1256,70 @@
             return Math.floor(Math.pow(totalCookiesBaked / 1e12, 0.5));
         }
 
+        function getAudioContext() {
+            if (!audioCtx || audioCtx.state === 'closed') {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
         function playSound(type) {
             if (!soundEnabled) return;
-            // Web Audio API for simple sounds
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            if (type === 'click') {
-                oscillator.frequency.value = 800;
-                gainNode.gain.value = 0.1;
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.05);
-            } else if (type === 'buy') {
-                oscillator.frequency.value = 600;
-                gainNode.gain.value = 0.1;
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.1);
-            } else if (type === 'golden') {
-                oscillator.frequency.value = 1200;
-                gainNode.gain.value = 0.15;
-                oscillator.start();
-                setTimeout(() => oscillator.frequency.value = 1400, 100);
-                oscillator.stop(audioCtx.currentTime + 0.2);
-            } else if (type === 'achievement') {
-                oscillator.type = 'sine';
-                oscillator.frequency.value = 523;
-                gainNode.gain.value = 0.1;
-                oscillator.start();
-                setTimeout(() => oscillator.frequency.value = 659, 100);
-                setTimeout(() => oscillator.frequency.value = 784, 200);
-                oscillator.stop(audioCtx.currentTime + 0.3);
-            }
+            try {
+                const ctx = getAudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                if (type === 'click') {
+                    oscillator.frequency.value = 800;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    oscillator.stop(ctx.currentTime + 0.05);
+                } else if (type === 'buy') {
+                    oscillator.frequency.value = 600;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    oscillator.stop(ctx.currentTime + 0.1);
+                } else if (type === 'golden') {
+                    oscillator.frequency.value = 1200;
+                    gainNode.gain.value = 0.15;
+                    oscillator.start();
+                    setTimeout(() => { try { oscillator.frequency.value = 1400; } catch(e) {} }, 100);
+                    oscillator.stop(ctx.currentTime + 0.2);
+                } else if (type === 'achievement') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 523;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    setTimeout(() => { try { oscillator.frequency.value = 659; } catch(e) {} }, 100);
+                    setTimeout(() => { try { oscillator.frequency.value = 784; } catch(e) {} }, 200);
+                    oscillator.stop(ctx.currentTime + 0.3);
+                } else if (type === 'wrinkler') {
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.value = 200;
+                    gainNode.gain.value = 0.1;
+                    oscillator.start();
+                    oscillator.stop(ctx.currentTime + 0.15);
+                } else if (type === 'sugar') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = 1000;
+                    gainNode.gain.value = 0.12;
+                    oscillator.start();
+                    setTimeout(() => { try { oscillator.frequency.value = 1200; } catch(e) {} }, 80);
+                    setTimeout(() => { try { oscillator.frequency.value = 1500; } catch(e) {} }, 160);
+                    oscillator.stop(ctx.currentTime + 0.25);
+                }
+            } catch(e) {}
         }
 
         // === CLICK EFFECTS ===
         function createClickEffect(x, y) {
+            if (!particlesEnabled) return;
             const amount = clickPower * clickFrenzyMultiplier;
             const effect = document.createElement('div');
             effect.className = 'click-effect';
@@ -1228,7 +1328,7 @@
             effect.style.top = (y - 10) + 'px';
             document.body.appendChild(effect);
             setTimeout(() => effect.remove(), 1000);
-            
+
             // Create cookie crumbs
             for (let i = 0; i < 3; i++) {
                 setTimeout(() => {
@@ -1244,65 +1344,242 @@
             }
         }
 
+        // === SUGAR LUMPS ===
+        function getSugarLumpProgress() {
+            const elapsed = Date.now() - sugarLumpGrowStart;
+            return Math.min(1, elapsed / SUGAR_LUMP_GROW_TIME);
+        }
+
+        function isSugarLumpRipe() {
+            return getSugarLumpProgress() >= 1;
+        }
+
+        function harvestSugarLump() {
+            if (!isSugarLumpRipe()) return;
+            sugarLumps++;
+            sugarLumpGrowStart = Date.now();
+            playSound('sugar');
+
+            // Show harvest effect
+            const display = document.getElementById('sugarLumpDisplay');
+            const rect = display.getBoundingClientRect();
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            effect.textContent = '+1 Sugar Lump!';
+            effect.style.left = rect.left + 'px';
+            effect.style.top = (rect.top - 20) + 'px';
+            effect.style.color = '#e91e63';
+            document.body.appendChild(effect);
+            setTimeout(() => effect.remove(), 1000);
+
+            checkAchievements();
+            saveGame();
+        }
+
+        function updateSugarLumpDisplay() {
+            sugarLumpsEl.textContent = sugarLumps;
+            const progress = getSugarLumpProgress();
+            const display = document.getElementById('sugarLumpDisplay');
+
+            if (isSugarLumpRipe()) {
+                sugarLumpTimerEl.textContent = '(Ripe! Click to harvest!)';
+                sugarLumpTimerEl.style.color = '#e91e63';
+                display.style.animation = 'cookie-pulse 1s ease-in-out infinite';
+                display.style.borderColor = '#e91e63';
+            } else {
+                const remaining = Math.ceil((SUGAR_LUMP_GROW_TIME - (Date.now() - sugarLumpGrowStart)) / 1000);
+                const min = Math.floor(remaining / 60);
+                const sec = remaining % 60;
+                sugarLumpTimerEl.textContent = `(${min}:${sec.toString().padStart(2, '0')})`;
+                sugarLumpTimerEl.style.color = '#888';
+                display.style.animation = 'none';
+                display.style.borderColor = 'rgba(233, 30, 99, 0.3)';
+            }
+        }
+
+        function useSugarLump(buildingId) {
+            if (sugarLumps < 1) return;
+            sugarLumps--;
+            buildingLevels[buildingId] = (buildingLevels[buildingId] || 0) + 1;
+            playSound('buy');
+            recalculateCPS();
+            renderBuildings();
+            updateDisplay();
+            saveGame();
+        }
+
+        // === WRINKLERS ===
+        function spawnWrinkler() {
+            if (!wrinklersEnabled) return;
+            if (wrinklers.length >= MAX_WRINKLERS) return;
+            if (cps <= 0) return;
+
+            const wrapper = document.getElementById('cookieWrapper');
+            const wrapperRect = wrapper.getBoundingClientRect();
+
+            const angle = (wrinklers.length / MAX_WRINKLERS) * Math.PI * 2 + Math.random() * 0.5;
+            const radius = 80;
+
+            const wrinklerEl = document.createElement('div');
+            wrinklerEl.className = 'wrinkler';
+            wrinklerEl.textContent = '🐛';
+            wrinklerEl.style.position = 'absolute';
+            wrinklerEl.style.left = (50 + Math.cos(angle) * radius) + '%';
+            wrinklerEl.style.top = (50 + Math.sin(angle) * radius) + '%';
+            wrinklerEl.style.transform = 'translate(-50%, -50%)';
+
+            const wrinklerData = {
+                el: wrinklerEl,
+                cookiesSucked: 0,
+                spawnTime: Date.now()
+            };
+
+            wrinklerEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                popWrinkler(wrinklerData);
+            });
+
+            wrapper.appendChild(wrinklerEl);
+            wrinklers.push(wrinklerData);
+        }
+
+        function popWrinkler(wrinklerData) {
+            const returnAmount = wrinklerData.cookiesSucked * 1.1;
+            cookies += returnAmount;
+            totalCookiesBaked += returnAmount;
+            totalWrinklerCookies += returnAmount;
+
+            playSound('wrinkler');
+
+            // Pop effect
+            const rect = wrinklerData.el.getBoundingClientRect();
+            const popup = document.createElement('div');
+            popup.className = 'wrinkler-pop';
+            popup.textContent = '+' + formatNumber(returnAmount);
+            popup.style.left = rect.left + 'px';
+            popup.style.top = rect.top + 'px';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1500);
+
+            wrinklerData.el.remove();
+            wrinklers = wrinklers.filter(w => w !== wrinklerData);
+
+            checkAchievements();
+            updateDisplay();
+            saveGame();
+        }
+
+        function updateWrinklers() {
+            if (!wrinklersEnabled || cps <= 0) return;
+            const suckRate = (cps * frenzyMultiplier) / 20;
+            wrinklers.forEach(w => {
+                w.cookiesSucked += suckRate / 10;
+            });
+        }
+
+        function getWrinklerDrain() {
+            if (!wrinklersEnabled) return 0;
+            return wrinklers.length * 0.05;
+        }
+
+        // === SEASONS ===
+        function detectSeason() {
+            const month = new Date().getMonth();
+            const season = SEASONS.find(s => s.months.includes(month));
+            if (season && season.id !== (currentSeason && currentSeason.id)) {
+                currentSeason = season;
+                seasonsUnlocked++;
+                updateSeasonDisplay();
+                checkAchievements();
+            } else if (!season) {
+                currentSeason = null;
+                updateSeasonDisplay();
+            }
+        }
+
+        function updateSeasonDisplay() {
+            const indicator = document.getElementById('seasonIndicator');
+            if (currentSeason) {
+                indicator.style.display = 'flex';
+                document.getElementById('seasonIcon').textContent = currentSeason.icon;
+                document.getElementById('seasonName').textContent = currentSeason.name;
+            } else {
+                indicator.style.display = 'none';
+            }
+        }
+
+        function getSeasonMultiplier() {
+            if (!currentSeason) return 1;
+            return 1.05;
+        }
+
         // === GOLDEN COOKIE ===
         function spawnGoldenCookie() {
             if (document.querySelector('.golden-cookie')) return;
-            
+
             const golden = document.createElement('div');
             golden.className = 'golden-cookie';
             golden.textContent = '🌟';
             golden.style.left = (100 + Math.random() * (window.innerWidth - 200)) + 'px';
             golden.style.top = (100 + Math.random() * (window.innerHeight - 200)) + 'px';
-            
+
             golden.addEventListener('click', () => {
                 goldenClicks++;
                 playSound('golden');
                 triggerGoldenEffect();
                 golden.remove();
             });
-            
+
             document.body.appendChild(golden);
-            
+
             // Auto-remove after 13 seconds
             setTimeout(() => golden.remove(), 13000);
         }
 
         function triggerGoldenEffect() {
             const effect = GOLDEN_EFFECTS[Math.floor(Math.random() * GOLDEN_EFFECTS.length)];
-            
+
             // Show effect announcement
             const announce = document.createElement('div');
             announce.className = 'golden-effect';
             announce.innerHTML = `<div style="font-size: 3rem">🌟</div>${effect.name}<br><small>${effect.desc}</small>`;
             document.body.appendChild(announce);
             setTimeout(() => announce.remove(), 2000);
-            
+
             if (effect.multiplier) {
                 clearTimeout(frenzyTimeout);
                 frenzyMultiplier = effect.multiplier;
+                frenzyEndTime = Date.now() + effect.duration;
                 document.body.classList.add('frenzy-active');
                 frenzyTimeout = setTimeout(() => {
                     frenzyMultiplier = 1;
+                    frenzyEndTime = 0;
                     document.body.classList.remove('frenzy-active');
                     updateDisplay();
                 }, effect.duration);
             }
-            
+
             if (effect.clickMultiplier) {
                 clearTimeout(clickFrenzyTimeout);
                 clickFrenzyMultiplier = effect.clickMultiplier;
+                clickFrenzyEndTime = Date.now() + effect.duration;
                 clickFrenzyTimeout = setTimeout(() => {
                     clickFrenzyMultiplier = 1;
+                    clickFrenzyEndTime = 0;
                     updateDisplay();
                 }, effect.duration);
             }
-            
+
             if (effect.instant) {
                 const bonus = Math.max(cps * 13, cookies * 0.15);
                 cookies += bonus;
                 totalCookiesBaked += bonus;
             }
-            
+
+            if (effect.sugarBonus) {
+                sugarLumps++;
+            }
+
             if (effect.storm) {
                 // Cookie storm - spawn clickable cookies
                 for (let i = 0; i < 20; i++) {
@@ -1326,7 +1603,7 @@
                     }, i * 200);
                 }
             }
-            
+
             updateDisplay();
             saveGame();
         }
@@ -1351,14 +1628,15 @@
         function unlockAchievement(achievement) {
             unlockedAchievements[achievement.id] = true;
             playSound('achievement');
-            
+
             // Show popup
             const popup = document.createElement('div');
             popup.className = 'achievement-popup';
             popup.innerHTML = `🏆 Achievement Unlocked!<br><span style="font-size: 1.5rem">${achievement.icon}</span> ${achievement.name}`;
             document.body.appendChild(popup);
             setTimeout(() => popup.remove(), 3000);
-            
+
+            updateMilkLayer();
             renderAchievements();
             saveGame();
         }
@@ -1367,7 +1645,7 @@
             achievementsEl.innerHTML = '';
             const unlocked = Object.values(unlockedAchievements).filter(v => v).length;
             document.getElementById('achievementCount').textContent = `(${unlocked}/${ACHIEVEMENTS.length})`;
-            
+
             ACHIEVEMENTS.forEach(a => {
                 const div = document.createElement('div');
                 div.className = 'achievement' + (unlockedAchievements[a.id] ? ' unlocked' : '');
@@ -1375,6 +1653,27 @@
                 div.setAttribute('data-name', a.name);
                 achievementsEl.appendChild(div);
             });
+        }
+
+        // === MILK LAYER ===
+        function updateMilkLayer() {
+            const unlocked = Object.values(unlockedAchievements).filter(v => v).length;
+            const milkPercent = Math.min(50, (unlocked / ACHIEVEMENTS.length) * 60);
+            milkLayerEl.style.height = milkPercent + '%';
+
+            // Change milk color based on achievement count
+            if (unlocked >= 20) {
+                milkLayerEl.style.background = 'linear-gradient(to top, rgba(255, 182, 193, 0.4), transparent)';
+            } else if (unlocked >= 10) {
+                milkLayerEl.style.background = 'linear-gradient(to top, rgba(200, 230, 255, 0.4), transparent)';
+            } else {
+                milkLayerEl.style.background = 'linear-gradient(to top, rgba(255, 255, 255, 0.3), transparent)';
+            }
+        }
+
+        function getMilkMultiplier() {
+            const unlocked = Object.values(unlockedAchievements).filter(v => v).length;
+            return 1 + (unlocked * 0.01);
         }
 
         // === UPGRADES & BUILDINGS ===
@@ -1437,28 +1736,47 @@
 
         function renderBuildings() {
             upgradesEl.innerHTML = '';
-            
+
             BUILDINGS.forEach(b => {
                 const amount = buyAmount === 'max' ? getMaxAffordable(b) : buyAmount;
                 const cost = getCost(b, amount || 1);
                 const canAfford = cookies >= cost && amount > 0;
-                const production = b.cps * owned[b.id] * frenzyMultiplier * (1 + heavenlyChips * 0.01);
-                
+
+                let bMultiplier = 1;
+                BUILDING_UPGRADES.forEach(bu => {
+                    if (bu.building === b.id && purchasedBuildingUpgrades[bu.id]) bMultiplier *= 2;
+                });
+                const level = buildingLevels[b.id] || 0;
+                bMultiplier *= (1 + level * 0.1);
+                const production = b.cps * owned[b.id] * bMultiplier * frenzyMultiplier * (1 + heavenlyChips * 0.01) * getMilkMultiplier() * getSeasonMultiplier();
+
                 const div = document.createElement('div');
                 div.className = 'upgrade' + (!canAfford ? ' locked' : ' affordable');
+
+                const levelStr = level > 0 ? ` <span style="color: #e91e63; font-size: 0.7rem;">Lv.${level}</span>` : '';
+                const sugarBtn = sugarLumps > 0 ?
+                    `<div class="sugar-level-btn" data-building="${b.id}" title="Use 1 Sugar Lump to level up (+10% production)">🍬+</div>` : '';
+
                 div.innerHTML = `
                     <div class="upgrade-icon">${b.icon}</div>
                     <div class="upgrade-info">
-                        <div class="upgrade-name">${b.name}</div>
+                        <div class="upgrade-name">${b.name}${levelStr}</div>
                         <div class="upgrade-cost">🍪 ${formatNumber(cost)} ${amount > 1 ? `(x${amount})` : ''}</div>
-                        <div class="upgrade-desc">${b.desc} (+${b.cps}/s each)</div>
+                        <div class="upgrade-desc">${b.desc} (+${formatNumber(b.cps * bMultiplier)}/s each)</div>
                     </div>
                     <div class="upgrade-right">
-                        <div class="upgrade-owned">${owned[b.id]}</div>
+                        <div class="upgrade-owned">${owned[b.id]}${sugarBtn}</div>
                         <div class="upgrade-production">${formatNumber(production)}/s</div>
                     </div>
                 `;
-                div.addEventListener('click', () => buyBuilding(b, amount || 1));
+                div.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('sugar-level-btn')) {
+                        e.stopPropagation();
+                        useSugarLump(e.target.dataset.building);
+                        return;
+                    }
+                    buyBuilding(b, amount || 1);
+                });
                 upgradesEl.appendChild(div);
             });
         }
@@ -1471,6 +1789,7 @@
                 playSound('buy');
                 recalculateCPS();
                 renderBuildings();
+                renderBuildingUpgrades();
                 updateDisplay();
                 checkAchievements();
                 saveGame();
@@ -1486,6 +1805,7 @@
                 playSound('buy');
                 renderClickUpgrades();
                 updateDisplay();
+                checkAchievements();
                 saveGame();
             }
         }
@@ -1499,32 +1819,40 @@
                         multiplier *= 2;
                     }
                 });
+                const level = buildingLevels[b.id] || 0;
+                multiplier *= (1 + level * 0.1);
                 baseCps += b.cps * owned[b.id] * multiplier;
             });
-            // Apply heavenly chip bonus
-            cps = baseCps * (1 + heavenlyChips * 0.01);
+            // Apply heavenly chip bonus + milk + season
+            cps = baseCps * (1 + heavenlyChips * 0.01) * getMilkMultiplier() * getSeasonMultiplier();
         }
 
         // === PRESTIGE ===
         function prestige() {
             const gain = calculatePrestigeGain();
             if (gain < 1) return;
-            
-            if (confirm(`Ascend and gain ${gain} heavenly chips?\nThis will reset your cookies and buildings but you keep achievements and gain permanent bonuses!`)) {
+
+            if (confirm(`Ascend and gain ${formatNumber(gain)} heavenly chips?\nThis will reset your cookies and buildings but you keep achievements, sugar lumps, and gain permanent bonuses!`)) {
                 heavenlyChips += gain;
-                
+
                 // Reset progress
                 cookies = 0;
                 totalCookiesBaked = 0;
                 totalClicks = 0;
                 baseClickPower = 1;
                 clickPower = 1;
-                BUILDINGS.forEach(b => owned[b.id] = 0);
+                BUILDINGS.forEach(b => { owned[b.id] = 0; buildingLevels[b.id] = 0; });
                 CLICK_UPGRADES.forEach(u => purchasedClickUpgrades[u.id] = false);
                 BUILDING_UPGRADES.forEach(u => purchasedBuildingUpgrades[u.id] = false);
                 frenzyMultiplier = 1;
                 clickFrenzyMultiplier = 1;
-                
+                frenzyEndTime = 0;
+                clickFrenzyEndTime = 0;
+
+                // Remove wrinklers
+                wrinklers.forEach(w => w.el.remove());
+                wrinklers = [];
+
                 recalculateCPS();
                 renderBuildings();
                 renderClickUpgrades();
@@ -1537,7 +1865,8 @@
 
         // === DISPLAY ===
         function updateDisplay() {
-            const effectiveCps = cps * frenzyMultiplier;
+            const wrinklerDrain = getWrinklerDrain();
+            const effectiveCps = cps * frenzyMultiplier * (1 - wrinklerDrain);
             cookiesEl.textContent = formatNumber(Math.floor(cookies));
             cpsEl.textContent = formatNumber(effectiveCps.toFixed(1));
             totalClicksEl.textContent = formatNumber(totalClicks);
@@ -1546,17 +1875,17 @@
             goldenClicksEl.textContent = formatNumber(goldenClicks);
             heavenlyChipsEl.textContent = formatNumber(heavenlyChips);
             heavenlyBonusEl.textContent = heavenlyChips;
-            
+
             // Update extra stats
             const buildingsOwnedEl = document.getElementById('buildingsOwned');
             if (buildingsOwnedEl) buildingsOwnedEl.textContent = getTotalBuildings();
             const wrinklersCookiesEl = document.getElementById('wrinklersCookies');
-            if (wrinklersCookiesEl) wrinklersCookiesEl.textContent = '0';
-            
+            if (wrinklersCookiesEl) wrinklersCookiesEl.textContent = formatNumber(Math.floor(totalWrinklerCookies));
+
             const prestigeGain = calculatePrestigeGain();
             prestigeGainEl.textContent = formatNumber(prestigeGain);
             prestigeBtn.disabled = prestigeGain < 1;
-            
+
             // Progress to next prestige level
             const currentLevel = Math.floor(Math.pow(totalCookiesBaked / 1e12, 0.5));
             const nextLevel = currentLevel + 1;
@@ -1564,13 +1893,25 @@
             const nextThreshold = Math.pow(nextLevel, 2) * 1e12;
             const progress = ((totalCookiesBaked - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
             prestigeProgressEl.style.width = Math.min(100, Math.max(0, progress)) + '%';
-            
-            // Multiplier info
+
+            // Multiplier info with timers
             let multiplierText = '';
-            if (frenzyMultiplier > 1) multiplierText += `🔥 Frenzy x${frenzyMultiplier} `;
-            if (clickFrenzyMultiplier > 1) multiplierText += `⚡ Click x${clickFrenzyMultiplier}`;
+            if (frenzyMultiplier > 1) {
+                const remaining = Math.max(0, Math.ceil((frenzyEndTime - Date.now()) / 1000));
+                multiplierText += `🔥 Frenzy x${frenzyMultiplier} (${remaining}s) `;
+            }
+            if (clickFrenzyMultiplier > 1) {
+                const remaining = Math.max(0, Math.ceil((clickFrenzyEndTime - Date.now()) / 1000));
+                multiplierText += `⚡ Click x${clickFrenzyMultiplier} (${remaining}s)`;
+            }
+            if (wrinklers.length > 0) {
+                multiplierText += ` 🐛 ${wrinklers.length} Wrinkler${wrinklers.length > 1 ? 's' : ''}`;
+            }
             multiplierInfoEl.textContent = multiplierText;
-            
+
+            // Update sugar lumps
+            updateSugarLumpDisplay();
+
             // Update building affordability
             document.querySelectorAll('.upgrade').forEach((el, i) => {
                 if (BUILDINGS[i]) {
@@ -1585,7 +1926,7 @@
                     }
                 }
             });
-            
+
             // Update click upgrade affordability
             document.querySelectorAll('.click-upgrade').forEach((el, i) => {
                 if (CLICK_UPGRADES[i] && !purchasedClickUpgrades[CLICK_UPGRADES[i].id]) {
@@ -1602,7 +1943,10 @@
         function saveGame() {
             const save = {
                 cookies, totalClicks, totalCookiesBaked, baseClickPower, clickPower,
-                owned, purchasedClickUpgrades, purchasedBuildingUpgrades, unlockedAchievements, heavenlyChips, goldenClicks,
+                owned, buildingLevels, purchasedClickUpgrades, purchasedBuildingUpgrades,
+                unlockedAchievements, heavenlyChips, goldenClicks,
+                sugarLumps, sugarLumpGrowStart, totalWrinklerCookies, seasonsUnlocked,
+                soundEnabled, particlesEnabled, wrinklersEnabled, shortNumbers,
                 lastSave: Date.now()
             };
             localStorage.setItem('cookieClicker2', JSON.stringify(save));
@@ -1618,13 +1962,27 @@
                 baseClickPower = data.baseClickPower || 1;
                 clickPower = data.clickPower || 1;
                 owned = data.owned || {};
+                buildingLevels = data.buildingLevels || {};
                 purchasedClickUpgrades = data.purchasedClickUpgrades || {};
                 purchasedBuildingUpgrades = data.purchasedBuildingUpgrades || {};
                 unlockedAchievements = data.unlockedAchievements || {};
                 heavenlyChips = data.heavenlyChips || 0;
                 goldenClicks = data.goldenClicks || 0;
-                
-                BUILDINGS.forEach(b => { if (owned[b.id] === undefined) owned[b.id] = 0; });
+                sugarLumps = data.sugarLumps || 0;
+                sugarLumpGrowStart = data.sugarLumpGrowStart || Date.now();
+                totalWrinklerCookies = data.totalWrinklerCookies || 0;
+                seasonsUnlocked = data.seasonsUnlocked || 0;
+
+                // Load settings
+                if (data.soundEnabled !== undefined) soundEnabled = data.soundEnabled;
+                if (data.particlesEnabled !== undefined) particlesEnabled = data.particlesEnabled;
+                if (data.wrinklersEnabled !== undefined) wrinklersEnabled = data.wrinklersEnabled;
+                if (data.shortNumbers !== undefined) shortNumbers = data.shortNumbers;
+
+                BUILDINGS.forEach(b => {
+                    if (owned[b.id] === undefined) owned[b.id] = 0;
+                    if (buildingLevels[b.id] === undefined) buildingLevels[b.id] = 0;
+                });
                 CLICK_UPGRADES.forEach(u => { if (purchasedClickUpgrades[u.id] === undefined) purchasedClickUpgrades[u.id] = false; });
                 BUILDING_UPGRADES.forEach(u => { if (purchasedBuildingUpgrades[u.id] === undefined) purchasedBuildingUpgrades[u.id] = false; });
                 ACHIEVEMENTS.forEach(a => { if (unlockedAchievements[a.id] === undefined) unlockedAchievements[a.id] = false; });
@@ -1635,9 +1993,21 @@
                 if (data.lastSave) {
                     const elapsed = (Date.now() - data.lastSave) / 1000;
                     const offlineGain = cps * elapsed * 0.5; // 50% efficiency offline
-                    if (offlineGain > 0) {
+                    if (offlineGain > 0 && elapsed > 60) {
                         cookies += offlineGain;
                         totalCookiesBaked += offlineGain;
+
+                        // Show offline progress popup
+                        setTimeout(() => {
+                            const timeStr = elapsed >= 3600 ?
+                                `${Math.floor(elapsed/3600)}h ${Math.floor((elapsed%3600)/60)}m` :
+                                `${Math.floor(elapsed/60)}m`;
+                            const popup = document.createElement('div');
+                            popup.className = 'golden-effect';
+                            popup.innerHTML = `<div style="font-size: 2rem">🌙</div>Welcome back!<br><small>You earned ${formatNumber(offlineGain)} cookies while away (${timeStr})</small>`;
+                            document.body.appendChild(popup);
+                            setTimeout(() => popup.remove(), 3000);
+                        }, 500);
                     }
                 }
             }
@@ -1652,7 +2022,14 @@
 
         // === NEWS TICKER ===
         function updateNews() {
-            newsTickerEl.textContent = NEWS_MESSAGES[Math.floor(Math.random() * NEWS_MESSAGES.length)];
+            // Add contextual news based on game state
+            const contextNews = [...NEWS_MESSAGES];
+            if (wrinklers.length > 0) contextNews.push(`${wrinklers.length} wrinkler${wrinklers.length > 1 ? 's' : ''} spotted near your cookie!`);
+            if (sugarLumps > 5) contextNews.push("Sugar lump surplus reported in the cookie district!");
+            if (heavenlyChips > 0) contextNews.push(`Your ${formatNumber(heavenlyChips)} heavenly chips shine bright!`);
+            if (currentSeason) contextNews.push(`Happy ${currentSeason.name}! Enjoy the ${Math.round((getSeasonMultiplier()-1)*100)}% seasonal bonus!`);
+            if (getTotalBuildings() > 100) contextNews.push("Your cookie empire spans the known universe!");
+            newsTickerEl.textContent = contextNews[Math.floor(Math.random() * contextNews.length)];
         }
 
         // === UI HELPERS ===
@@ -1661,25 +2038,78 @@
         }
 
         function openSettings() {
+            // Sync toggle states
+            document.getElementById('soundToggle').classList.toggle('active', soundEnabled);
+            document.getElementById('particlesToggle').classList.toggle('active', particlesEnabled);
+            document.getElementById('wrinklersToggle').classList.toggle('active', wrinklersEnabled);
+            document.getElementById('shortNumbersToggle').classList.toggle('active', shortNumbers);
             document.getElementById('settingsModal').classList.add('active');
         }
 
         function closeSettings() {
             document.getElementById('settingsModal').classList.remove('active');
+            saveGame();
+        }
+
+        // === BACKGROUND PARTICLES ===
+        function spawnBackgroundParticle() {
+            if (!particlesEnabled) return;
+            const particle = document.createElement('div');
+            particle.style.cssText = `
+                position: fixed;
+                pointer-events: none;
+                font-size: ${0.5 + Math.random() * 1}rem;
+                opacity: 0.15;
+                z-index: 0;
+                left: ${Math.random() * 100}vw;
+                top: 100vh;
+                animation: bg-float ${8 + Math.random() * 12}s linear forwards;
+            `;
+            particle.textContent = ['🍪', '✨', '⭐'][Math.floor(Math.random() * 3)];
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 20000);
         }
 
         // === GAME LOOP ===
         function tick() {
-            const gain = (cps * frenzyMultiplier) / 10;
+            const wrinklerDrain = getWrinklerDrain();
+            const gain = (cps * frenzyMultiplier * (1 - wrinklerDrain)) / 10;
             cookies += gain;
             totalCookiesBaked += gain;
+            updateWrinklers();
             updateDisplay();
         }
 
         // === INITIALIZATION ===
         function init() {
             loadGame();
-            
+
+            // Add background particle animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes bg-float {
+                    0% { transform: translateY(0) rotate(0deg); opacity: 0.15; }
+                    100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+                }
+                .sugar-level-btn {
+                    display: inline-block;
+                    font-size: 0.7rem;
+                    background: rgba(233, 30, 99, 0.2);
+                    border: 1px solid rgba(233, 30, 99, 0.4);
+                    border-radius: 5px;
+                    padding: 2px 5px;
+                    cursor: pointer;
+                    margin-left: 5px;
+                    vertical-align: middle;
+                    transition: all 0.2s;
+                }
+                .sugar-level-btn:hover {
+                    background: rgba(233, 30, 99, 0.4);
+                    transform: scale(1.1);
+                }
+            `;
+            document.head.appendChild(style);
+
             // Cookie click
             cookieEl.addEventListener('click', (e) => {
                 const gain = clickPower * clickFrenzyMultiplier;
@@ -1690,9 +2120,11 @@
                 createClickEffect(e.clientX, e.clientY);
                 updateDisplay();
                 checkAchievements();
-                saveGame();
             });
-            
+
+            // Sugar lump click
+            document.getElementById('sugarLumpDisplay').addEventListener('click', harvestSugarLump);
+
             // Buy amount toggle
             document.querySelectorAll('.buy-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -1702,12 +2134,14 @@
                     renderBuildings();
                 });
             });
-            
+
             // Buttons
             document.getElementById('resetBtn').addEventListener('click', resetGame);
             document.getElementById('saveBtn').addEventListener('click', () => {
                 saveGame();
-                alert('Game saved!');
+                const btn = document.getElementById('saveBtn');
+                btn.textContent = '✓ Saved!';
+                setTimeout(() => btn.textContent = '💾 Save', 1500);
             });
             document.getElementById('fullscreenBtn').addEventListener('click', () => {
                 if (!document.fullscreenElement) {
@@ -1719,17 +2153,22 @@
             document.getElementById('soundBtn').addEventListener('click', () => {
                 soundEnabled = !soundEnabled;
                 document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+                saveGame();
             });
             prestigeBtn.addEventListener('click', prestige);
-            
+
             // Settings button
             document.getElementById('settingsBtn').addEventListener('click', openSettings);
-            
+
             // Export / Import
             document.getElementById('exportBtn').addEventListener('click', () => {
                 const save = localStorage.getItem('cookieClicker2');
                 if (save) {
-                    navigator.clipboard.writeText(btoa(save)).then(() => alert('Save copied to clipboard!'));
+                    navigator.clipboard.writeText(btoa(save)).then(() => {
+                        const btn = document.getElementById('exportBtn');
+                        btn.textContent = '✓ Copied!';
+                        setTimeout(() => btn.textContent = '📤 Export', 1500);
+                    });
                 }
             });
             document.getElementById('importBtn').addEventListener('click', () => {
@@ -1745,8 +2184,8 @@
                     }
                 }
             });
-            
-            // Settings toggles
+
+            // Settings toggles (functional)
             document.getElementById('soundToggle').addEventListener('click', function() {
                 this.classList.toggle('active');
                 soundEnabled = this.classList.contains('active');
@@ -1754,14 +2193,23 @@
             });
             document.getElementById('particlesToggle').addEventListener('click', function() {
                 this.classList.toggle('active');
+                particlesEnabled = this.classList.contains('active');
             });
             document.getElementById('wrinklersToggle').addEventListener('click', function() {
                 this.classList.toggle('active');
+                wrinklersEnabled = this.classList.contains('active');
+                if (!wrinklersEnabled) {
+                    // Pop all wrinklers when disabled
+                    [...wrinklers].forEach(w => popWrinkler(w));
+                }
             });
             document.getElementById('shortNumbersToggle').addEventListener('click', function() {
                 this.classList.toggle('active');
+                shortNumbers = this.classList.contains('active');
+                renderBuildings();
+                updateDisplay();
             });
-            
+
             // Tab switching
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -1772,7 +2220,7 @@
                     document.getElementById('upgradesTab').style.display = tab === 'upgrades' ? '' : 'none';
                 });
             });
-            
+
             // Mobile navigation
             document.querySelectorAll('.mobile-nav-item').forEach(item => {
                 item.addEventListener('click', () => {
@@ -1793,25 +2241,56 @@
                     }
                 });
             });
-            
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                if (e.key === 's' || e.key === 'S') { saveGame(); }
+                if (e.key === '1') document.querySelector('.buy-btn[data-amount="1"]')?.click();
+                if (e.key === '2') document.querySelector('.buy-btn[data-amount="10"]')?.click();
+                if (e.key === '3') document.querySelector('.buy-btn[data-amount="100"]')?.click();
+                if (e.key === '4') document.querySelector('.buy-btn[data-amount="max"]')?.click();
+            });
+
+            // Detect season
+            detectSeason();
+
             // Initial render
             renderBuildings();
             renderClickUpgrades();
             renderBuildingUpgrades();
             renderAchievements();
+            updateMilkLayer();
             updateDisplay();
-            
+
+            // Sync settings UI
+            document.getElementById('soundBtn').textContent = soundEnabled ? '🔊' : '🔇';
+
             // Game loops
             setInterval(tick, 100);
-            setInterval(saveGame, 30000); // Auto-save every 30 seconds
+            setInterval(saveGame, 30000);
             setInterval(updateNews, 15000);
             setInterval(checkAchievements, 1000);
-            
+            setInterval(() => spawnBackgroundParticle(), 3000);
+
+            // Wrinkler spawning
+            setInterval(() => {
+                if (wrinklersEnabled && Math.random() < 0.3) {
+                    spawnWrinkler();
+                }
+            }, WRINKLER_SPAWN_INTERVAL);
+
+            // Season check
+            setInterval(detectSeason, 60000);
+
             // Golden cookies
             scheduleGoldenCookie();
-            
+
             // Spawn first golden cookie after 30 seconds
             setTimeout(spawnGoldenCookie, 30000);
+
+            // Spawn first wrinkler after 2 minutes
+            setTimeout(() => { if (wrinklersEnabled) spawnWrinkler(); }, WRINKLER_SPAWN_INTERVAL);
         }
 
         init();
