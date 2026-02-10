@@ -568,10 +568,56 @@ const AccountSystem = {
                 </div>
             </div>
             ${highScoresHtml}
+            ${(user.highScores && Object.keys(user.highScores).length > 1) ? '<div style="margin-top:20px;"><canvas id="statsChart" width="400" height="200"></canvas></div>' : ''}
             <div class="account-form" style="margin-top: 20px;">
                 <button class="secondary-btn" onclick="AccountSystem.logout(); AccountSystem.renderContent();">Logout</button>
             </div>
         `;
+
+        // Initialize Chart.js stats visualization if available
+        if (typeof Chart !== 'undefined' && user.highScores && Object.keys(user.highScores).length > 1) {
+            const ctx = document.getElementById('statsChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(user.highScores).map(name =>
+                            name.length > 10 ? name.substring(0, 10) + '...' : name
+                        ),
+                        datasets: [{
+                            label: 'High Scores',
+                            data: Object.values(user.highScores).map(s => s.score),
+                            backgroundColor: 'rgba(0, 217, 255, 0.5)',
+                            borderColor: '#00d9ff',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            title: {
+                                display: true,
+                                text: 'High Scores by Game',
+                                color: '#00d9ff',
+                                font: { size: 14 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#a0a0a0', font: { size: 10 } },
+                                grid: { color: 'rgba(255,255,255,0.05)' }
+                            },
+                            y: {
+                                ticks: { color: '#a0a0a0' },
+                                grid: { color: 'rgba(255,255,255,0.05)' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
     }
 };
 

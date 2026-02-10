@@ -4,354 +4,482 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Hub - Play Classic Games Online</title>
+    <meta name="description" content="Play 56 free browser games - Snake, Chess, Tetris, 2048, and more. No downloads, no ads.">
+    <meta name="theme-color" content="#00d9ff">
+    <meta property="og:title" content="Game Hub - 56 Free Browser Games">
+    <meta property="og:description" content="Play classic games online. Pure HTML5, no downloads required.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/icons/icon-512.png">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- AOS - Animate on Scroll -->
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet">
+
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Particles Background -->
+    <div id="particles-js"></div>
+
     <div class="container">
         <header>
             <h1>🎮 Game Hub</h1>
             <p>Choose a game and start playing!</p>
         </header>
-        
+
+        <!-- Search & Category Filters -->
+        <div class="hub-controls">
+            <div class="search-bar">
+                <input type="text" id="gameSearch" placeholder="Search games..." autocomplete="off">
+            </div>
+            <div class="category-filters" id="categoryFilters">
+                <button class="filter-btn active" data-category="all">All (56)</button>
+                <button class="filter-btn" data-category="arcade">Arcade (14)</button>
+                <button class="filter-btn" data-category="puzzle">Puzzle (12)</button>
+                <button class="filter-btn" data-category="strategy">Strategy (7)</button>
+                <button class="filter-btn" data-category="word">Word (5)</button>
+                <button class="filter-btn" data-category="creative">Creative (4)</button>
+                <button class="filter-btn" data-category="casual">Casual (14)</button>
+            </div>
+            <div class="game-count" id="gameCount">Showing 56 games</div>
+        </div>
+
         <main class="games-grid">
-            <a href="games/snake.html" class="game-card">
+            <a href="games/snake.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🐍</div>
                 <h2>Snake</h2>
                 <p>Classic snake game. Eat food, grow longer, don't hit the walls!</p>
             </a>
-            
-            <a href="games/tictactoe.html" class="game-card">
+
+            <a href="games/tictactoe.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">⭕❌</div>
                 <h2>Tic-Tac-Toe</h2>
                 <p>Play against a friend or challenge the AI!</p>
             </a>
-            
-            <a href="games/chess.html" class="game-card">
+
+            <a href="games/chess.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">♟️</div>
                 <h2>Chess</h2>
                 <p>The classic strategy game. 2 players or vs computer.</p>
             </a>
-            
-            <a href="games/memory.html" class="game-card">
+
+            <a href="games/memory.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🧠</div>
                 <h2>Memory Match</h2>
                 <p>Test your memory by matching pairs of cards.</p>
             </a>
-            
-            <a href="games/2048.html" class="game-card">
+
+            <a href="games/2048.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🔢</div>
                 <h2>2048</h2>
                 <p>Slide and merge tiles to reach 2048!</p>
             </a>
-            
-            <a href="games/pong.html" class="game-card">
+
+            <a href="games/pong.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🏓</div>
                 <h2>Pong</h2>
                 <p>Classic arcade pong. Play against AI or a friend!</p>
             </a>
-            
-            <a href="games/8ball.html" class="game-card">
+
+            <a href="games/8ball.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🎱</div>
                 <h2>8 Ball Pool</h2>
                 <p>Classic billiards! 2 players or vs AI with difficulty levels.</p>
             </a>
-            
-            <a href="games/minesweeper.html" class="game-card">
+
+            <a href="games/minesweeper.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">💣</div>
                 <h2>Minesweeper</h2>
                 <p>Clear the minefield without hitting any bombs!</p>
             </a>
-            
-            <a href="games/catch.html" class="game-card">
+
+            <a href="games/catch.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🧺</div>
                 <h2>Catch!</h2>
                 <p>Catch falling items, collect powerups, avoid dangers!</p>
             </a>
-            
-            <a href="games/tetris.html" class="game-card">
+
+            <a href="games/tetris.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🧱</div>
                 <h2>Tetris</h2>
                 <p>Stack falling blocks and clear lines!</p>
             </a>
-            
-            <a href="games/breakout.html" class="game-card">
+
+            <a href="games/breakout.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🧱</div>
                 <h2>Breakout</h2>
                 <p>Break all the bricks with your ball and paddle!</p>
             </a>
-            
-            <a href="games/flappy.html" class="game-card">
+
+            <a href="games/flappy.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🐦</div>
                 <h2>Flappy Bird</h2>
                 <p>Tap to fly through the pipes!</p>
             </a>
-            
-            <a href="games/simon.html" class="game-card">
+
+            <a href="games/simon.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🎯</div>
                 <h2>Simon Says</h2>
                 <p>Repeat the pattern as it gets longer!</p>
             </a>
-            
-            <a href="games/wordle.html" class="game-card">
+
+            <a href="games/wordle.html" class="game-card" data-category="word" data-aos="fade-up">
                 <div class="game-icon">📝</div>
                 <h2>Word Guess</h2>
                 <p>Guess the 5-letter word in 6 tries!</p>
             </a>
-            
-            <a href="games/sudoku.html" class="game-card">
+
+            <a href="games/sudoku.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🔢</div>
                 <h2>Sudoku</h2>
                 <p>Classic number puzzle. Fill the grid with 1-9!</p>
             </a>
-            
-            <a href="games/killer-sudoku.html" class="game-card">
+
+            <a href="games/killer-sudoku.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">☠️</div>
                 <h2>Killer Sudoku</h2>
                 <p>Sudoku with cage sums. More challenging!</p>
             </a>
-            
-            <a href="games/hangman.html" class="game-card">
+
+            <a href="games/hangman.html" class="game-card" data-category="word" data-aos="fade-up">
                 <div class="game-icon">🪢</div>
                 <h2>Hangman</h2>
                 <p>Guess the word letter by letter!</p>
             </a>
-            
-            <a href="games/connect4.html" class="game-card">
+
+            <a href="games/connect4.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">🔴</div>
                 <h2>Connect Four</h2>
                 <p>Drop discs and connect 4 in a row!</p>
             </a>
-            
-            <a href="games/checkers.html" class="game-card">
+
+            <a href="games/checkers.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">⚫</div>
                 <h2>Checkers</h2>
                 <p>Jump and capture your opponent's pieces!</p>
             </a>
-            
-            <a href="games/blackjack.html" class="game-card">
+
+            <a href="games/blackjack.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🃏</div>
                 <h2>Blackjack</h2>
                 <p>Get 21 or as close as possible!</p>
             </a>
-            
-            <a href="games/space-invaders.html" class="game-card">
+
+            <a href="games/space-invaders.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">👾</div>
                 <h2>Space Invaders</h2>
                 <p>Defend Earth from alien invasion!</p>
             </a>
-            
-            <a href="games/rps.html" class="game-card">
+
+            <a href="games/rps.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">✊</div>
                 <h2>Rock Paper Scissors</h2>
                 <p>Classic hand game against the computer!</p>
             </a>
-            
-            <a href="games/trivia.html" class="game-card">
+
+            <a href="games/trivia.html" class="game-card" data-category="word" data-aos="fade-up">
                 <div class="game-icon">❓</div>
                 <h2>Trivia Quiz</h2>
                 <p>Test your knowledge across categories!</p>
             </a>
-            
-            <a href="games/typing.html" class="game-card">
+
+            <a href="games/typing.html" class="game-card" data-category="word" data-aos="fade-up">
                 <div class="game-icon">⌨️</div>
                 <h2>Typing Speed</h2>
                 <p>How fast can you type?</p>
             </a>
-            
-            <a href="games/color-match.html" class="game-card">
+
+            <a href="games/color-match.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🎨</div>
                 <h2>Color Match</h2>
                 <p>Match colors in this Stroop challenge!</p>
             </a>
-            
-            <a href="games/number-guess.html" class="game-card">
+
+            <a href="games/number-guess.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🔮</div>
                 <h2>Number Guess</h2>
                 <p>Guess the secret number with hints!</p>
             </a>
-            
-            <a href="games/reaction.html" class="game-card">
+
+            <a href="games/reaction.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">⚡</div>
                 <h2>Reaction Test</h2>
                 <p>Test your reaction speed!</p>
             </a>
-            
-            <a href="games/maze.html" class="game-card">
+
+            <a href="games/maze.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🌀</div>
                 <h2>Maze</h2>
                 <p>Find your way through the maze!</p>
             </a>
-            
-            <a href="games/word-search.html" class="game-card">
+
+            <a href="games/word-search.html" class="game-card" data-category="word" data-aos="fade-up">
                 <div class="game-icon">🔍</div>
                 <h2>Word Search</h2>
                 <p>Find hidden words in the grid!</p>
             </a>
-            
-            <a href="games/whack-a-mole.html" class="game-card">
+
+            <a href="games/whack-a-mole.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🔨</div>
                 <h2>Whack-a-Mole</h2>
                 <p>Whack the moles as they pop up!</p>
             </a>
-            
-            <a href="games/dino.html" class="game-card">
+
+            <a href="games/dino.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🦖</div>
                 <h2>Dino Run</h2>
                 <p>Jump and duck to survive!</p>
             </a>
-            
-            <a href="games/solitaire.html" class="game-card">
+
+            <a href="games/solitaire.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🃏</div>
                 <h2>Solitaire</h2>
                 <p>Classic card game patience!</p>
             </a>
-            
-            <a href="games/fifteen-puzzle.html" class="game-card">
+
+            <a href="games/fifteen-puzzle.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🔢</div>
                 <h2>15 Puzzle</h2>
                 <p>Slide tiles to solve the puzzle!</p>
             </a>
-            
-            <a href="games/lights-out.html" class="game-card">
+
+            <a href="games/lights-out.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">💡</div>
                 <h2>Lights Out</h2>
                 <p>Turn off all the lights!</p>
             </a>
-            
-            <a href="games/battleship.html" class="game-card">
+
+            <a href="games/battleship.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">🚢</div>
                 <h2>Battleship</h2>
                 <p>Sink the enemy fleet!</p>
             </a>
-            
-            <a href="games/cookie-clicker.html" class="game-card">
+
+            <a href="games/cookie-clicker.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🍪</div>
                 <h2>Cookie Clicker</h2>
                 <p>Click cookies, buy upgrades!</p>
             </a>
-            
-            <a href="games/mining-idle.html" class="game-card">
+
+            <a href="games/mining-idle.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">⛏️</div>
                 <h2>Mining Idle</h2>
                 <p>Mine ores and build your empire!</p>
             </a>
-            
-            <a href="games/slots.html" class="game-card">
+
+            <a href="games/slots.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🎰</div>
                 <h2>Slot Machine</h2>
                 <p>Spin the reels and win big!</p>
             </a>
-            
-            <a href="games/frogger.html" class="game-card">
+
+            <a href="games/frogger.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🐸</div>
                 <h2>Frogger</h2>
                 <p>Cross the road and river safely!</p>
             </a>
-            
-            <a href="games/pacman.html" class="game-card">
+
+            <a href="games/pacman.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">👻</div>
                 <h2>Pac-Man</h2>
                 <p>Eat dots and avoid ghosts!</p>
             </a>
-            
-            <a href="games/tower-defense.html" class="game-card">
+
+            <a href="games/tower-defense.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🏰</div>
                 <h2>Tower Defense</h2>
                 <p>Build towers and defend your base!</p>
             </a>
-            
-            <a href="games/asteroids.html" class="game-card">
+
+            <a href="games/asteroids.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">☄️</div>
                 <h2>Asteroids</h2>
                 <p>Blast asteroids in space!</p>
             </a>
-            
-            <a href="games/ultimate-tictactoe.html" class="game-card">
+
+            <a href="games/ultimate-tictactoe.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">⭕</div>
                 <h2>Ultimate Tic-Tac-Toe</h2>
                 <p>Tic-Tac-Toe within Tic-Tac-Toe!</p>
             </a>
-            
-            <a href="games/brick-builder.html" class="game-card">
+
+            <a href="games/brick-builder.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🧱</div>
                 <h2>Brick Builder</h2>
                 <p>Stack bricks as high as you can!</p>
             </a>
-            
-            <a href="games/math-challenge.html" class="game-card">
+
+            <a href="games/math-challenge.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">➕</div>
                 <h2>Math Challenge</h2>
                 <p>Test your math skills!</p>
             </a>
-            
-            <a href="games/rhythm.html" class="game-card">
+
+            <a href="games/rhythm.html" class="game-card" data-category="creative" data-aos="fade-up">
                 <div class="game-icon">🎵</div>
                 <h2>Rhythm Game</h2>
                 <p>Hit notes to the beat!</p>
             </a>
-            
-            <a href="games/hex-colors.html" class="game-card">
+
+            <a href="games/hex-colors.html" class="game-card" data-category="puzzle" data-aos="fade-up">
                 <div class="game-icon">🌈</div>
                 <h2>Hex Colors</h2>
                 <p>Match colors to hex codes!</p>
             </a>
-            
-            <a href="games/aim-trainer.html" class="game-card">
+
+            <a href="games/aim-trainer.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🎯</div>
                 <h2>Aim Trainer</h2>
                 <p>Improve your aim and reflexes!</p>
             </a>
-            
-            <a href="games/piano.html" class="game-card">
+
+            <a href="games/piano.html" class="game-card" data-category="creative" data-aos="fade-up">
                 <div class="game-icon">🎹</div>
                 <h2>Piano</h2>
                 <p>Play and record music!</p>
             </a>
-            
-            <a href="games/drawing-pad.html" class="game-card">
+
+            <a href="games/drawing-pad.html" class="game-card" data-category="creative" data-aos="fade-up">
                 <div class="game-icon">🎨</div>
                 <h2>Drawing Pad</h2>
                 <p>Create digital artwork!</p>
             </a>
-            
-            <a href="games/war.html" class="game-card">
+
+            <a href="games/war.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">⚔️</div>
                 <h2>Card War</h2>
                 <p>Classic card battle game!</p>
             </a>
-            
-            <a href="games/wheel.html" class="game-card">
+
+            <a href="games/wheel.html" class="game-card" data-category="creative" data-aos="fade-up">
                 <div class="game-icon">🎡</div>
                 <h2>Spin the Wheel</h2>
                 <p>Spin to decide anything!</p>
             </a>
-            
-            <a href="games/quiz.html" class="game-card">
+
+            <a href="games/quiz.html" class="game-card" data-category="casual" data-aos="fade-up">
                 <div class="game-icon">🧠</div>
                 <h2>Quiz Master</h2>
                 <p>Test your knowledge!</p>
             </a>
 
-            <a href="games/gomoku.html" class="game-card">
+            <a href="games/gomoku.html" class="game-card" data-category="strategy" data-aos="fade-up">
                 <div class="game-icon">⚫</div>
                 <h2>Gomoku</h2>
                 <p>Get five in a row to win!</p>
             </a>
 
-            <a href="games/platformer.html" class="game-card">
+            <a href="games/platformer.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🏃</div>
                 <h2>Platformer</h2>
                 <p>Run, jump, and collect coins!</p>
             </a>
 
-            <a href="games/bubble-shooter.html" class="game-card">
+            <a href="games/bubble-shooter.html" class="game-card" data-category="arcade" data-aos="fade-up">
                 <div class="game-icon">🫧</div>
                 <h2>Bubble Shooter</h2>
                 <p>Match and pop colorful bubbles!</p>
             </a>
 
+            <!-- No results message -->
+            <div class="no-results hidden" id="noResults">No games found matching your search.</div>
         </main>
     </div>
+
+    <!-- Particles.js -->
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <!-- AOS - Animate on Scroll -->
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <!-- Chart.js (for account modal stats) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
     <script src="js/accounts.js"></script>
+
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 600,
+            once: true,
+            offset: 50
+        });
+
+        // Initialize Particles.js
+        if (typeof particlesJS !== 'undefined') {
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 50, density: { enable: true, value_area: 800 } },
+                    color: { value: ['#00d9ff', '#00ff88'] },
+                    shape: { type: 'circle' },
+                    opacity: { value: 0.3, random: true, anim: { enable: true, speed: 0.5, opacity_min: 0.1 } },
+                    size: { value: 3, random: true },
+                    line_linked: { enable: true, distance: 150, color: '#00d9ff', opacity: 0.1, width: 1 },
+                    move: { enable: true, speed: 1, direction: 'none', random: true, straight: false, out_mode: 'out' }
+                },
+                interactivity: {
+                    detect_on: 'canvas',
+                    events: {
+                        onhover: { enable: true, mode: 'grab' },
+                        onclick: { enable: false },
+                        resize: true
+                    },
+                    modes: {
+                        grab: { distance: 200, line_linked: { opacity: 0.3 } }
+                    }
+                },
+                retina_detect: true
+            });
+        }
+
+        // Search & Filter
+        const searchInput = document.getElementById('gameSearch');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const gameCards = document.querySelectorAll('.game-card');
+        const gameCount = document.getElementById('gameCount');
+        const noResults = document.getElementById('noResults');
+        let activeCategory = 'all';
+
+        function filterGames() {
+            const query = searchInput.value.toLowerCase().trim();
+            let visible = 0;
+
+            gameCards.forEach(card => {
+                const name = card.querySelector('h2').textContent.toLowerCase();
+                const desc = card.querySelector('p').textContent.toLowerCase();
+                const category = card.dataset.category;
+
+                const matchesSearch = !query || name.includes(query) || desc.includes(query);
+                const matchesCategory = activeCategory === 'all' || category === activeCategory;
+
+                const show = matchesSearch && matchesCategory;
+                card.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+
+            gameCount.textContent = `Showing ${visible} game${visible !== 1 ? 's' : ''}`;
+            noResults.classList.toggle('hidden', visible > 0);
+        }
+
+        searchInput.addEventListener('input', filterGames);
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeCategory = btn.dataset.category;
+                filterGames();
+            });
+        });
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        }
+    </script>
 </body>
 </html>

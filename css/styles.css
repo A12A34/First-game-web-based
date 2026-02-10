@@ -6,7 +6,7 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
     min-height: 100vh;
     color: #fff;
@@ -262,17 +262,154 @@ header p {
     header h1 {
         font-size: 2rem;
     }
-    
+
     .games-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .game-title {
         font-size: 1.8rem;
     }
-    
+
     .score-board {
         flex-direction: column;
         gap: 10px;
     }
+
+    .category-filters {
+        gap: 6px;
+    }
+
+    .filter-btn {
+        padding: 6px 14px;
+        font-size: 0.8rem;
+    }
+
+    .search-bar input {
+        font-size: 1rem;
+        padding: 12px 20px;
+    }
+}
+
+/* ======== Hub Controls: Search & Filter ======== */
+.hub-controls {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.search-bar {
+    margin-bottom: 20px;
+}
+
+.search-bar input {
+    width: 100%;
+    max-width: 500px;
+    padding: 15px 25px;
+    border-radius: 30px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 1.1rem;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+.search-bar input:focus {
+    border-color: #00d9ff;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.search-bar input::placeholder {
+    color: #666;
+}
+
+.category-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.filter-btn {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: #a0a0a0;
+    cursor: pointer;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, #00d9ff, #00ff88);
+    color: #1a1a2e;
+    border-color: transparent;
+    font-weight: 600;
+}
+
+.game-count {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+    font-size: 1.2rem;
+}
+
+/* ======== Particles Background ======== */
+#particles-js {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ======== Sound Toggle Button ======== */
+#soundToggleBtn {
+    position: fixed;
+    top: 20px;
+    right: 70px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#soundToggleBtn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+/* ======== SweetAlert2 Theme Override ======== */
+.swal2-popup.game-hub-swal {
+    border: 2px solid rgba(0, 217, 255, 0.3) !important;
+    border-radius: 20px !important;
 }

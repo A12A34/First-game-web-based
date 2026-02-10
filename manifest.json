@@ -1,0 +1,22 @@
+{
+    "name": "Game Hub - Play Classic Games Online",
+    "short_name": "Game Hub",
+    "description": "56 classic browser games. No ads, no downloads.",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#1a1a2e",
+    "theme_color": "#00d9ff",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
