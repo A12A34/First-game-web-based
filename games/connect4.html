@@ -263,9 +263,9 @@
             updatePlayerIndicator();
         }
 
-        function dropPiece(col) {
+        function dropPiece(col, fromAI) {
             if (gameOver) return;
-            if (vsAI && currentPlayer === 2) return;
+            if (vsAI && currentPlayer === 2 && !fromAI) return;
             
             const row = getLowestEmptyRow(col);
             if (row === -1) return;
@@ -342,73 +342,133 @@
         }
 
         function aiMove() {
-            // Simple AI: block wins, take wins, or random
-            let bestCol = -1;
-            
-            // Check for winning move
-            for (let c = 0; c < COLS; c++) {
+            if (gameOver) return;
+
+            let bestScore = -Infinity;
+            let bestCol = 3;
+            const colOrder = [3, 2, 4, 1, 5, 0, 6];
+
+            for (const c of colOrder) {
                 const r = getLowestEmptyRow(c);
-                if (r !== -1) {
-                    board[r][c] = 2;
-                    if (checkWinSimple(r, c, 2)) {
-                        board[r][c] = 0;
-                        bestCol = c;
-                        break;
-                    }
-                    board[r][c] = 0;
+                if (r === -1) continue;
+                board[r][c] = 2;
+                const score = minimax(5, -Infinity, Infinity, false);
+                board[r][c] = 0;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestCol = c;
                 }
             }
-            
-            // Block opponent's winning move
-            if (bestCol === -1) {
-                for (let c = 0; c < COLS; c++) {
-                    const r = getLowestEmptyRow(c);
-                    if (r !== -1) {
-                        board[r][c] = 1;
-                        if (checkWinSimple(r, c, 1)) {
-                            board[r][c] = 0;
-                            bestCol = c;
-                            break;
-                        }
-                        board[r][c] = 0;
-                    }
-                }
-            }
-            
-            // Random move
-            if (bestCol === -1) {
-                const validCols = [];
-                for (let c = 0; c < COLS; c++) {
-                    if (getLowestEmptyRow(c) !== -1) validCols.push(c);
-                }
-                bestCol = validCols[Math.floor(Math.random() * validCols.length)];
-            }
-            
-            dropPiece(bestCol);
+
+            dropPiece(bestCol, true);
         }
 
-        function checkWinSimple(row, col, player) {
-            const directions = [
-                [[0, 1], [0, -1]],
-                [[1, 0], [-1, 0]],
-                [[1, 1], [-1, -1]],
-                [[1, -1], [-1, 1]]
-            ];
-            
-            for (const [dir1, dir2] of directions) {
-                let count = 1;
-                for (const [dr, dc] of [dir1, dir2]) {
-                    let r = row + dr;
-                    let c = col + dc;
-                    while (r >= 0 && r < ROWS && c >= 0 && c < COLS && board[r][c] === player) {
-                        count++;
-                        r += dr;
-                        c += dc;
-                    }
+        function minimax(depth, alpha, beta, isMaximizing) {
+            if (checkTerminalWin(2)) return 100000 + depth;
+            if (checkTerminalWin(1)) return -100000 - depth;
+            if (board[0].every(cell => cell !== 0)) return 0;
+            if (depth === 0) return evaluateBoard();
+
+            const colOrder = [3, 2, 4, 1, 5, 0, 6];
+
+            if (isMaximizing) {
+                let maxScore = -Infinity;
+                for (const c of colOrder) {
+                    const r = getLowestEmptyRow(c);
+                    if (r === -1) continue;
+                    board[r][c] = 2;
+                    const score = minimax(depth - 1, alpha, beta, false);
+                    board[r][c] = 0;
+                    maxScore = Math.max(maxScore, score);
+                    alpha = Math.max(alpha, score);
+                    if (beta <= alpha) break;
                 }
-                if (count >= 4) return true;
+                return maxScore;
+            } else {
+                let minScore = Infinity;
+                for (const c of colOrder) {
+                    const r = getLowestEmptyRow(c);
+                    if (r === -1) continue;
+                    board[r][c] = 1;
+                    const score = minimax(depth - 1, alpha, beta, true);
+                    board[r][c] = 0;
+                    minScore = Math.min(minScore, score);
+                    beta = Math.min(beta, score);
+                    if (beta <= alpha) break;
+                }
+                return minScore;
+            }
+        }
+
+        function checkTerminalWin(player) {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c <= COLS - 4; c++) {
+                    if (board[r][c] === player && board[r][c+1] === player &&
+                        board[r][c+2] === player && board[r][c+3] === player) return true;
+                }
+            }
+            for (let r = 0; r <= ROWS - 4; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] === player && board[r+1][c] === player &&
+                        board[r+2][c] === player && board[r+3][c] === player) return true;
+                }
+            }
+            for (let r = 0; r <= ROWS - 4; r++) {
+                for (let c = 0; c <= COLS - 4; c++) {
+                    if (board[r][c] === player && board[r+1][c+1] === player &&
+                        board[r+2][c+2] === player && board[r+3][c+3] === player) return true;
+                }
+            }
+            for (let r = 0; r <= ROWS - 4; r++) {
+                for (let c = 3; c < COLS; c++) {
+                    if (board[r][c] === player && board[r+1][c-1] === player &&
+                        board[r+2][c-2] === player && board[r+3][c-3] === player) return true;
+                }
             }
             return false;
+        }
+
+        function evaluateBoard() {
+            let score = 0;
+            for (let r = 0; r < ROWS; r++) {
+                if (board[r][3] === 2) score += 3;
+                else if (board[r][3] === 1) score -= 3;
+            }
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c <= COLS - 4; c++) {
+                    score += scoreWindow(board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]);
+                }
+            }
+            for (let r = 0; r <= ROWS - 4; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    score += scoreWindow(board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]);
+                }
+            }
+            for (let r = 0; r <= ROWS - 4; r++) {
+                for (let c = 0; c <= COLS - 4; c++) {
+                    score += scoreWindow(board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]);
+                }
+            }
+            for (let r = 0; r <= ROWS - 4; r++) {
+                for (let c = 3; c < COLS; c++) {
+                    score += scoreWindow(board[r][c], board[r+1][c-1], board[r+2][c-2], board[r+3][c-3]);
+                }
+            }
+            return score;
+        }
+
+        function scoreWindow(a, b, c, d) {
+            const cells = [a, b, c, d];
+            const ai = cells.filter(x => x === 2).length;
+            const human = cells.filter(x => x === 1).length;
+            const empty = cells.filter(x => x === 0).length;
+            if (ai === 4) return 1000;
+            if (human === 4) return -1000;
+            if (ai === 3 && empty === 1) return 50;
+            if (human === 3 && empty === 1) return -50;
+            if (ai === 2 && empty === 2) return 10;
+            if (human === 2 && empty === 2) return -10;
+            return 0;
         }
 
         function updatePlayerIndicator() {

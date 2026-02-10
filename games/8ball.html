@@ -265,7 +265,7 @@
                 <div class="pocket br"></div>
                 <div class="pocket ml"></div>
                 <div class="pocket mr"></div>
-                <canvas id="gameCanvas" width="1000" height="500"></canvas>
+                <canvas id="gameCanvas" width="800" height="400"></canvas>
             </div>
             
             <button id="newGameBtn" class="btn btn-primary">New Game</button>
@@ -325,6 +325,16 @@
             13: '#ffa500', 14: '#008000', 15: '#8b0000'
         };
         
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
         // Particles for effects
         let particles = [];
         
@@ -372,7 +382,7 @@
             balls.push(cueBall);
             
             // Rack balls in triangle
-            const startX = 550;
+            const startX = 500;
             const startY = H / 2;
             const order = [1, 9, 2, 10, 8, 11, 3, 12, 4, 13, 5, 14, 6, 15, 7];
             let idx = 0;
@@ -483,7 +493,17 @@
                 ball.y += ball.vy;
                 ball.vx *= FRICTION;
                 ball.vy *= FRICTION;
-                
+
+                // Apply spin effect
+                if (ball.spinX || ball.spinY) {
+                    ball.vx += ball.spinX * 0.05;
+                    ball.vy += ball.spinY * 0.05;
+                    ball.spinX *= 0.98;
+                    ball.spinY *= 0.98;
+                    if (Math.abs(ball.spinX) < 0.01) ball.spinX = 0;
+                    if (Math.abs(ball.spinY) < 0.01) ball.spinY = 0;
+                }
+
                 if (Math.abs(ball.vx) < 0.1 && Math.abs(ball.vy) < 0.1) {
                     ball.vx = 0;
                     ball.vy = 0;
@@ -599,25 +619,42 @@
         }
         
         function endTurn() {
-            // Check for fouls
-            if (foul) {
+            const playerType = playerTypes[currentPlayer];
+            let pocketedOwn = false;
+
+            if (playerType && pocketed[currentPlayer].length > 0) {
+                pocketedOwn = pocketed[currentPlayer].some(num =>
+                    (playerType === 'solid' && num >= 1 && num <= 7) ||
+                    (playerType === 'stripe' && num >= 9 && num <= 15)
+                );
+            } else if (!playerType && pocketed[currentPlayer].length > 0) {
+                pocketedOwn = true;
+            }
+
+            let wrongFirstHit = false;
+            if (firstHit && playerType) {
+                if (playerType === 'solid' && firstHit.number > 7 && firstHit.number !== 8) wrongFirstHit = true;
+                if (playerType === 'stripe' && firstHit.number <= 7) wrongFirstHit = true;
+            }
+            if (!firstHit && !foul && playerType) {
+                foul = true;
+            }
+
+            if (foul || wrongFirstHit) {
                 message.textContent = `Foul! Player ${currentPlayer === 1 ? 2 : 1}'s turn`;
                 currentPlayer = currentPlayer === 1 ? 2 : 1;
-            } else if (pocketed[currentPlayer].length === 0 || 
-                       (firstHit && playerTypes[currentPlayer] && 
-                        ((playerTypes[currentPlayer] === 'solid' && firstHit.number > 7 && firstHit.number !== 8) ||
-                         (playerTypes[currentPlayer] === 'stripe' && firstHit.number <= 7)))) {
+            } else if (!pocketedOwn) {
                 currentPlayer = currentPlayer === 1 ? 2 : 1;
                 message.textContent = `Player ${currentPlayer}'s turn`;
             } else {
                 message.textContent = `Player ${currentPlayer} continues!`;
             }
-            
+
             foul = false;
             firstHit = null;
             pocketed = { 1: [], 2: [] };
             updatePlayerDisplay();
-            
+
             if (gameMode === 'ai' && currentPlayer === 2 && gameActive) {
                 setTimeout(aiShoot, 1000);
             }
@@ -633,66 +670,121 @@
         
         function aiShoot() {
             if (!gameActive || ballsMoving) return;
-            
-            const targets = balls.filter(b => !b.pocketed && b.number !== 0 && 
-                (playerTypes[2] === null || 
-                 (playerTypes[2] === 'solid' && b.number <= 7) || 
-                 (playerTypes[2] === 'stripe' && b.number > 8) ||
-                 b.number === 8));
-            
-            if (targets.length === 0) return;
-            
-            let bestTarget = targets[0];
-            let bestPocket = POCKETS[0];
+
+            const myType = playerTypes[2];
+            const myBallsLeft = balls.filter(b => !b.pocketed && b.number !== 0 && b.number !== 8 &&
+                (myType === 'solid' ? b.number <= 7 : b.number > 8));
+
+            let shotTargets;
+            if (myType && myBallsLeft.length === 0) {
+                shotTargets = balls.filter(b => !b.pocketed && b.number === 8);
+            } else {
+                shotTargets = balls.filter(b => !b.pocketed && b.number !== 0 && b.number !== 8 &&
+                    (myType === null ||
+                     (myType === 'solid' && b.number <= 7) ||
+                     (myType === 'stripe' && b.number > 8)));
+            }
+
+            if (shotTargets.length === 0) {
+                shotTargets = balls.filter(b => !b.pocketed && b.number !== 0);
+            }
+            if (shotTargets.length === 0) return;
+
+            let bestShot = null;
             let bestScore = -Infinity;
-            
-            // Find best shot
-            for (const target of targets) {
+
+            for (const target of shotTargets) {
                 for (const pocket of POCKETS) {
-                    const dx = pocket.x - target.x;
-                    const dy = pocket.y - target.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    // Score based on distance and angle
-                    let score = 1000 - dist;
-                    
-                    if (difficulty === 'hard') {
-                        score += Math.random() * 50;
-                    } else if (difficulty === 'medium') {
-                        score += Math.random() * 150;
-                    } else {
-                        score += Math.random() * 300;
+                    const tpx = pocket.x - target.x;
+                    const tpy = pocket.y - target.y;
+                    const tpDist = Math.sqrt(tpx * tpx + tpy * tpy);
+
+                    const ghostX = target.x - (tpx / tpDist) * BALL_RADIUS * 2;
+                    const ghostY = target.y - (tpy / tpDist) * BALL_RADIUS * 2;
+
+                    const cueDist = Math.sqrt(Math.pow(ghostX - cueBall.x, 2) + Math.pow(ghostY - cueBall.y, 2));
+
+                    const pathClear = isPathClear(cueBall.x, cueBall.y, ghostX, ghostY, [target]);
+
+                    let score = 0;
+                    if (pathClear) score += 500;
+                    score -= tpDist * 0.5;
+                    score -= cueDist * 0.3;
+
+                    const cueToDx = ghostX - cueBall.x;
+                    const cueToDy = ghostY - cueBall.y;
+                    const cueToLen = Math.sqrt(cueToDx * cueToDx + cueToDy * cueToDy);
+                    if (cueToLen > 0) {
+                        const dot = (cueToDx / cueToLen) * (tpx / tpDist) + (cueToDy / cueToLen) * (tpy / tpDist);
+                        score += dot * 200;
                     }
-                    
+
                     if (score > bestScore) {
                         bestScore = score;
-                        bestTarget = target;
-                        bestPocket = pocket;
+                        bestShot = { target, pocket, ghostX, ghostY };
                     }
                 }
             }
-            
-            // Calculate shot
-            const aimX = bestTarget.x - (bestPocket.x - bestTarget.x) * 0.3;
-            const aimY = bestTarget.y - (bestPocket.y - bestTarget.y) * 0.3;
-            
-            const dx = aimX - cueBall.x;
-            const dy = aimY - cueBall.y;
+
+            if (!bestShot) return;
+
+            let dx = bestShot.ghostX - cueBall.x;
+            let dy = bestShot.ghostY - cueBall.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            
+
+            let inaccuracy = 0;
+            if (difficulty === 'easy') inaccuracy = (Math.random() - 0.5) * 0.4;
+            else if (difficulty === 'medium') inaccuracy = (Math.random() - 0.5) * 0.15;
+            else inaccuracy = (Math.random() - 0.5) * 0.05;
+
+            const angle = Math.atan2(dy, dx) + inaccuracy;
             let power = Math.min(15, Math.max(5, dist / 30));
-            
             if (difficulty === 'easy') power *= 0.7 + Math.random() * 0.3;
             else if (difficulty === 'medium') power *= 0.85 + Math.random() * 0.15;
-            
-            cueBall.vx = (dx / dist) * power;
-            cueBall.vy = (dy / dist) * power;
-            
+
+            cueBall.vx = Math.cos(angle) * power;
+            cueBall.vy = Math.sin(angle) * power;
+
             message.textContent = 'AI is shooting...';
+        }
+
+        function isPathClear(x1, y1, x2, y2, excludeBalls) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist === 0) return true;
+            const nx = dx / dist;
+            const ny = dy / dist;
+
+            for (const ball of balls) {
+                if (ball === cueBall || ball.pocketed || excludeBalls.includes(ball)) continue;
+                const bx = ball.x - x1;
+                const by = ball.y - y1;
+                const proj = bx * nx + by * ny;
+                if (proj < 0 || proj > dist) continue;
+                const perpDist = Math.abs(bx * ny - by * nx);
+                if (perpDist < BALL_RADIUS * 2.5) return false;
+            }
+            return true;
         }
         
         function draw() {
             ctx.clearRect(0, 0, W, H);
+
+            // Draw table markings
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(W * 0.25, 0);
+            ctx.lineTo(W * 0.25, H);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.arc(W * 0.25, H / 2, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(W * 0.625, H / 2, 3, 0, Math.PI * 2);
+            ctx.fill();
             
             // Draw trajectory prediction when aiming
             if (isDragging && !ballsMoving) {
@@ -870,10 +962,8 @@
         canvas.addEventListener('mousedown', (e) => {
             if (ballsMoving || !gameActive) return;
             if (gameMode === 'ai' && currentPlayer === 2) return;
-            
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+
+            const { x, y } = getCanvasCoords(e);
             
             const dx = x - cueBall.x;
             const dy = y - cueBall.y;
@@ -886,8 +976,8 @@
         
         canvas.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            const rect = canvas.getBoundingClientRect();
-            dragEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            const { x, y } = getCanvasCoords(e);
+            dragEnd = { x, y };
             
             const dist = Math.sqrt(Math.pow(dragEnd.x - dragStart.x, 2) + Math.pow(dragEnd.y - dragStart.y, 2));
             const power = Math.min(100, dist / 2);
@@ -971,9 +1061,11 @@
             e.preventDefault();
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
+
             if (ballsMoving || !gameActive) return;
             if (gameMode === 'ai' && currentPlayer === 2) return;
             
@@ -991,7 +1083,9 @@
             if (!isDragging) return;
             const touch = e.touches[0];
             const rect = canvas.getBoundingClientRect();
-            dragEnd = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            dragEnd = { x: (touch.clientX - rect.left) * scaleX, y: (touch.clientY - rect.top) * scaleY };
             
             const dist = Math.sqrt(Math.pow(dragEnd.x - dragStart.x, 2) + Math.pow(dragEnd.y - dragStart.y, 2));
             powerFill.style.width = Math.min(100, dist / 2) + '%';
