@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bee Swarm Simulator - Game Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { overflow-x: hidden; }
+
+        .stats-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 1300px;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 8px 16px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+        .stat-value { font-size: 1.2rem; font-weight: 700; }
+        .stat-label { font-size: 0.75rem; color: #aaa; margin-top: 2px; }
+        .honey-color { color: #ffc107; }
+        .pollen-color { color: #ffeb3b; }
+        .bee-color { color: #00d9ff; }
+        .field-color { color: #00ff88; }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr 260px;
+            gap: 12px;
+            max-width: 1300px;
+            width: 100%;
+        }
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 12px;
+        }
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #00d9ff;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .hive-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .hive-slot {
+            aspect-ratio: 1;
+            background: rgba(255,193,7,0.08);
+            border: 2px dashed rgba(255,193,7,0.25);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: default;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .hive-slot.filled { border-style: solid; background: rgba(255,193,7,0.15); cursor: help; }
+        .hive-slot.rarity-Common { border-color: #aaa; }
+        .hive-slot.rarity-Rare { border-color: #4488ff; box-shadow: 0 0 6px rgba(68,136,255,0.3); }
+        .hive-slot.rarity-Epic { border-color: #bb44ff; box-shadow: 0 0 6px rgba(187,68,255,0.3); }
+        .hive-slot.rarity-Legendary { border-color: #ffaa00; box-shadow: 0 0 10px rgba(255,170,0,0.4); animation: leg-glow 2s ease-in-out infinite; }
+        @keyframes leg-glow {
+            0%,100% { box-shadow: 0 0 6px rgba(255,170,0,0.3); }
+            50% { box-shadow: 0 0 18px rgba(255,170,0,0.6); }
+        }
+
+        .hive-tooltip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 8px 10px;
+            white-space: nowrap;
+            z-index: 100;
+            font-size: 0.7rem;
+            color: #fff;
+            pointer-events: none;
+        }
+        .hive-slot:hover .hive-tooltip { display: block; }
+
+        .convert-section { margin-top: 10px; }
+        .btn-convert {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #ffc107, #ff9800);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+        .btn-convert:hover { transform: scale(1.03); box-shadow: 0 4px 12px rgba(255,193,7,0.4); }
+        .btn-convert:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+        .convert-info { font-size: 0.7rem; color: #aaa; text-align: center; margin-top: 5px; }
+
+        .field-section { display: flex; flex-direction: column; align-items: center; }
+        .canvas-wrapper {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            width: 100%;
+        }
+        #fieldCanvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .field-tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 8px;
+        }
+        .field-tab {
+            padding: 5px 10px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            color: #888;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+        .field-tab.active { background: rgba(0,217,255,0.2); border-color: #00d9ff; color: #fff; }
+        .field-tab.locked { opacity: 0.3; cursor: not-allowed; }
+
+        .shop-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 6px 4px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            color: #aaa;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+        .tab-btn.active { background: rgba(0,217,255,0.2); border-color: #00d9ff; color: #fff; }
+        .shop-content { max-height: 400px; overflow-y: auto; }
+
+        .shop-item {
+            background: rgba(255,255,255,0.06);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+        .shop-item:hover:not(.locked) { border-color: #ffc107; background: rgba(255,193,7,0.06); }
+        .shop-item.locked { opacity: 0.4; cursor: not-allowed; }
+        .shop-item.affordable { border-color: rgba(0,255,136,0.4); }
+        .shop-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .shop-item-name { font-weight: 600; font-size: 0.85rem; }
+        .shop-item-cost { color: #ffc107; font-size: 0.8rem; font-weight: 600; }
+        .shop-item-desc { font-size: 0.7rem; color: #aaa; }
+        .shop-item-level { font-size: 0.7rem; color: #00d9ff; margin-top: 2px; }
+
+        .rarity-label { font-size: 0.65rem; font-weight: 600; padding: 1px 6px; border-radius: 4px; }
+        .rarity-Common { color: #aaa; }
+        .rarity-Rare { color: #4488ff; }
+        .rarity-Epic { color: #bb44ff; }
+        .rarity-Legendary { color: #ffaa00; }
+
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(10,10,30,0.95);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 200;
+            padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+        }
+        .mobile-nav-items { display: flex; justify-content: space-around; }
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.65rem;
+            color: #888;
+            cursor: pointer;
+            padding: 4px 12px;
+            touch-action: manipulation;
+        }
+        .mobile-nav-item.active { color: #00d9ff; }
+        .mobile-nav-item span:first-child { font-size: 1.2rem; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 500;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+            animation: modal-in 0.3s ease-out;
+        }
+        @keyframes modal-in {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .hatch-bee-icon { font-size: 4rem; animation: hatch-bounce 0.6s ease-out; }
+        @keyframes hatch-bounce {
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+            60% { transform: scale(1.3) rotate(10deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .hatch-bee-name { font-size: 1.3rem; font-weight: 700; margin-top: 10px; }
+        .hatch-bee-stats { font-size: 0.8rem; color: #aaa; margin: 10px 0 15px; line-height: 1.6; }
+
+        .float-text {
+            position: absolute;
+            pointer-events: none;
+            font-weight: 700;
+            font-size: 1rem;
+            animation: float-up 1s ease-out forwards;
+            z-index: 50;
+        }
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-60px); }
+        }
+
+        .reset-btn {
+            margin-top: 10px;
+            padding: 6px 14px;
+            background: rgba(255,107,107,0.15);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 8px;
+            color: #ff6b6b;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .reset-btn:hover { background: rgba(255,107,107,0.3); }
+
+        @media (max-width: 1000px) {
+            .game-layout { grid-template-columns: 1fr; }
+            .hive-panel, .shop-panel { display: none; }
+            .hive-panel.mobile-visible, .shop-panel.mobile-visible { display: block; }
+            .field-section.mobile-hidden { display: none; }
+            .mobile-nav { display: block; }
+            .game-container { padding-bottom: 70px; }
+            .stats-bar { gap: 6px; }
+            .stat-box { padding: 6px 8px; min-width: 70px; }
+            .stat-value { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+
+        <div class="game-container">
+            <h1 class="game-title">&#x1F41D; Bee Swarm Simulator</h1>
+
+            <div class="stats-bar">
+                <div class="stat-box">
+                    <div class="stat-value honey-color" id="honeyDisplay">0</div>
+                    <div class="stat-label">Honey</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value pollen-color" id="pollenDisplay">0 / 100</div>
+                    <div class="stat-label">Pollen</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value bee-color" id="beeCountDisplay">1 / 25</div>
+                    <div class="stat-label">Bees</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value field-color" id="fieldDisplay">Dandelion</div>
+                    <div class="stat-label">Field</div>
+                </div>
+            </div>
+
+            <div class="game-layout">
+                <div class="panel hive-panel" id="hivePanel">
+                    <div class="panel-title">Your Hive</div>
+                    <div class="hive-grid" id="hiveGrid"></div>
+                    <div class="convert-section">
+                        <button class="btn-convert" id="convertBtn" disabled>Convert Pollen to Honey</button>
+                        <div class="convert-info" id="convertInfo">Rate: 1 pollen = 1 honey</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <button class="reset-btn" id="resetBtn">Reset Game</button>
+                    </div>
+                </div>
+
+                <div class="field-section" id="fieldSection">
+                    <div class="canvas-wrapper">
+                        <canvas id="fieldCanvas" width="700" height="400"></canvas>
+                    </div>
+                    <div class="field-tabs" id="fieldTabs"></div>
+                </div>
+
+                <div class="panel shop-panel" id="shopPanel">
+                    <div class="shop-tabs">
+                        <button class="tab-btn active" data-shop="eggs">Eggs</button>
+                        <button class="tab-btn" data-shop="upgrades">Upgrades</button>
+                        <button class="tab-btn" data-shop="fields">Fields</button>
+                    </div>
+                    <div class="shop-content" id="shopContent"></div>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Click the flower field to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then spend honey on eggs to hatch new bees, upgrades, and unlocking new fields. Keyboard: 1-8 switch fields, C to convert, S to save.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mobile-nav" id="mobileNav">
+        <div class="mobile-nav-items">
+            <div class="mobile-nav-item active" data-view="field"><span>&#x1F33C;</span><span>Field</span></div>
+            <div class="mobile-nav-item" data-view="hive"><span>&#x1F3E0;</span><span>Hive</span></div>
+            <div class="mobile-nav-item" data-view="shop"><span>&#x1F6D2;</span><span>Shop</span></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="hatchModal">
+        <div class="modal">
+            <div class="hatch-bee-icon" id="hatchBeeIcon"></div>
+            <div class="hatch-bee-name" id="hatchBeeName"></div>
+            <div class="hatch-bee-rarity" id="hatchBeeRarity"></div>
+            <div class="hatch-bee-stats" id="hatchBeeStats"></div>
+            <button class="btn btn-primary" id="hatchCloseBtn">Awesome!</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // ===================== DATA =====================
+
+        const BEE_TYPES = {
+            basic:     { name: 'Basic Bee',     rarity: 'Common',    color: '#FFD700', gatherAmount: 10,  gatherSpeed: 1.0, ability: null },
+            bumble:    { name: 'Bumble Bee',    rarity: 'Common',    color: '#FFA500', gatherAmount: 12,  gatherSpeed: 0.8, ability: null },
+            hasty:     { name: 'Hasty Bee',     rarity: 'Common',    color: '#00CED1', gatherAmount: 8,   gatherSpeed: 1.5, ability: null },
+            looker:    { name: 'Looker Bee',    rarity: 'Common',    color: '#87CEEB', gatherAmount: 14,  gatherSpeed: 0.9, ability: null },
+            stubborn:  { name: 'Stubborn Bee',  rarity: 'Common',    color: '#CD853F', gatherAmount: 16,  gatherSpeed: 0.7, ability: null },
+            brave:     { name: 'Brave Bee',     rarity: 'Rare',      color: '#FF4444', gatherAmount: 20,  gatherSpeed: 1.2, ability: null },
+            cool:      { name: 'Cool Bee',      rarity: 'Rare',      color: '#4488FF', gatherAmount: 18,  gatherSpeed: 1.3, ability: null },
+            rad:       { name: 'Rad Bee',       rarity: 'Rare',      color: '#44FF44', gatherAmount: 22,  gatherSpeed: 1.0, ability: null },
+            rascal:    { name: 'Rascal Bee',    rarity: 'Rare',      color: '#FF69B4', gatherAmount: 24,  gatherSpeed: 0.9, ability: null },
+            music:     { name: 'Music Bee',     rarity: 'Epic',      color: '#FF00FF', gatherAmount: 35,  gatherSpeed: 1.3, ability: null },
+            diamond:   { name: 'Diamond Bee',   rarity: 'Epic',      color: '#B9F2FF', gatherAmount: 40,  gatherSpeed: 1.1, ability: null },
+            ninja:     { name: 'Ninja Bee',     rarity: 'Epic',      color: '#666666', gatherAmount: 30,  gatherSpeed: 2.0, ability: null },
+            commander: { name: 'Commander Bee', rarity: 'Epic',      color: '#DAA520', gatherAmount: 45,  gatherSpeed: 0.9, ability: null },
+            lion:      { name: 'Lion Bee',      rarity: 'Legendary', color: '#FF8C00', gatherAmount: 80,  gatherSpeed: 1.5, ability: null },
+            demon:     { name: 'Demon Bee',     rarity: 'Legendary', color: '#DC143C', gatherAmount: 100, gatherSpeed: 1.2, ability: null },
+            photon:    { name: 'Photon Bee',    rarity: 'Legendary', color: '#FFFF00', gatherAmount: 90,  gatherSpeed: 2.0, ability: null }
+        };
+
+        const RARITY_COLORS = { Common: '#aaaaaa', Rare: '#4488ff', Epic: '#bb44ff', Legendary: '#ffaa00' };
+
+        const FIELDS = [
+            { id: 'dandelion',  name: 'Dandelion Field',   flowerColor: '#FFD700', bgColor: '#1a2e12', pollenBase: 1,   unlockCost: 0 },
+            { id: 'sunflower',  name: 'Sunflower Field',   flowerColor: '#FF8C00', bgColor: '#2e2a12', pollenBase: 3,   unlockCost: 500 },
+            { id: 'mushroom',   name: 'Mushroom Field',    flowerColor: '#8B4513', bgColor: '#1a2a1a', pollenBase: 8,   unlockCost: 5000 },
+            { id: 'blueflower', name: 'Blue Flower Field', flowerColor: '#4169E1', bgColor: '#12182e', pollenBase: 20,  unlockCost: 25000 },
+            { id: 'rose',       name: 'Rose Field',        flowerColor: '#FF1493', bgColor: '#2e121a', pollenBase: 50,  unlockCost: 100000 },
+            { id: 'spider',     name: 'Spider Field',      flowerColor: '#6A0DAD', bgColor: '#0e0a2e', pollenBase: 120, unlockCost: 500000 },
+            { id: 'bamboo',     name: 'Bamboo Field',      flowerColor: '#228B22', bgColor: '#0a2e0a', pollenBase: 300, unlockCost: 2000000 },
+            { id: 'pineapple',  name: 'Pineapple Field',   flowerColor: '#FFD700', bgColor: '#2e2a0a', pollenBase: 800, unlockCost: 10000000 }
+        ];
+
+        const EGGS = [
+            { id: 'basic',  name: 'Basic Egg',  emoji: '\uD83E\uDD5A', cost: 100,     rates: { Common: 0.70, Rare: 0.25, Epic: 0.05, Legendary: 0 } },
+            { id: 'silver', name: 'Silver Egg', emoji: '\uD83E\uDE99', cost: 10000,   rates: { Common: 0, Rare: 0.60, Epic: 0.30, Legendary: 0.10 } },
+            { id: 'gold',   name: 'Gold Egg',   emoji: '\u2728',       cost: 100000,  rates: { Common: 0, Rare: 0, Epic: 0.60, Legendary: 0.40 } },
+            { id: 'star',   name: 'Star Egg',   emoji: '\u2B50',       cost: 1000000, rates: { Common: 0, Rare: 0, Epic: 0, Legendary: 1.0 } }
+        ];
+
+        const UPGRADES = [
+            { id: 'pollen1',  name: 'Pollen Boost',    emoji: '\uD83C\uDF38', baseCost: 200,   costScale: 2.0, maxLevel: 20, effect: 0.10, desc: '+10% pollen per level' },
+            { id: 'pollen2',  name: 'Super Pollen',    emoji: '\uD83D\uDC90', baseCost: 10000, costScale: 2.5, maxLevel: 10, effect: 0.25, desc: '+25% pollen per level' },
+            { id: 'speed1',   name: 'Bee Speed',       emoji: '\uD83D\uDCA8', baseCost: 300,   costScale: 1.8, maxLevel: 15, effect: 0.10, desc: '+10% bee speed' },
+            { id: 'speed2',   name: 'Turbo Bees',      emoji: '\u26A1',       baseCost: 15000, costScale: 2.2, maxLevel: 10, effect: 0.20, desc: '+20% bee speed' },
+            { id: 'hive1',    name: 'Hive Expansion',  emoji: '\uD83C\uDFE0', baseCost: 500,   costScale: 2.5, maxLevel: 10, effect: 5,    desc: '+5 hive slots' },
+            { id: 'convert1', name: 'Honey Converter', emoji: '\uD83C\uDF6F', baseCost: 400,   costScale: 2.0, maxLevel: 15, effect: 0.10, desc: '+10% honey rate' },
+            { id: 'click1',   name: 'Collector Gloves',emoji: '\uD83E\uDDE4', baseCost: 150,   costScale: 1.5, maxLevel: 25, effect: 5,    desc: '+5 pollen per click' },
+            { id: 'bag1',     name: 'Bigger Bag',      emoji: '\uD83C\uDF92', baseCost: 250,   costScale: 2.0, maxLevel: 20, effect: 50,   desc: '+50 bag capacity' },
+            { id: 'auto1',    name: 'Auto Converter',  emoji: '\uD83D\uDD04', baseCost: 5000,  costScale: 1,   maxLevel: 1,  effect: 1,    desc: 'Auto-convert when full' }
+        ];
+
+        // ===================== STATE =====================
+
+        let gs = {
+            honey: 0,
+            pollen: 0,
+            totalHoneyEarned: 0,
+            pollenBagCapacity: 100,
+            hiveSlots: 25,
+            bees: [{ typeId: 'basic' }],
+            currentField: 0,
+            unlockedFields: [true, false, false, false, false, false, false, false],
+            upgradeLevels: {},
+            totalPollenCollected: 0,
+            totalBeesHatched: 1,
+            totalClicks: 0,
+            lastSave: Date.now()
+        };
+
+        let beeInstances = [];
+        let flowers = [];
+        let particles = [];
+        let floatTexts = [];
+        let wingFrame = false;
+        let wingTimer = 0;
+        let currentShopTab = 'eggs';
+        let currentMobileView = 'field';
+
+        // ===================== DOM REFS =====================
+
+        const canvas = document.getElementById('fieldCanvas');
+        const ctx = canvas.getContext('2d');
+        const honeyDisplay = document.getElementById('honeyDisplay');
+        const pollenDisplay = document.getElementById('pollenDisplay');
+        const beeCountDisplay = document.getElementById('beeCountDisplay');
+        const fieldDisplay = document.getElementById('fieldDisplay');
+        const hiveGrid = document.getElementById('hiveGrid');
+        const convertBtn = document.getElementById('convertBtn');
+        const convertInfo = document.getElementById('convertInfo');
+        const shopContent = document.getElementById('shopContent');
+        const fieldTabs = document.getElementById('fieldTabs');
+        const hatchModal = document.getElementById('hatchModal');
+        const hatchBeeIcon = document.getElementById('hatchBeeIcon');
+        const hatchBeeName = document.getElementById('hatchBeeName');
+        const hatchBeeRarity = document.getElementById('hatchBeeRarity');
+        const hatchBeeStats = document.getElementById('hatchBeeStats');
+        const hatchCloseBtn = document.getElementById('hatchCloseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const hivePanel = document.getElementById('hivePanel');
+        const shopPanel = document.getElementById('shopPanel');
+        const fieldSection = document.getElementById('fieldSection');
+
+        // ===================== HELPERS =====================
+
+        function formatNumber(n) {
+            if (n < 1000) return Math.floor(n).toString();
+            if (n < 1e6) return (n / 1e3).toFixed(1) + 'K';
+            if (n < 1e9) return (n / 1e6).toFixed(1) + 'M';
+            if (n < 1e12) return (n / 1e9).toFixed(1) + 'B';
+            return (n / 1e12).toFixed(1) + 'T';
+        }
+
+        function getUpgradeLevel(id) { return gs.upgradeLevels[id] || 0; }
+
+        function getUpgradeCost(upg) {
+            var lvl = getUpgradeLevel(upg.id);
+            return Math.floor(upg.baseCost * Math.pow(upg.costScale, lvl));
+        }
+
+        function getPollenMultiplier() {
+            var m = 1;
+            m += getUpgradeLevel('pollen1') * 0.10;
+            m += getUpgradeLevel('pollen2') * 0.25;
+            return m;
+        }
+
+        function getSpeedMultiplier() {
+            var m = 1;
+            m += getUpgradeLevel('speed1') * 0.10;
+            m += getUpgradeLevel('speed2') * 0.20;
+            return m;
+        }
+
+        function getConvertRate() {
+            return 1 + getUpgradeLevel('convert1') * 0.10;
+        }
+
+        function getClickPollen() {
+            return 10 + getUpgradeLevel('click1') * 5;
+        }
+
+        function getBagCapacity() {
+            return 100 + getUpgradeLevel('bag1') * 50;
+        }
+
+        function getHiveSlots() {
+            return 25 + getUpgradeLevel('hive1') * 5;
+        }
+
+        function rollBee(egg) {
+            var r = Math.random();
+            var cumulative = 0;
+            var rarity = 'Common';
+            for (var rar of ['Common', 'Rare', 'Epic', 'Legendary']) {
+                cumulative += egg.rates[rar];
+                if (r <= cumulative) { rarity = rar; break; }
+            }
+            var pool = Object.keys(BEE_TYPES).filter(function(k) { return BEE_TYPES[k].rarity === rarity; });
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        // ===================== CANVAS =====================
+
+        function initField() {
+            var field = FIELDS[gs.currentField];
+            flowers = [];
+            var cols = 8, rows = 5;
+            var spacingX = canvas.width / (cols + 1);
+            var spacingY = (canvas.height - 80) / (rows + 1);
+            for (var r = 0; r < rows; r++) {
+                for (var c = 0; c < cols; c++) {
+                    flowers.push({
+                        x: spacingX * (c + 1) + (Math.random() - 0.5) * 20,
+                        y: spacingY * (r + 1) + 30 + (Math.random() - 0.5) * 15,
+                        pollen: 1,
+                        maxPollen: 1,
+                        regenTimer: 0,
+                        color: field.flowerColor
+                    });
+                }
+            }
+            initBeeInstances();
+        }
+
+        function initBeeInstances() {
+            beeInstances = [];
+            for (var i = 0; i < gs.bees.length; i++) {
+                var bee = gs.bees[i];
+                var data = BEE_TYPES[bee.typeId];
+                var fl = flowers[Math.floor(Math.random() * flowers.length)];
+                beeInstances.push({
+                    x: canvas.width / 2 + (Math.random() - 0.5) * 100,
+                    y: canvas.height - 20,
+                    targetFlower: Math.floor(Math.random() * flowers.length),
+                    phase: 'toFlower',
+                    gatherTimer: 0,
+                    typeId: bee.typeId,
+                    speed: data.gatherSpeed,
+                    gatherAmount: data.gatherAmount,
+                    color: data.color
+                });
+            }
+        }
+
+        function renderField() {
+            var field = FIELDS[gs.currentField];
+            // Background
+            ctx.fillStyle = field.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Gradient overlay
+            var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            grad.addColorStop(0, 'rgba(0,0,0,0.2)');
+            grad.addColorStop(1, 'rgba(0,0,0,0.05)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Field name
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.font = 'bold 28px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(field.name, canvas.width / 2, 28);
+
+            // Draw flowers
+            for (var i = 0; i < flowers.length; i++) {
+                drawFlower(flowers[i]);
+            }
+
+            // Draw bees
+            for (var i = 0; i < beeInstances.length; i++) {
+                drawBee(beeInstances[i]);
+            }
+
+            // Draw particles
+            for (var i = particles.length - 1; i >= 0; i--) {
+                var p = particles[i];
+                p.life -= 0.02;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                p.x += p.vx;
+                p.y += p.vy;
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function drawFlower(f) {
+            var size = 8 + f.pollen * 8;
+            // Stem
+            ctx.strokeStyle = '#228B22';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(f.x, f.y + size * 0.8);
+            ctx.lineTo(f.x, f.y + size * 0.8 + 14);
+            ctx.stroke();
+            // Petals
+            ctx.fillStyle = f.color;
+            for (var i = 0; i < 5; i++) {
+                var angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+                var px = f.x + Math.cos(angle) * size * 0.55;
+                var py = f.y + Math.sin(angle) * size * 0.55;
+                ctx.beginPath();
+                ctx.arc(px, py, size * 0.38, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Center
+            ctx.fillStyle = '#5a4000';
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, size * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawBee(b) {
+            var x = b.x, y = b.y;
+            // Wings
+            ctx.fillStyle = 'rgba(200,230,255,0.5)';
+            var wOff = wingFrame ? -3 : 1;
+            ctx.beginPath();
+            ctx.ellipse(x - 3, y - 5 + wOff, 5, 3, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(x + 3, y - 5 + wOff, 5, 3, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            // Body
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.ellipse(x, y, 7, 5, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Stripes
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(x - 2, y - 5, 1.5, 10);
+            ctx.fillRect(x + 1, y - 5, 1.5, 10);
+            // Eye
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x + 5, y - 1, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ===================== BEE AI =====================
+
+        function updateBees() {
+            var speedMult = getSpeedMultiplier();
+            var pollenMult = getPollenMultiplier();
+            var field = FIELDS[gs.currentField];
+            var bagCap = getBagCapacity();
+
+            for (var i = 0; i < beeInstances.length; i++) {
+                var b = beeInstances[i];
+                var beeSpeed = b.speed * speedMult * 2.5;
+
+                if (b.phase === 'toFlower') {
+                    var f = flowers[b.targetFlower];
+                    var dx = f.x - b.x;
+                    var dy = f.y - b.y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < beeSpeed) {
+                        b.x = f.x;
+                        b.y = f.y;
+                        b.phase = 'gathering';
+                        b.gatherTimer = 20;
+                    } else {
+                        b.x += (dx / dist) * beeSpeed;
+                        b.y += (dy / dist) * beeSpeed;
+                    }
+                } else if (b.phase === 'gathering') {
+                    b.gatherTimer--;
+                    if (b.gatherTimer <= 0) {
+                        var amount = b.gatherAmount * field.pollenBase * pollenMult;
+                        collectPollen(amount);
+                        // Pollen particles
+                        for (var j = 0; j < 3; j++) {
+                            particles.push({
+                                x: b.x, y: b.y,
+                                vx: (Math.random() - 0.5) * 2,
+                                vy: -Math.random() * 2 - 1,
+                                life: 0.6,
+                                color: '#FFD700',
+                                size: 2 + Math.random() * 2
+                            });
+                        }
+                        b.phase = 'toHive';
+                    }
+                } else if (b.phase === 'toHive') {
+                    var hx = canvas.width / 2 + (i % 10 - 5) * 12;
+                    var hy = canvas.height - 15;
+                    var dx = hx - b.x;
+                    var dy = hy - b.y;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < beeSpeed) {
+                        b.phase = 'toFlower';
+                        b.targetFlower = Math.floor(Math.random() * flowers.length);
+                    } else {
+                        b.x += (dx / dist) * beeSpeed;
+                        b.y += (dy / dist) * beeSpeed;
+                    }
+                }
+            }
+        }
+
+        // ===================== MECHANICS =====================
+
+        function collectPollen(amount) {
+            var bagCap = getBagCapacity();
+            var added = Math.min(amount, bagCap - gs.pollen);
+            gs.pollen += added;
+            gs.totalPollenCollected += added;
+            // Auto-convert
+            if (getUpgradeLevel('auto1') > 0 && gs.pollen >= bagCap) {
+                convertPollen();
+            }
+        }
+
+        function convertPollen() {
+            if (gs.pollen <= 0) return;
+            var rate = getConvertRate();
+            var honeyGained = Math.floor(gs.pollen * rate);
+            gs.honey += honeyGained;
+            gs.totalHoneyEarned += honeyGained;
+            gs.pollen = 0;
+            playSound(600, 0.15, 'triangle');
+        }
+
+        function hatchEgg(eggId) {
+            var egg = EGGS.find(function(e) { return e.id === eggId; });
+            if (!egg || gs.honey < egg.cost) return;
+            if (gs.bees.length >= getHiveSlots()) return;
+            gs.honey -= egg.cost;
+            var beeTypeId = rollBee(egg);
+            gs.bees.push({ typeId: beeTypeId });
+            gs.totalBeesHatched++;
+            initBeeInstances();
+            showHatchModal(beeTypeId);
+            playSound(800, 0.2, 'sine');
+        }
+
+        function buyUpgrade(upgId) {
+            var upg = UPGRADES.find(function(u) { return u.id === upgId; });
+            if (!upg) return;
+            var lvl = getUpgradeLevel(upgId);
+            if (lvl >= upg.maxLevel) return;
+            var cost = getUpgradeCost(upg);
+            if (gs.honey < cost) return;
+            gs.honey -= cost;
+            gs.upgradeLevels[upgId] = lvl + 1;
+            gs.pollenBagCapacity = getBagCapacity();
+            gs.hiveSlots = getHiveSlots();
+            playSound(500, 0.1, 'square');
+            renderShop();
+        }
+
+        function unlockField(idx) {
+            var field = FIELDS[idx];
+            if (gs.unlockedFields[idx] || gs.honey < field.unlockCost) return;
+            gs.honey -= field.unlockCost;
+            gs.unlockedFields[idx] = true;
+            switchField(idx);
+            playSound(700, 0.2, 'sine');
+        }
+
+        function switchField(idx) {
+            if (!gs.unlockedFields[idx]) return;
+            gs.currentField = idx;
+            initField();
+            renderFieldTabs();
+        }
+
+        // ===================== CANVAS CLICK =====================
+
+        function handleFieldClick(e) {
+            var rect = canvas.getBoundingClientRect();
+            var scaleX = canvas.width / rect.width;
+            var scaleY = canvas.height / rect.height;
+            var x, y;
+            if (e.touches) {
+                x = (e.touches[0].clientX - rect.left) * scaleX;
+                y = (e.touches[0].clientY - rect.top) * scaleY;
+                e.preventDefault();
+            } else {
+                x = (e.clientX - rect.left) * scaleX;
+                y = (e.clientY - rect.top) * scaleY;
+            }
+            var field = FIELDS[gs.currentField];
+            var amount = getClickPollen() * field.pollenBase * getPollenMultiplier();
+            collectPollen(amount);
+            gs.totalClicks++;
+
+            // Float text
+            var dispX = (x / scaleX) + rect.left;
+            var dispY = (y / scaleY) + rect.top;
+            showFloatText(dispX, dispY, '+' + formatNumber(amount), '#FFD700');
+
+            // Click particles
+            for (var i = 0; i < 5; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: -Math.random() * 3 - 1,
+                    life: 0.8,
+                    color: field.flowerColor,
+                    size: 2 + Math.random() * 3
+                });
+            }
+            playSound(400 + Math.random() * 200, 0.08, 'sine');
+        }
+
+        function showFloatText(x, y, text, color) {
+            var el = document.createElement('div');
+            el.className = 'float-text';
+            el.textContent = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.color = color;
+            document.body.appendChild(el);
+            setTimeout(function() { el.remove(); }, 1000);
+        }
+
+        // ===================== UI RENDER =====================
+
+        function updateDisplay() {
+            honeyDisplay.textContent = formatNumber(gs.honey);
+            pollenDisplay.textContent = formatNumber(gs.pollen) + ' / ' + formatNumber(getBagCapacity());
+            beeCountDisplay.textContent = gs.bees.length + ' / ' + getHiveSlots();
+            fieldDisplay.textContent = FIELDS[gs.currentField].name.replace(' Field', '');
+            convertBtn.disabled = gs.pollen <= 0;
+            var rate = getConvertRate();
+            convertInfo.textContent = 'Rate: 1 pollen = ' + rate.toFixed(1) + ' honey';
+        }
+
+        function renderHive() {
+            var slots = getHiveSlots();
+            var html = '';
+            for (var i = 0; i < slots; i++) {
+                if (i < gs.bees.length) {
+                    var bee = gs.bees[i];
+                    var data = BEE_TYPES[bee.typeId];
+                    html += '<div class="hive-slot filled rarity-' + data.rarity + '">' +
+                        '<span style="color:' + data.color + '">&#x1F41D;</span>' +
+                        '<div class="hive-tooltip">' +
+                        '<strong style="color:' + RARITY_COLORS[data.rarity] + '">' + data.name + '</strong><br>' +
+                        'Gather: ' + data.gatherAmount + ' | Speed: ' + data.gatherSpeed + 'x' +
+                        '</div></div>';
+                } else {
+                    html += '<div class="hive-slot"></div>';
+                }
+            }
+            hiveGrid.innerHTML = html;
+        }
+
+        function renderShop() {
+            if (currentShopTab === 'eggs') renderShopEggs();
+            else if (currentShopTab === 'upgrades') renderShopUpgrades();
+            else renderShopFields();
+        }
+
+        function renderShopEggs() {
+            var html = '';
+            for (var i = 0; i < EGGS.length; i++) {
+                var egg = EGGS[i];
+                var canBuy = gs.honey >= egg.cost && gs.bees.length < getHiveSlots();
+                var full = gs.bees.length >= getHiveSlots();
+                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') + (full ? ' locked' : '') + '" data-egg="' + egg.id + '">' +
+                    '<div class="shop-item-header">' +
+                    '<span class="shop-item-name">' + egg.emoji + ' ' + egg.name + '</span>' +
+                    '<span class="shop-item-cost">' + formatNumber(egg.cost) + ' \uD83C\uDF6F</span>' +
+                    '</div>' +
+                    '<div class="shop-item-desc">';
+                var rateStrs = [];
+                for (var rar of ['Common', 'Rare', 'Epic', 'Legendary']) {
+                    if (egg.rates[rar] > 0) {
+                        rateStrs.push('<span class="rarity-' + rar + '">' + Math.round(egg.rates[rar] * 100) + '% ' + rar + '</span>');
+                    }
+                }
+                html += rateStrs.join(' | ') + '</div>';
+                if (full) html += '<div class="shop-item-level" style="color:#ff6b6b;">Hive full!</div>';
+                html += '</div>';
+            }
+            shopContent.innerHTML = html;
+            shopContent.querySelectorAll('[data-egg]').forEach(function(el) {
+                el.addEventListener('click', function() { hatchEgg(this.dataset.egg); });
+            });
+        }
+
+        function renderShopUpgrades() {
+            var html = '';
+            for (var i = 0; i < UPGRADES.length; i++) {
+                var upg = UPGRADES[i];
+                var lvl = getUpgradeLevel(upg.id);
+                var maxed = lvl >= upg.maxLevel;
+                var cost = maxed ? 0 : getUpgradeCost(upg);
+                var canBuy = !maxed && gs.honey >= cost;
+                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') + (maxed ? ' locked' : '') + '" data-upg="' + upg.id + '">' +
+                    '<div class="shop-item-header">' +
+                    '<span class="shop-item-name">' + upg.emoji + ' ' + upg.name + '</span>' +
+                    '<span class="shop-item-cost">' + (maxed ? 'MAX' : formatNumber(cost) + ' \uD83C\uDF6F') + '</span>' +
+                    '</div>' +
+                    '<div class="shop-item-desc">' + upg.desc + '</div>' +
+                    '<div class="shop-item-level">Level ' + lvl + ' / ' + upg.maxLevel + '</div>' +
+                    '</div>';
+            }
+            shopContent.innerHTML = html;
+            shopContent.querySelectorAll('[data-upg]').forEach(function(el) {
+                el.addEventListener('click', function() { buyUpgrade(this.dataset.upg); });
+            });
+        }
+
+        function renderShopFields() {
+            var html = '';
+            for (var i = 0; i < FIELDS.length; i++) {
+                var f = FIELDS[i];
+                var unlocked = gs.unlockedFields[i];
+                var canBuy = !unlocked && gs.honey >= f.unlockCost;
+                var isCurrent = gs.currentField === i;
+                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') +
+                    (unlocked && !isCurrent ? '' : '') +
+                    (!unlocked && !canBuy ? ' locked' : '') + '" data-field="' + i + '">' +
+                    '<div class="shop-item-header">' +
+                    '<span class="shop-item-name" style="color:' + f.flowerColor + '">' + f.name + '</span>' +
+                    '<span class="shop-item-cost">' + (unlocked ? (isCurrent ? 'ACTIVE' : 'Go') : formatNumber(f.unlockCost) + ' \uD83C\uDF6F') + '</span>' +
+                    '</div>' +
+                    '<div class="shop-item-desc">Base pollen: x' + f.pollenBase + '</div>' +
+                    '</div>';
+            }
+            shopContent.innerHTML = html;
+            shopContent.querySelectorAll('[data-field]').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    var idx = parseInt(this.dataset.field);
+                    if (gs.unlockedFields[idx]) switchField(idx);
+                    else unlockField(idx);
+                });
+            });
+        }
+
+        function renderFieldTabs() {
+            var html = '';
+            for (var i = 0; i < FIELDS.length; i++) {
+                var f = FIELDS[i];
+                var unlocked = gs.unlockedFields[i];
+                var active = gs.currentField === i;
+                html += '<button class="field-tab' + (active ? ' active' : '') + (!unlocked ? ' locked' : '') +
+                    '" data-fidx="' + i + '">' + f.name.replace(' Field', '') + '</button>';
+            }
+            fieldTabs.innerHTML = html;
+            fieldTabs.querySelectorAll('.field-tab').forEach(function(el) {
+                el.addEventListener('click', function() {
+                    var idx = parseInt(this.dataset.fidx);
+                    if (gs.unlockedFields[idx]) switchField(idx);
+                });
+            });
+        }
+
+        function showHatchModal(beeTypeId) {
+            var data = BEE_TYPES[beeTypeId];
+            hatchBeeIcon.textContent = '\uD83D\uDC1D';
+            hatchBeeIcon.style.filter = 'drop-shadow(0 0 15px ' + RARITY_COLORS[data.rarity] + ')';
+            hatchBeeName.textContent = data.name;
+            hatchBeeName.style.color = data.color;
+            hatchBeeRarity.textContent = data.rarity;
+            hatchBeeRarity.className = 'hatch-bee-rarity rarity-' + data.rarity;
+            hatchBeeStats.innerHTML =
+                'Gather: ' + data.gatherAmount + '<br>' +
+                'Speed: ' + data.gatherSpeed + 'x';
+            hatchModal.classList.add('active');
+            renderHive();
+            renderShop();
+        }
+
+        // ===================== SOUND =====================
+
+        var audioCtx = null;
+        function playSound(freq, dur, type) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                var osc = audioCtx.createOscillator();
+                var gain = audioCtx.createGain();
+                osc.type = type || 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + dur);
+            } catch (e) {}
+        }
+
+        // ===================== SAVE / LOAD =====================
+
+        function saveGame() {
+            gs.lastSave = Date.now();
+            localStorage.setItem('beeSwarmSave', JSON.stringify(gs));
+        }
+
+        function loadGame() {
+            var saved = localStorage.getItem('beeSwarmSave');
+            if (!saved) return;
+            try {
+                var data = JSON.parse(saved);
+                // Merge saved data into gs
+                for (var key in data) {
+                    if (data.hasOwnProperty(key)) gs[key] = data[key];
+                }
+                // Calculate offline progress
+                var elapsed = (Date.now() - gs.lastSave) / 1000;
+                if (elapsed > 10) {
+                    calculateOfflineProgress(elapsed);
+                }
+            } catch (e) {}
+        }
+
+        function calculateOfflineProgress(seconds) {
+            var eff = 0.5;
+            var field = FIELDS[gs.currentField];
+            var pollenMult = getPollenMultiplier();
+            var totalPollen = 0;
+            for (var i = 0; i < gs.bees.length; i++) {
+                var bee = gs.bees[i];
+                var data = BEE_TYPES[bee.typeId];
+                var pps = (data.gatherAmount * field.pollenBase * pollenMult) / 4;
+                totalPollen += pps * seconds * eff;
+            }
+            if (getUpgradeLevel('auto1') > 0) {
+                var honeyGained = totalPollen * getConvertRate();
+                gs.honey += honeyGained;
+                gs.totalHoneyEarned += honeyGained;
+            } else {
+                gs.pollen = Math.min(getBagCapacity(), gs.pollen + totalPollen);
+            }
+        }
+
+        function resetGame() {
+            if (!confirm('Reset all progress? This cannot be undone.')) return;
+            localStorage.removeItem('beeSwarmSave');
+            location.reload();
+        }
+
+        // ===================== GAME LOOP =====================
+
+        function tick() {
+            updateBees();
+            // Regen flowers
+            for (var i = 0; i < flowers.length; i++) {
+                var f = flowers[i];
+                if (f.pollen < f.maxPollen) {
+                    f.regenTimer++;
+                    if (f.regenTimer >= 30) {
+                        f.pollen = Math.min(f.maxPollen, f.pollen + 0.1);
+                        f.regenTimer = 0;
+                    }
+                }
+            }
+            // Wing animation
+            wingTimer++;
+            if (wingTimer >= 3) {
+                wingFrame = !wingFrame;
+                wingTimer = 0;
+            }
+            updateDisplay();
+        }
+
+        // ===================== EVENTS =====================
+
+        canvas.addEventListener('click', handleFieldClick);
+        canvas.addEventListener('touchstart', handleFieldClick, { passive: false });
+
+        convertBtn.addEventListener('click', function() { convertPollen(); });
+
+        hatchCloseBtn.addEventListener('click', function() { hatchModal.classList.remove('active'); });
+
+        resetBtn.addEventListener('click', resetGame);
+
+        // Shop tabs
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+                currentShopTab = this.dataset.shop;
+                renderShop();
+            });
+        });
+
+        // Mobile nav
+        document.querySelectorAll('.mobile-nav-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.mobile-nav-item').forEach(function(i) { i.classList.remove('active'); });
+                this.classList.add('active');
+                currentMobileView = this.dataset.view;
+                hivePanel.classList.remove('mobile-visible');
+                shopPanel.classList.remove('mobile-visible');
+                fieldSection.classList.remove('mobile-hidden');
+                if (currentMobileView === 'hive') {
+                    hivePanel.classList.add('mobile-visible');
+                    fieldSection.classList.add('mobile-hidden');
+                } else if (currentMobileView === 'shop') {
+                    shopPanel.classList.add('mobile-visible');
+                    fieldSection.classList.add('mobile-hidden');
+                }
+            });
+        });
+
+        // Keyboard
+        document.addEventListener('keydown', function(e) {
+            var key = e.key;
+            if (key >= '1' && key <= '8') {
+                var idx = parseInt(key) - 1;
+                if (gs.unlockedFields[idx]) switchField(idx);
+            } else if (key === 'c' || key === 'C') {
+                convertPollen();
+            } else if (key === 's' || key === 'S') {
+                saveGame();
+            }
+        });
+
+        // Fullscreen
+        fullscreenBtn.addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(function() {});
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // ===================== INIT =====================
+
+        function init() {
+            loadGame();
+            gs.pollenBagCapacity = getBagCapacity();
+            gs.hiveSlots = getHiveSlots();
+            initField();
+            renderHive();
+            renderFieldTabs();
+            renderShop();
+            updateDisplay();
+
+            setInterval(tick, 100);
+            setInterval(saveGame, 30000);
+
+            // Canvas render loop
+            function draw() {
+                renderField();
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+        }
+
+        init();
+    })();
+    </script>
+    <script src="../js/game-utils.js"></script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>
