@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bee Swarm 3D - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background: #000; font-family: 'Inter', Arial, sans-serif; }
+
+        #c {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        .hud {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-box {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,200,0,0.35);
+            border-radius: 12px;
+            padding: 10px 16px;
+            color: #fff;
+            pointer-events: auto;
+            backdrop-filter: blur(6px);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .hud-box .val { color: #ffc107; font-weight: 700; }
+        .hud-box .g { color: #00ff88; font-weight: 700; }
+
+        .back-link {
+            position: fixed; top: 12px; right: 16px; z-index: 20;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            padding: 7px 14px;
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .back-link:hover { background: rgba(0,0,0,0.8); }
+
+        .fullscreen-btn { position: fixed; top: 12px; right: 160px; z-index: 20; }
+
+        .shop {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 15;
+        }
+
+        .shop button {
+            background: rgba(0,0,0,0.65);
+            border: 1px solid rgba(255,200,0,0.4);
+            border-radius: 10px;
+            color: #fff;
+            padding: 9px 16px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: inherit;
+            backdrop-filter: blur(6px);
+            transition: all 0.2s;
+            line-height: 1.4;
+        }
+        .shop button:hover { background: rgba(255,200,0,0.15); border-color: #ffc107; }
+        .shop button:disabled { opacity: 0.35; cursor: not-allowed; }
+        .shop .cost { color: #ffc107; font-weight: 700; }
+
+        .dpad {
+            position: fixed;
+            bottom: 90px; left: 20px;
+            z-index: 15;
+            display: none;
+            grid-template-columns: 56px 56px 56px;
+            grid-template-rows: 56px 56px;
+            gap: 4px;
+        }
+        @media (pointer: coarse) { .dpad { display: grid; } }
+
+        .dpad button {
+            width: 56px; height: 56px;
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .dpad button:active { background: rgba(255,200,0,0.25); }
+        .dpad .u { grid-column: 2; grid-row: 1; }
+        .dpad .l { grid-column: 1; grid-row: 2; }
+        .dpad .d { grid-column: 2; grid-row: 2; }
+        .dpad .r { grid-column: 3; grid-row: 2; }
+
+        .hint {
+            position: fixed;
+            bottom: 70px; right: 16px;
+            z-index: 15;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: rgba(255,255,255,0.6);
+            font-size: 11px;
+            line-height: 1.6;
+            transition: opacity 0.8s;
+        }
+
+        .minimap {
+            position: fixed;
+            bottom: 16px; right: 16px;
+            width: 140px; height: 140px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,200,0,0.3);
+            border-radius: 10px;
+            z-index: 15;
+            overflow: hidden;
+        }
+        .minimap canvas { width: 100%; height: 100%; }
+
+        .popup {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            background: rgba(0,0,0,0.88);
+            border: 2px solid #ffc107;
+            border-radius: 16px;
+            padding: 28px 36px;
+            color: #fff;
+            z-index: 100;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            display: none;
+            max-width: 380px;
+        }
+        .popup h2 { color: #ffc107; margin: 0 0 8px; }
+        .popup p { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
+        .popup button {
+            background: #ffc107; color: #000; border: none;
+            padding: 9px 28px; border-radius: 8px;
+            font-size: 15px; font-weight: 700; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <a href="../index.html" class="back-link">&#8592; Back to Games</a>
+
+    <canvas id="c"></canvas>
+
+    <div class="hud">
+        <div class="hud-box">
+            &#127855; Honey: <span class="val" id="hHoney">0</span><br>
+            &#127804; Pollen: <span class="val" id="hPollen">0</span>
+            <span style="color:#777">/ <span id="hPolMax">100</span></span><br>
+            &#128029; Bees: <span class="val" id="hBees">3</span><br>
+            &#11088; Level: <span class="g" id="hLvl">1</span>
+        </div>
+    </div>
+
+    <div class="shop" id="shopBar">
+        <button id="sBee" onclick="buyBee()">&#128029; Buy Bee<br><span class="cost" id="cBee">50</span> honey</button>
+        <button id="sBag" onclick="upgBag()">&#127890; Backpack+<br><span class="cost" id="cBag">100</span> honey</button>
+        <button id="sSpd" onclick="upgSpd()">&#9889; Speed+<br><span class="cost" id="cSpd">75</span> honey</button>
+        <button id="sFld" onclick="unlockFld()">&#127793; New Field<br><span class="cost" id="cFld">500</span> honey</button>
+    </div>
+
+    <div class="dpad" id="dpad">
+        <button class="u" data-d="u">&#9650;</button>
+        <button class="l" data-d="l">&#9664;</button>
+        <button class="d" data-d="d">&#9660;</button>
+        <button class="r" data-d="r">&#9654;</button>
+    </div>
+
+    <div class="hint" id="hint">
+        WASD / Arrows: Move<br>
+        Walk on flowers for pollen<br>
+        Return to hive for honey
+    </div>
+
+    <div class="minimap"><canvas id="mm" width="140" height="140"></canvas></div>
+
+    <div class="popup" id="pop">
+        <h2 id="popT"></h2>
+        <p id="popB"></p>
+        <button onclick="document.getElementById('pop').style.display='none'">OK</button>
+    </div>
+
+    <script>
+    /* ================================================================
+       BEE SWARM 3D  –  Pure WebGL, zero dependencies
+       ================================================================ */
+    const cv = document.getElementById('c');
+    const gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
+
+    /* ── math ──────────────────────────────────────────────────────── */
+    const m4 = {
+        cr: () => new Float32Array(16),
+        id: o => { o.fill(0); o[0]=o[5]=o[10]=o[15]=1; return o; },
+        persp(o,fov,a,n,f){const t=1/Math.tan(fov/2);o.fill(0);o[0]=t/a;o[5]=t;o[10]=(f+n)/(n-f);o[11]=-1;o[14]=2*f*n/(n-f);return o;},
+        tr(o,m,v){for(let i=0;i<16;i++)o[i]=m[i];o[12]+=m[0]*v[0]+m[4]*v[1]+m[8]*v[2];o[13]+=m[1]*v[0]+m[5]*v[1]+m[9]*v[2];o[14]+=m[2]*v[0]+m[6]*v[1]+m[10]*v[2];return o;},
+        sc(o,m,v){for(let i=0;i<4;i++){o[i]=m[i]*v[0];o[4+i]=m[4+i]*v[1];o[8+i]=m[8+i]*v[2];o[12+i]=m[12+i];}return o;},
+        rY(o,m,r){const c=Math.cos(r),s=Math.sin(r);for(let i=0;i<16;i++)o[i]=m[i];for(let i=0;i<4;i++){const a=m[i],b=m[8+i];o[i]=a*c+b*s;o[8+i]=b*c-a*s;}return o;},
+        mul(o,a,b){for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=a[4*k+i]*b[4*j+k];o[4*j+i]=s;}return o;},
+        lookAt(o,e,c,u){let zx=e[0]-c[0],zy=e[1]-c[1],zz=e[2]-c[2],l=1/Math.sqrt(zx*zx+zy*zy+zz*zz);zx*=l;zy*=l;zz*=l;let xx=u[1]*zz-u[2]*zy,xy=u[2]*zx-u[0]*zz,xz=u[0]*zy-u[1]*zx;l=Math.sqrt(xx*xx+xy*xy+xz*xz);if(l){l=1/l;xx*=l;xy*=l;xz*=l;}let yx=zy*xz-zz*xy,yy=zz*xx-zx*xz,yz=zx*xy-zy*xx;o[0]=xx;o[1]=yx;o[2]=zx;o[3]=0;o[4]=xy;o[5]=yy;o[6]=zy;o[7]=0;o[8]=xz;o[9]=yz;o[10]=zz;o[11]=0;o[12]=-(xx*e[0]+xy*e[1]+xz*e[2]);o[13]=-(yx*e[0]+yy*e[1]+yz*e[2]);o[14]=-(zx*e[0]+zy*e[1]+zz*e[2]);o[15]=1;return o;}
+    };
+
+    /* ── shaders ───────────────────────────────────────────────────── */
+    const VS=`attribute vec3 aP,aN;uniform mat4 uMVP,uM;varying vec3 vN,vW;
+    void main(){gl_Position=uMVP*vec4(aP,1.);vN=mat3(uM)*aN;vW=(uM*vec4(aP,1.)).xyz;}`;
+    const FS=`precision mediump float;varying vec3 vN,vW;uniform vec3 uC,uL;uniform float uA;
+    void main(){vec3 n=normalize(vN);float d=max(dot(n,normalize(uL)),0.);vec3 c=uC*(uA+d*(1.-uA));
+    float fog=clamp(length(vW)*0.006,0.,1.);c=mix(c,vec3(.47,.76,.96),fog*.45);gl_FragColor=vec4(c,1.);}`;
+
+    function mkSh(t,s){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh;}
+    function mkPr(v,f){const p=gl.createProgram();gl.attachShader(p,mkSh(gl.VERTEX_SHADER,v));gl.attachShader(p,mkSh(gl.FRAGMENT_SHADER,f));gl.linkProgram(p);return p;}
+
+    const pr=mkPr(VS,FS);
+    const ul={aP:gl.getAttribLocation(pr,'aP'),aN:gl.getAttribLocation(pr,'aN'),
+        uMVP:gl.getUniformLocation(pr,'uMVP'),uM:gl.getUniformLocation(pr,'uM'),
+        uC:gl.getUniformLocation(pr,'uC'),uL:gl.getUniformLocation(pr,'uL'),uA:gl.getUniformLocation(pr,'uA')};
+
+    /* ── geometry builders ─────────────────────────────────────────── */
+    function mkBuf(pos,nrm,idx){
+        const m={};
+        m.pb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,m.pb);gl.bufferData(gl.ARRAY_BUFFER,pos,gl.STATIC_DRAW);
+        m.nb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,m.nb);gl.bufferData(gl.ARRAY_BUFFER,nrm,gl.STATIC_DRAW);
+        m.ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,m.ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,idx,gl.STATIC_DRAW);
+        m.cnt=idx.length; return m;
+    }
+
+    function mkBox(){
+        const p=[-1,-1,1,1,-1,1,1,1,1,-1,1,1,-1,-1,-1,-1,1,-1,1,1,-1,1,-1,-1,-1,1,-1,-1,1,1,1,1,1,1,1,-1,-1,-1,-1,1,-1,-1,1,-1,1,-1,-1,1,1,-1,-1,1,1,-1,1,1,1,1,-1,1,-1,-1,-1,-1,-1,1,-1,1,1,-1,1,-1];
+        const n=[0,0,1,0,0,1,0,0,1,0,0,1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,1,0,0,1,0,0,1,0,0,1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,1,0,0,1,0,0,1,0,0,1,0,0,-1,0,0,-1,0,0,-1,0,0,-1,0,0];
+        const idx=[];for(let i=0;i<6;i++){const o=i*4;idx.push(o,o+1,o+2,o,o+2,o+3);}
+        return mkBuf(new Float32Array(p),new Float32Array(n),new Uint16Array(idx));
+    }
+
+    function mkSph(sg=12){
+        const p=[],n=[],idx=[];
+        for(let y=0;y<=sg;y++)for(let x=0;x<=sg;x++){
+            const u=x/sg,v=y/sg,th=u*Math.PI*2,ph=v*Math.PI;
+            const nx=Math.sin(ph)*Math.cos(th),ny=Math.cos(ph),nz=Math.sin(ph)*Math.sin(th);
+            p.push(nx,ny,nz);n.push(nx,ny,nz);}
+        for(let y=0;y<sg;y++)for(let x=0;x<sg;x++){const a=y*(sg+1)+x,b=a+sg+1;idx.push(a,b,a+1,b,b+1,a+1);}
+        return mkBuf(new Float32Array(p),new Float32Array(n),new Uint16Array(idx));
+    }
+
+    function mkCyl(sg=10){
+        const p=[],n=[],idx=[];
+        for(let i=0;i<=sg;i++){const a=i/sg*Math.PI*2,c=Math.cos(a),s=Math.sin(a);p.push(c,-1,s,c,1,s);n.push(c,0,s,c,0,s);}
+        for(let i=0;i<sg;i++){const a=i*2,b=a+2;idx.push(a,b,a+1,b,b+1,a+1);}
+        const tb=p.length/3;p.push(0,1,0);n.push(0,1,0);
+        for(let i=0;i<=sg;i++){const a=i/sg*Math.PI*2;p.push(Math.cos(a),1,Math.sin(a));n.push(0,1,0);}
+        for(let i=0;i<sg;i++)idx.push(tb,tb+1+i,tb+2+i);
+        const bb=p.length/3;p.push(0,-1,0);n.push(0,-1,0);
+        for(let i=0;i<=sg;i++){const a=i/sg*Math.PI*2;p.push(Math.cos(a),-1,Math.sin(a));n.push(0,-1,0);}
+        for(let i=0;i<sg;i++)idx.push(bb,bb+2+i,bb+1+i);
+        return mkBuf(new Float32Array(p),new Float32Array(n),new Uint16Array(idx));
+    }
+
+    function mkCone(sg=10){
+        const p=[],n=[],idx=[];
+        p.push(0,1,0);n.push(0,1,0);
+        for(let i=0;i<=sg;i++){const a=i/sg*Math.PI*2,c=Math.cos(a),s=Math.sin(a);p.push(c,-1,s);const nl=.707;n.push(c*nl,nl,s*nl);}
+        for(let i=0;i<sg;i++)idx.push(0,1+i,2+i);
+        const bb=p.length/3;p.push(0,-1,0);n.push(0,-1,0);
+        for(let i=0;i<=sg;i++){const a=i/sg*Math.PI*2;p.push(Math.cos(a),-1,Math.sin(a));n.push(0,-1,0);}
+        for(let i=0;i<sg;i++)idx.push(bb,bb+2+i,bb+1+i);
+        return mkBuf(new Float32Array(p),new Float32Array(n),new Uint16Array(idx));
+    }
+
+    const gBox=mkBox(), gSph=mkSph(14), gCyl=mkCyl(10), gCone=mkCone(10);
+
+    /* ── draw helper ───────────────────────────────────────────────── */
+    const vp=m4.cr(), tm=m4.cr(), pr_=m4.cr(), vw=m4.cr();
+
+    function draw(mesh,model,col){
+        const mvp=m4.cr();m4.mul(mvp,vp,model);
+        gl.uniformMatrix4fv(ul.uMVP,false,mvp);
+        gl.uniformMatrix4fv(ul.uM,false,model);
+        gl.uniform3fv(ul.uC,col);
+        gl.bindBuffer(gl.ARRAY_BUFFER,mesh.pb);gl.vertexAttribPointer(ul.aP,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(ul.aP);
+        gl.bindBuffer(gl.ARRAY_BUFFER,mesh.nb);gl.vertexAttribPointer(ul.aN,3,gl.FLOAT,false,0,0);gl.enableVertexAttribArray(ul.aN);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.ib);gl.drawElements(gl.TRIANGLES,mesh.cnt,gl.UNSIGNED_SHORT,0);
+    }
+
+    function mat(pos,scl){const o=m4.cr();m4.id(o);m4.tr(tm,o,pos);m4.sc(o,tm,scl);return o;}
+
+    /* ── GAME STATE ────────────────────────────────────────────────── */
+    let honey=0, pollen=0, polMax=100, nBees=3, lvl=1, pSpeed=0.14;
+    let pX=0, pZ=0;
+    let beePrc=50, bagPrc=100, spdPrc=75, fldPrc=500, totHoney=0;
+    let frame=0;
+
+    // Load save
+    try{const s=JSON.parse(localStorage.getItem('bs3dSave'));if(s){honey=s.h||0;nBees=s.b||3;polMax=s.pm||100;pSpeed=s.ps||.14;lvl=s.l||1;beePrc=s.bp||50;bagPrc=s.bg||100;spdPrc=s.sp||75;fldPrc=s.fp||500;totHoney=s.th||0;}}catch(e){}
+
+    /* ── fields ────────────────────────────────────────────────────── */
+    const FS_=20;
+    const flds=[
+        {n:'Sunflower',cx:0,cz:-30,c:[1,.85,.1],on:1},
+        {n:'Clover',cx:35,cz:-30,c:[.2,.8,.3],on:1},
+        {n:'Blue',cx:-35,cz:-30,c:[.3,.5,1],on:0},
+        {n:'Rose',cx:0,cz:-65,c:[1,.3,.4],on:0},
+        {n:'Mythic',cx:35,cz:-65,c:[.8,.3,1],on:0}
+    ];
+
+    const flowers=[];
+    function genFlowers(f){
+        for(let i=0;i<40;i++){
+            flowers.push({
+                x:f.cx+(Math.random()-.5)*FS_,
+                z:f.cz+(Math.random()-.5)*FS_,
+                c:f.c, p:5+Math.random()*10|0, mp:5+Math.random()*10|0,
+                fi:flds.indexOf(f), sz:.25+Math.random()*.2
+            });
+        }
+    }
+    flds.forEach(f=>{if(f.on)genFlowers(f);});
+
+    /* ── bees ──────────────────────────────────────────────────────── */
+    const bees=[];
+    function addBee(){
+        bees.push({
+            x:pX+(Math.random()-.5)*3, y:2+Math.random()*2, z:pZ+(Math.random()-.5)*3,
+            tx:0,ty:2,tz:0, st:'follow', cp:0,
+            bp:Math.random()*6.28, wp:Math.random()*6.28,
+            spd:.055+Math.random()*.03, tf:null
+        });
+    }
+    for(let i=0;i<nBees;i++) addBee();
+
+    /* ── trees ─────────────────────────────────────────────────────── */
+    const trees=[];
+    for(let i=0;i<25;i++){
+        const a=Math.random()*6.28, d=22+Math.random()*40;
+        trees.push({x:Math.cos(a)*d, z:-30+Math.sin(a)*d, h:3+Math.random()*3, tw:.25+Math.random()*.2});
+    }
+
+    /* ── particles ─────────────────────────────────────────────────── */
+    const parts=[];
+    function addPart(x,y,z,c,life){
+        if(parts.length>80)return;
+        parts.push({x,y,z,c,life,ml:life,vx:(Math.random()-.5)*.04,vy:.02+Math.random()*.03,vz:(Math.random()-.5)*.04});
+    }
+
+    /* ── input ─────────────────────────────────────────────────────── */
+    const keys={};
+    document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;});
+    document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+
+    const md={u:0,d:0,l:0,r:0};
+    document.querySelectorAll('.dpad button').forEach(b=>{
+        const d=b.dataset.d;
+        const on=()=>{md[d]=1;};
+        const off=()=>{md[d]=0;};
+        b.addEventListener('touchstart',e=>{e.preventDefault();on();});
+        b.addEventListener('touchend',e=>{e.preventDefault();off();});
+        b.addEventListener('mousedown',on);
+        b.addEventListener('mouseup',off);
+        b.addEventListener('mouseleave',off);
+    });
+
+    document.getElementById('fullscreenBtn').addEventListener('click',()=>{
+        if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});
+        else document.exitFullscreen();
+    });
+
+    /* ── resize ────────────────────────────────────────────────────── */
+    function resize(){cv.width=window.innerWidth;cv.height=window.innerHeight;gl.viewport(0,0,cv.width,cv.height);}
+    window.addEventListener('resize',resize);
+    resize();
+
+    /* ── shop ──────────────────────────────────────────────────────── */
+    function msg(t,b){document.getElementById('popT').textContent=t;document.getElementById('popB').textContent=b;document.getElementById('pop').style.display='block';}
+
+    window.buyBee=function(){
+        if(honey>=beePrc){honey-=beePrc;nBees++;addBee();beePrc=Math.floor(beePrc*1.6);msg('New Bee!','Swarm size: '+nBees);save();}
+    };
+    window.upgBag=function(){
+        if(honey>=bagPrc){honey-=bagPrc;polMax=Math.floor(polMax*1.5);bagPrc=Math.floor(bagPrc*1.8);msg('Backpack+','Capacity: '+polMax);save();}
+    };
+    window.upgSpd=function(){
+        if(honey>=spdPrc){honey-=spdPrc;pSpeed*=1.2;spdPrc=Math.floor(spdPrc*1.7);msg('Speed+','You move faster!');save();}
+    };
+    window.unlockFld=function(){
+        const lk=flds.find(f=>!f.on);
+        if(lk&&honey>=fldPrc){honey-=fldPrc;lk.on=1;genFlowers(lk);fldPrc=Math.floor(fldPrc*2.5);msg('Field Unlocked!',lk.n+' Field is ready!');save();}
+    };
+
+    function save(){
+        localStorage.setItem('bs3dSave',JSON.stringify({h:honey,b:nBees,pm:polMax,ps:pSpeed,l:lvl,bp:beePrc,bg:bagPrc,sp:spdPrc,fp:fldPrc,th:totHoney}));
+        localStorage.setItem('beeSwarm3dHighScore',totHoney);
+    }
+
+    /* ── hud ───────────────────────────────────────────────────────── */
+    function hud(){
+        document.getElementById('hHoney').textContent=Math.floor(honey);
+        document.getElementById('hPollen').textContent=Math.floor(pollen);
+        document.getElementById('hPolMax').textContent=polMax;
+        document.getElementById('hBees').textContent=nBees;
+        document.getElementById('hLvl').textContent=lvl;
+        document.getElementById('cBee').textContent=beePrc;
+        document.getElementById('cBag').textContent=bagPrc;
+        document.getElementById('cSpd').textContent=spdPrc;
+        document.getElementById('cFld').textContent=fldPrc;
+        document.getElementById('sBee').disabled=honey<beePrc;
+        document.getElementById('sBag').disabled=honey<bagPrc;
+        document.getElementById('sSpd').disabled=honey<spdPrc;
+        document.getElementById('sFld').disabled=honey<fldPrc||!flds.find(f=>!f.on);
+    }
+
+    /* ── main loop ─────────────────────────────────────────────────── */
+    let lt=0;
+    function loop(t){
+        requestAnimationFrame(loop);
+        const dt=Math.min((t-lt)/16.67,3);
+        lt=t; frame++;
+
+        // ── Player movement
+        let dx=0,dz=0;
+        if(keys['w']||keys['arrowup']||md.u)dz-=1;
+        if(keys['s']||keys['arrowdown']||md.d)dz+=1;
+        if(keys['a']||keys['arrowleft']||md.l)dx-=1;
+        if(keys['d']||keys['arrowright']||md.r)dx+=1;
+        if(dx||dz){const ln=Math.sqrt(dx*dx+dz*dz);dx/=ln;dz/=ln;pX+=dx*pSpeed*dt;pZ+=dz*pSpeed*dt;}
+        pX=Math.max(-55,Math.min(55,pX));
+        pZ=Math.max(-85,Math.min(20,pZ));
+
+        // ── Player bobbing
+        const walkBob = (dx||dz) ? Math.sin(t*0.01)*0.08 : 0;
+
+        // ── Hive interaction
+        const hd=Math.sqrt(pX*pX+(pZ-5)*(pZ-5));
+        if(hd<4.5&&pollen>0){
+            const cv_=Math.min(pollen,2*dt);
+            pollen-=cv_;
+            const hg=cv_*(1+lvl*.1);
+            honey+=hg; totHoney+=hg;
+            if(frame%10===0)addPart(0,4,5,[1,.85,.1],60);
+            const nl=lvl*500;
+            if(totHoney>=nl){lvl++;msg('Level Up!','Level '+lvl+'! Better honey conversion.');save();}
+        }
+
+        // ── Bees logic
+        bees.forEach(bee=>{
+            bee.bp+=.08*dt; bee.wp+=.5*dt;
+            if(bee.st==='follow'){
+                const ox=Math.sin(bee.bp*.7)*2.5, oz=Math.cos(bee.bp*.5)*2.5;
+                bee.tx=pX+ox; bee.ty=2.5+Math.sin(bee.bp)*.5; bee.tz=pZ+oz;
+                if(frame%25===0&&pollen<polMax){
+                    let closest=null,cd=15;
+                    flowers.forEach(f=>{
+                        if(f.p<=0||!flds[f.fi].on)return;
+                        const d=Math.sqrt((f.x-bee.x)**2+(f.z-bee.z)**2);
+                        if(d<cd){cd=d;closest=f;}
+                    });
+                    if(closest){bee.st='collect';bee.tf=closest;}
+                }
+            } else if(bee.st==='collect'){
+                const f=bee.tf;
+                if(!f||f.p<=0){bee.st='follow';return;}
+                bee.tx=f.x;bee.ty=1.2;bee.tz=f.z;
+                const d=Math.sqrt((f.x-bee.x)**2+(f.z-bee.z)**2);
+                if(d<1){
+                    const g=Math.min(f.p,.35*dt);
+                    if(pollen+g<=polMax){f.p-=g;pollen+=g;if(frame%8===0)addPart(f.x,1,f.z,f.c,30);}
+                    if(f.p<=0||pollen>=polMax)bee.st='follow';
+                }
+            }
+            const tdx=bee.tx-bee.x,tdy=bee.ty-bee.y,tdz=bee.tz-bee.z;
+            const td=Math.sqrt(tdx*tdx+tdy*tdy+tdz*tdz);
+            if(td>.1){const s=bee.spd*dt;bee.x+=tdx/td*s;bee.y+=tdy/td*s;bee.z+=tdz/td*s;}
+        });
+
+        // ── Flower regen
+        flowers.forEach(f=>{if(f.p<f.mp)f.p=Math.min(f.mp,f.p+.006*dt);});
+
+        // ── Particles
+        for(let i=parts.length-1;i>=0;i--){
+            const p=parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.life-=dt;
+            if(p.life<=0)parts.splice(i,1);
+        }
+
+        if(frame%300===0)save();
+
+        // ══ RENDER ═══════════════════════════════════════════════════
+        gl.clearColor(.47,.76,.96,1);
+        gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
+        gl.useProgram(pr);
+
+        // Camera
+        const cDist=18, cH=13;
+        m4.persp(pr_,Math.PI/3.5,cv.width/cv.height,.1,250);
+        m4.lookAt(vw,[pX,cH,pZ+cDist],[pX,1,pZ],[0,1,0]);
+        m4.mul(vp,pr_,vw);
+
+        gl.uniform3f(ul.uL,.4,.8,.3);
+        gl.uniform1f(ul.uA,.35);
+
+        // Ground
+        draw(gBox,mat([0,-.5,-30],[80,.5,80]),[.25,.6,.2]);
+
+        // Field patches
+        flds.forEach(f=>{
+            if(f.on) draw(gBox,mat([f.cx,.01,f.cz],[FS_/2,.05,FS_/2]),[f.c[0]*.5,f.c[1]*.5+.2,f.c[2]*.3]);
+            else draw(gBox,mat([f.cx,.01,f.cz],[FS_/2,.05,FS_/2]),[.3,.3,.3]);
+        });
+
+        // Flowers
+        flowers.forEach(f=>{
+            if(!flds[f.fi].on)return;
+            const hp=f.p/f.mp; if(hp<.1)return;
+            draw(gCyl,mat([f.x,.4,f.z],[.05,.4,.05]),[.2,.5,.15]);
+            draw(gSph,mat([f.x,.8+f.sz*.3,f.z],[f.sz*hp,f.sz*hp,f.sz*hp]),f.c);
+        });
+
+        // Hive – main body
+        draw(gBox,mat([0,1.8,5],[3,1.8,3]),[.85,.6,.15]);
+        // Hive – roof
+        draw(gCone,mat([0,4.8,5],[3.3,1.4,3.3]),[.7,.45,.1]);
+        // Hive – entrance
+        draw(gBox,mat([0,.8,8],[.5,.6,.25]),[.2,.15,.05]);
+        // Hive – honeycomb detail
+        draw(gBox,mat([0,2.5,8.01],[1.2,.8,.05]),[.95,.7,.1]);
+
+        // ── Player character ──
+        // Body
+        draw(gBox,mat([pX,1+walkBob,pZ],[.4,.7,.3]),[.95,.75,.55]);
+        // Head
+        draw(gSph,mat([pX,2.15+walkBob,pZ],[.35,.35,.35]),[.95,.78,.58]);
+        // Legs
+        const legAnim = (dx||dz) ? Math.sin(t*0.012)*0.15 : 0;
+        draw(gBox,mat([pX-.2,.3,pZ+legAnim],[.12,.35,.12]),[.3,.3,.8]);
+        draw(gBox,mat([pX+.2,.3,pZ-legAnim],[.12,.35,.12]),[.3,.3,.8]);
+        // Arms
+        const armSwing = (dx||dz) ? Math.sin(t*0.012)*0.2 : 0;
+        draw(gBox,mat([pX-.55,1.2+walkBob,pZ+armSwing],[.1,.35,.1]),[.9,.7,.5]);
+        draw(gBox,mat([pX+.55,1.2+walkBob,pZ-armSwing],[.1,.35,.1]),[.9,.7,.5]);
+        // Beekeeper hat
+        draw(gCyl,mat([pX,2.55+walkBob,pZ],[.45,.15,.45]),[1,1,.8]);
+        // Hat brim
+        draw(gCyl,mat([pX,2.45+walkBob,pZ],[.55,.03,.55]),[.95,.95,.75]);
+        // Eyes
+        draw(gSph,mat([pX-.12,2.2+walkBob,pZ+.32],[.06,.06,.06]),[.1,.1,.1]);
+        draw(gSph,mat([pX+.12,2.2+walkBob,pZ+.32],[.06,.06,.06]),[.1,.1,.1]);
+
+        // Backpack indicator
+        if(pollen>0){
+            const fill=pollen/polMax;
+            draw(gBox,mat([pX,1+fill*.5+walkBob,pZ-.45],[.3,.2+fill*.35,.2]),[1,.9,.2]);
+        }
+
+        // ── Bees ──
+        bees.forEach(bee=>{
+            const by=bee.y+Math.sin(bee.bp)*.15;
+            // Body
+            draw(gSph,mat([bee.x,by,bee.z],[.2,.15,.3]),[.95,.8,.1]);
+            // Dark head
+            draw(gSph,mat([bee.x,by,bee.z-.18],[.16,.12,.1]),[.15,.12,.05]);
+            // Stripe
+            draw(gSph,mat([bee.x,by,bee.z+.12],[.18,.13,.06]),[.15,.12,.05]);
+            // Wings
+            const wf=Math.sin(bee.wp)*.3;
+            draw(gSph,mat([bee.x-.22,by+.18+wf*.4,bee.z],[.1,.02,.13]),[.88,.88,1]);
+            draw(gSph,mat([bee.x+.22,by+.18-wf*.4,bee.z],[.1,.02,.13]),[.88,.88,1]);
+            // Stinger
+            draw(gCone,mat([bee.x,by-.02,bee.z+.32],[.04,.08,.04]),[.2,.18,.05]);
+        });
+
+        // ── Trees ──
+        trees.forEach(t=>{
+            draw(gCyl,mat([t.x,t.h/2,t.z],[t.tw,t.h/2,t.tw]),[.45,.28,.12]);
+            draw(gCone,mat([t.x,t.h+1.8,t.z],[2,2.8,2]),[.15,.55,.18]);
+            draw(gCone,mat([t.x,t.h+.5,t.z],[2.6,2.2,2.6]),[.18,.5,.15]);
+        });
+
+        // ── Clouds (simple spheres far away) ──
+        for(let i=0;i<8;i++){
+            const cx=-40+i*12+Math.sin(t*.0002+i)*3;
+            const cy=20+Math.sin(i*1.5)*3;
+            const cz_=-60+Math.cos(i*2)*15;
+            draw(gSph,mat([cx,cy,cz_],[4+Math.sin(i)*1.5,1.5,.3+Math.sin(i)*.8]),[1,1,1]);
+            draw(gSph,mat([cx+3,cy-.3,cz_],[3,1.2,2.5]),[.98,.98,1]);
+        }
+
+        // ── Particles ──
+        parts.forEach(p=>{
+            const a=p.life/p.ml, sz=.06*a;
+            draw(gSph,mat([p.x,p.y,p.z],[sz,sz,sz]),p.c);
+        });
+
+        // ── Fence posts around fields ──
+        flds.forEach(f=>{
+            if(!f.on)return;
+            for(let i=0;i<4;i++){
+                const angle=i/4*Math.PI*2;
+                const fx=f.cx+Math.cos(angle)*(FS_/2+1);
+                const fz_=f.cz+Math.sin(angle)*(FS_/2+1);
+                draw(gCyl,mat([fx,.5,fz_],[.08,.5,.08]),[.55,.35,.15]);
+            }
+        });
+
+        // Minimap
+        drawMM();
+        hud();
+    }
+
+    /* ── minimap ───────────────────────────────────────────────────── */
+    const mmC=document.getElementById('mm').getContext('2d');
+    function drawMM(){
+        const w=140,h=140,sc=w/130,ox=w/2,oy=h*.65;
+        mmC.fillStyle='#1a2a1a';mmC.fillRect(0,0,w,h);
+        flds.forEach(f=>{
+            mmC.fillStyle=f.on?`rgb(${f.c[0]*200|0},${f.c[1]*200|0},${f.c[2]*200|0})`:'#333';
+            mmC.fillRect(ox+f.cx*sc-FS_/2*sc,oy+f.cz*sc-FS_/2*sc,FS_*sc,FS_*sc);
+        });
+        mmC.fillStyle='#ffa500';mmC.fillRect(ox-3,oy+5*sc-3,6,6);
+        mmC.fillStyle='#00ff88';mmC.beginPath();mmC.arc(ox+pX*sc,oy+pZ*sc,3,0,6.28);mmC.fill();
+        mmC.fillStyle='#ffcc00';bees.forEach(b=>{mmC.beginPath();mmC.arc(ox+b.x*sc,oy+b.z*sc,1.5,0,6.28);mmC.fill();});
+    }
+
+    /* ── welcome ───────────────────────────────────────────────────── */
+    setTimeout(()=>msg('Bee Swarm 3D','Use WASD or Arrow Keys to move your beekeeper. Walk near flowers - your bees collect pollen automatically. Return to the hive (orange building) to convert pollen into honey. Buy more bees and upgrades!'),400);
+    setTimeout(()=>{const h=document.getElementById('hint');if(h){h.style.opacity='0';setTimeout(()=>h.style.display='none',800);}},12000);
+
+    requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
