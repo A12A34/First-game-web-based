@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Maze - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 820px; }
+        canvas#gameCanvas {
+            width: 100%;
+            max-width: 800px;
+            border: 2px solid #00d9ff;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+            background: #000;
+            image-rendering: pixelated;
+            cursor: none;
+        }
+        .score-board {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+        }
+        .score-board .stat {
+            color: #ccc;
+        }
+        .score-board .val {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        .score-board .val.cyan {
+            color: #00d9ff;
+        }
+        .controls-info {
+            text-align: center;
+            color: #888;
+            font-size: 0.75rem;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        .controls-info kbd {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin: 0 2px;
+            color: #00d9ff;
+            font-size: 0.7rem;
+        }
+        .start-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10, 10, 20, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .start-overlay.hidden { display: none; }
+        .start-content {
+            text-align: center;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(0,217,255,0.3);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 420px;
+            backdrop-filter: blur(10px);
+        }
+        .start-content h2 {
+            color: #00d9ff;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        .start-content p {
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .start-content .controls-list {
+            text-align: left;
+            color: #aaa;
+            font-size: 0.8rem;
+            margin-bottom: 24px;
+            line-height: 2;
+        }
+        .start-content .controls-list kbd {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            padding: 2px 8px;
+            color: #00d9ff;
+            font-family: 'Courier New', monospace;
+        }
+        .start-btn, .restart-btn {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border: none;
+            padding: 14px 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .start-btn:hover, .restart-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0,217,255,0.4);
+        }
+        .game-over-overlay { z-index: 100; }
+        .game-over-content {
+            background: rgba(10,10,30,0.95);
+            border: 2px solid #00d9ff;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+        }
+        .game-over-content h2 {
+            color: #00ff88;
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+        }
+        .game-over-content .subtitle {
+            color: #00d9ff;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        .game-over-content .stats {
+            text-align: left;
+            color: #ccc;
+            font-size: 0.9rem;
+            line-height: 2;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+        .game-over-content .stats .val {
+            color: #00ff88;
+            float: right;
+        }
+        .game-over-content .new-record {
+            color: #ffc107;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        /* Touch controls */
+        .touch-controls {
+            display: none;
+            justify-content: space-between;
+            padding: 10px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .touch-pad {
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px;
+            gap: 4px;
+        }
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(0,217,255,0.15);
+            border: 1px solid rgba(0,217,255,0.3);
+            border-radius: 10px;
+            color: #00d9ff;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: pointer;
+        }
+        .touch-btn:active {
+            background: rgba(0,217,255,0.35);
+        }
+        @media (pointer: coarse), (max-width: 768px) {
+            .touch-controls { display: flex; }
+            .controls-info { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#x1F3F0; 3D Maze</h1>
+            <div class="score-board">
+                <span class="stat">Level: <span class="val cyan" id="levelDisplay">1</span></span>
+                <span class="stat">Score: <span class="val" id="scoreDisplay">0</span></span>
+                <span class="stat">Time: <span class="val cyan" id="timeDisplay">0:00</span></span>
+                <span class="stat">Best: <span class="val" id="highScoreDisplay">0</span></span>
+            </div>
+            <canvas id="gameCanvas" width="800" height="500"></canvas>
+            <div class="touch-controls" id="touchControls">
+                <div class="touch-pad">
+                    <div></div>
+                    <div class="touch-btn" data-action="forward">&#x25B2;</div>
+                    <div></div>
+                    <div class="touch-btn" data-action="rotLeft">&#x25C0;</div>
+                    <div class="touch-btn" data-action="backward">&#x25BC;</div>
+                    <div class="touch-btn" data-action="rotRight">&#x25B6;</div>
+                </div>
+            </div>
+            <div class="controls-info">
+                <kbd>W</kbd> / <kbd>&#x2191;</kbd> Forward &nbsp;
+                <kbd>S</kbd> / <kbd>&#x2193;</kbd> Backward &nbsp;
+                <kbd>A</kbd> / <kbd>&#x2190;</kbd> Rotate Left &nbsp;
+                <kbd>D</kbd> / <kbd>&#x2192;</kbd> Rotate Right
+            </div>
+        </div>
+    </div>
+
+    <div id="startOverlay" class="start-overlay">
+        <div class="start-content">
+            <h2>&#x1F3F0; 3D Maze</h2>
+            <p>Navigate the neon maze in first person. Find the exit before time runs out. Collect orbs for bonus points!</p>
+            <div class="controls-list">
+                <kbd>W</kbd> / <kbd>&#x2191;</kbd> Move Forward<br>
+                <kbd>S</kbd> / <kbd>&#x2193;</kbd> Move Backward<br>
+                <kbd>A</kbd> / <kbd>&#x2190;</kbd> Turn Left<br>
+                <kbd>D</kbd> / <kbd>&#x2192;</kbd> Turn Right
+            </div>
+            <button class="start-btn" id="startBtn">ENTER MAZE</button>
+        </div>
+    </div>
+
+    <div id="gameOverOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2 id="goTitle">Maze Complete!</h2>
+            <p class="subtitle" id="goSubtitle">Level 1 Cleared</p>
+            <div class="stats" id="goStats"></div>
+            <div class="new-record hidden" id="goNewRecord">&#x2B50; New High Score! &#x2B50;</div>
+            <button class="restart-btn" id="nextBtn">NEXT LEVEL</button>
+            <br><br>
+            <button class="restart-btn" id="restartBtn" style="background: rgba(255,255,255,0.1); color: #00d9ff; border: 1px solid #00d9ff; font-size: 0.85rem; padding: 10px 24px;">RESTART</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // ========== CANVAS & CONTEXT ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        // ========== DOM ELEMENTS ==========
+        const levelDisplay = document.getElementById('levelDisplay');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const startOverlay = document.getElementById('startOverlay');
+        const startBtn = document.getElementById('startBtn');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const goTitle = document.getElementById('goTitle');
+        const goSubtitle = document.getElementById('goSubtitle');
+        const goStats = document.getElementById('goStats');
+        const goNewRecord = document.getElementById('goNewRecord');
+        const nextBtn = document.getElementById('nextBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+        // ========== GAME STATE ==========
+        let level = 1;
+        let score = 0;
+        let highScore = parseInt(localStorage.getItem('maze3dHighScore')) || 0;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let gameRunning = false;
+        let maze = [];
+        let mazeW = 0;
+        let mazeH = 0;
+        let exitX = 0, exitY = 0;
+        let collectibles = [];
+        let collectibleCount = 0;
+        let totalCollectibles = 0;
+
+        // Player state
+        let px = 1.5, py = 1.5; // position
+        let pa = 0; // angle in radians
+        const FOV = Math.PI / 3; // 60 degrees
+        const MOVE_SPEED = 2.8;
+        const ROT_SPEED = 2.5;
+        const RAY_COUNT = 320;
+        const MAX_DEPTH = 20;
+        const PLAYER_RADIUS = 0.2;
+
+        // Input state
+        const keys = {};
+        let touchActions = {};
+
+        highScoreDisplay.textContent = highScore;
+
+        // ========== MAZE GENERATION (Recursive Backtracking) ==========
+        function getMazeSize(lvl) {
+            const base = 6;
+            const size = base + Math.floor(lvl * 1.5);
+            return Math.min(size, 24);
+        }
+
+        function generateMaze(cols, rows) {
+            // Create grid: 0 = wall, 1 = path
+            // Maze cells are at odd coordinates, walls at even
+            const w = cols * 2 + 1;
+            const h = rows * 2 + 1;
+            const grid = [];
+            for (let y = 0; y < h; y++) {
+                grid[y] = [];
+                for (let x = 0; x < w; x++) {
+                    grid[y][x] = 0; // wall
+                }
+            }
+
+            // Carve using recursive backtracking
+            const visited = [];
+            for (let y = 0; y < rows; y++) {
+                visited[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    visited[y][x] = false;
+                }
+            }
+
+            const stack = [];
+            const startCellX = 0;
+            const startCellY = 0;
+            visited[startCellY][startCellX] = true;
+            grid[startCellY * 2 + 1][startCellX * 2 + 1] = 1;
+            stack.push([startCellX, startCellY]);
+
+            const dirs = [[0,-1],[1,0],[0,1],[-1,0]];
+
+            while (stack.length > 0) {
+                const [cx, cy] = stack[stack.length - 1];
+                // Find unvisited neighbors
+                const neighbors = [];
+                for (const [dx, dy] of dirs) {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !visited[ny][nx]) {
+                        neighbors.push([nx, ny, dx, dy]);
+                    }
+                }
+                if (neighbors.length === 0) {
+                    stack.pop();
+                } else {
+                    const [nx, ny, dx, dy] = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    visited[ny][nx] = true;
+                    // Remove wall between current and neighbor
+                    grid[cy * 2 + 1 + dy][cx * 2 + 1 + dx] = 1;
+                    grid[ny * 2 + 1][nx * 2 + 1] = 1;
+                    stack.push([nx, ny]);
+                }
+            }
+
+            return { grid, w, h };
+        }
+
+        function placeCollectibles() {
+            collectibles = [];
+            const count = Math.min(3 + level * 2, 20);
+            totalCollectibles = count;
+            collectibleCount = 0;
+            let placed = 0;
+            let attempts = 0;
+            while (placed < count && attempts < 1000) {
+                attempts++;
+                const cx = Math.floor(Math.random() * mazeW);
+                const cy = Math.floor(Math.random() * mazeH);
+                if (maze[cy][cx] === 0) continue; // wall
+                // Don't place at start or exit
+                const dist1 = Math.abs(cx - 1) + Math.abs(cy - 1);
+                const distE = Math.abs(cx - exitX) + Math.abs(cy - exitY);
+                if (dist1 < 2 || distE < 2) continue;
+                // Check not already occupied
+                if (collectibles.some(c => c.x === cx && c.y === cy)) continue;
+                collectibles.push({ x: cx, y: cy, collected: false, bobPhase: Math.random() * Math.PI * 2 });
+                placed++;
+            }
+            totalCollectibles = placed;
+        }
+
+        function initLevel() {
+            const size = getMazeSize(level);
+            const result = generateMaze(size, size);
+            maze = result.grid;
+            mazeW = result.w;
+            mazeH = result.h;
+
+            // Player starts at cell (0,0) -> grid position (1,1)
+            px = 1.5;
+            py = 1.5;
+            pa = 0;
+
+            // Exit at bottom-right cell
+            exitX = mazeW - 2;
+            exitY = mazeH - 2;
+
+            placeCollectibles();
+
+            startTime = performance.now();
+            elapsedTime = 0;
+        }
+
+        // ========== RAYCASTING ENGINE ==========
+        function castRay(angle) {
+            const sinA = Math.sin(angle);
+            const cosA = Math.cos(angle);
+
+            let dist = 0;
+            const step = 0.02;
+            let hitX = px, hitY = py;
+            let side = 0; // 0 = NS wall, 1 = EW wall
+
+            for (let i = 0; i < MAX_DEPTH / step; i++) {
+                dist += step;
+                hitX = px + cosA * dist;
+                hitY = py + sinA * dist;
+
+                const mapX = Math.floor(hitX);
+                const mapY = Math.floor(hitY);
+
+                if (mapX < 0 || mapX >= mazeW || mapY < 0 || mapY >= mazeH) {
+                    return { dist, side: 0, hitX, hitY };
+                }
+
+                if (maze[mapY][mapX] === 0) {
+                    // Determine which side was hit for shading
+                    const prevX = px + cosA * (dist - step);
+                    const prevY = py + sinA * (dist - step);
+                    if (Math.floor(prevX) !== mapX) {
+                        side = 0; // vertical wall (NS)
+                    } else {
+                        side = 1; // horizontal wall (EW)
+                    }
+                    return { dist, side, hitX, hitY };
+                }
+            }
+            return { dist: MAX_DEPTH, side: 0, hitX, hitY };
+        }
+
+        // DDA raycasting for better precision
+        function castRayDDA(angle) {
+            const dirX = Math.cos(angle);
+            const dirY = Math.sin(angle);
+
+            let mapX = Math.floor(px);
+            let mapY = Math.floor(py);
+
+            const deltaDistX = Math.abs(1 / (dirX || 1e-10));
+            const deltaDistY = Math.abs(1 / (dirY || 1e-10));
+
+            let stepX, stepY;
+            let sideDistX, sideDistY;
+
+            if (dirX < 0) {
+                stepX = -1;
+                sideDistX = (px - mapX) * deltaDistX;
+            } else {
+                stepX = 1;
+                sideDistX = (mapX + 1.0 - px) * deltaDistX;
+            }
+            if (dirY < 0) {
+                stepY = -1;
+                sideDistY = (py - mapY) * deltaDistY;
+            } else {
+                stepY = 1;
+                sideDistY = (mapY + 1.0 - py) * deltaDistY;
+            }
+
+            let side = 0;
+            let hit = false;
+            let depth = 0;
+
+            while (!hit && depth < MAX_DEPTH * 2) {
+                if (sideDistX < sideDistY) {
+                    sideDistX += deltaDistX;
+                    mapX += stepX;
+                    side = 0;
+                } else {
+                    sideDistY += deltaDistY;
+                    mapY += stepY;
+                    side = 1;
+                }
+                depth++;
+
+                if (mapX < 0 || mapX >= mazeW || mapY < 0 || mapY >= mazeH) {
+                    hit = true;
+                } else if (maze[mapY][mapX] === 0) {
+                    hit = true;
+                }
+            }
+
+            let perpDist;
+            let wallX; // where exactly the wall was hit (0-1)
+            if (side === 0) {
+                perpDist = (mapX - px + (1 - stepX) / 2) / (dirX || 1e-10);
+                wallX = py + perpDist * dirY;
+            } else {
+                perpDist = (mapY - py + (1 - stepY) / 2) / (dirY || 1e-10);
+                wallX = px + perpDist * dirX;
+            }
+            wallX -= Math.floor(wallX);
+
+            if (perpDist < 0) perpDist = 0.001;
+
+            return { dist: perpDist, side, wallX };
+        }
+
+        // ========== RENDERING ==========
+        const floorBuffer = ctx.createImageData(W, H);
+
+        function render() {
+            // Clear
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, W, H);
+
+            // -- Ceiling gradient --
+            const ceilGrad = ctx.createLinearGradient(0, 0, 0, H / 2);
+            ceilGrad.addColorStop(0, '#0a0a18');
+            ceilGrad.addColorStop(1, '#12122a');
+            ctx.fillStyle = ceilGrad;
+            ctx.fillRect(0, 0, W, H / 2);
+
+            // -- Floor gradient --
+            const floorGrad = ctx.createLinearGradient(0, H / 2, 0, H);
+            floorGrad.addColorStop(0, '#0a0a14');
+            floorGrad.addColorStop(1, '#161628');
+            ctx.fillStyle = floorGrad;
+            ctx.fillRect(0, H / 2, W, H / 2);
+
+            // -- Raycasting walls --
+            const stripWidth = W / RAY_COUNT;
+            const halfH = H / 2;
+            const time = performance.now() * 0.001;
+
+            for (let i = 0; i < RAY_COUNT; i++) {
+                const rayAngle = pa - FOV / 2 + (i / RAY_COUNT) * FOV;
+                const result = castRayDDA(rayAngle);
+
+                // Fish-eye correction
+                const correctedDist = result.dist * Math.cos(rayAngle - pa);
+                const lineHeight = Math.min(H * 2, H / (correctedDist || 0.001));
+
+                const drawStart = halfH - lineHeight / 2;
+                const drawEnd = halfH + lineHeight / 2;
+
+                // Shade based on distance and side
+                const shade = Math.max(0, 1 - correctedDist / MAX_DEPTH);
+                const sideDarken = result.side === 1 ? 0.7 : 1.0;
+                const brightness = shade * sideDarken;
+
+                // Neon wall colors - cyan for one side, green accent for other
+                let r, g, b;
+                if (result.side === 0) {
+                    // Cyan wall
+                    r = Math.floor(0 * brightness);
+                    g = Math.floor(217 * brightness);
+                    b = Math.floor(255 * brightness);
+                } else {
+                    // Slightly different cyan-green
+                    r = Math.floor(0 * brightness);
+                    g = Math.floor(190 * brightness);
+                    b = Math.floor(220 * brightness);
+                }
+
+                // Wall stripe
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(i * stripWidth, drawStart, stripWidth + 1, lineHeight);
+
+                // Wall edge highlight for texture feel
+                if (brightness > 0.3) {
+                    const edgePos = result.wallX;
+                    if (edgePos < 0.02 || edgePos > 0.98) {
+                        ctx.fillStyle = `rgba(0, 255, 136, ${brightness * 0.5})`;
+                        ctx.fillRect(i * stripWidth, drawStart, stripWidth + 1, lineHeight);
+                    }
+                    // Horizontal line texture
+                    const texLines = 8;
+                    for (let t = 0; t < texLines; t++) {
+                        const ty = drawStart + (lineHeight / texLines) * t;
+                        ctx.fillStyle = `rgba(0, 0, 0, ${0.08 * sideDarken})`;
+                        ctx.fillRect(i * stripWidth, ty, stripWidth + 1, 1);
+                    }
+                }
+
+                // Floor casting for neon grid lines
+                if (correctedDist < 8 && i % 4 === 0) {
+                    for (let y = Math.max(Math.floor(drawEnd), halfH); y < H; y += 3) {
+                        const currentDist = H / (2.0 * (y - halfH) || 1);
+                        const floorShade = Math.max(0, 1 - currentDist / 10);
+                        const floorX = px + Math.cos(rayAngle) * currentDist;
+                        const floorY = py + Math.sin(rayAngle) * currentDist;
+                        // Grid pattern
+                        const gx = Math.abs(floorX % 1);
+                        const gy = Math.abs(floorY % 1);
+                        if (gx < 0.05 || gy < 0.05) {
+                            const alpha = floorShade * 0.25;
+                            ctx.fillStyle = `rgba(0, 217, 255, ${alpha})`;
+                            ctx.fillRect(i * stripWidth, y, stripWidth * 4, 2);
+                        }
+                    }
+                }
+            }
+
+            // -- Render collectibles as sprites --
+            renderCollectibles(time);
+
+            // -- Render exit indicator --
+            renderExit(time);
+
+            // -- Render crosshair --
+            ctx.strokeStyle = 'rgba(0, 255, 136, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(W/2 - 10, H/2);
+            ctx.lineTo(W/2 - 4, H/2);
+            ctx.moveTo(W/2 + 4, H/2);
+            ctx.lineTo(W/2 + 10, H/2);
+            ctx.moveTo(W/2, H/2 - 10);
+            ctx.lineTo(W/2, H/2 - 4);
+            ctx.moveTo(W/2, H/2 + 4);
+            ctx.lineTo(W/2, H/2 + 10);
+            ctx.stroke();
+
+            // -- Render minimap --
+            renderMinimap();
+
+            // -- HUD: item count --
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(W - 150, 10, 140, 30);
+            ctx.strokeStyle = 'rgba(0,217,255,0.3)';
+            ctx.strokeRect(W - 150, 10, 140, 30);
+            ctx.fillStyle = '#00ff88';
+            ctx.font = '14px Courier New';
+            ctx.textAlign = 'right';
+            ctx.fillText(`Orbs: ${collectibleCount}/${totalCollectibles}`, W - 20, 30);
+            ctx.textAlign = 'left';
+        }
+
+        function renderCollectibles(time) {
+            const spriteList = [];
+            for (const c of collectibles) {
+                if (c.collected) continue;
+                const dx = (c.x + 0.5) - px;
+                const dy = (c.y + 0.5) - py;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) - pa;
+                // Normalize angle
+                let normAngle = angle;
+                while (normAngle > Math.PI) normAngle -= Math.PI * 2;
+                while (normAngle < -Math.PI) normAngle += Math.PI * 2;
+
+                if (Math.abs(normAngle) < FOV / 2 + 0.2) {
+                    spriteList.push({ dist, angle: normAngle, item: c, type: 'orb' });
+                }
+            }
+
+            // Sort back to front
+            spriteList.sort((a, b) => b.dist - a.dist);
+
+            for (const sprite of spriteList) {
+                const correctedDist = sprite.dist * Math.cos(sprite.angle);
+                if (correctedDist < 0.3) continue;
+                const screenX = W / 2 + (sprite.angle / (FOV / 2)) * (W / 2);
+                const spriteHeight = Math.min(H, H / correctedDist * 0.4);
+                const spriteWidth = spriteHeight;
+                const drawY = H / 2 - spriteHeight / 2 + Math.sin(time * 3 + sprite.item.bobPhase) * 8;
+
+                const shade = Math.max(0.2, 1 - correctedDist / 12);
+
+                // Glow
+                const gradient = ctx.createRadialGradient(
+                    screenX, drawY + spriteHeight/2, 0,
+                    screenX, drawY + spriteHeight/2, spriteWidth * 0.7
+                );
+                gradient.addColorStop(0, `rgba(0, 255, 136, ${shade * 0.8})`);
+                gradient.addColorStop(0.4, `rgba(0, 217, 255, ${shade * 0.4})`);
+                gradient.addColorStop(1, 'rgba(0, 217, 255, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenX, drawY + spriteHeight/2, spriteWidth * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core
+                ctx.fillStyle = `rgba(0, 255, 220, ${shade})`;
+                ctx.beginPath();
+                ctx.arc(screenX, drawY + spriteHeight/2, spriteWidth * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function renderExit(time) {
+            const dx = (exitX + 0.5) - px;
+            const dy = (exitY + 0.5) - py;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) - pa;
+            let normAngle = angle;
+            while (normAngle > Math.PI) normAngle -= Math.PI * 2;
+            while (normAngle < -Math.PI) normAngle += Math.PI * 2;
+
+            if (Math.abs(normAngle) < FOV / 2 + 0.2) {
+                const correctedDist = dist * Math.cos(normAngle);
+                if (correctedDist < 0.3) return;
+                const screenX = W / 2 + (normAngle / (FOV / 2)) * (W / 2);
+                const spriteHeight = Math.min(H, H / correctedDist * 0.6);
+                const drawY = H / 2 - spriteHeight / 2;
+
+                const shade = Math.max(0.3, 1 - correctedDist / 15);
+                const pulse = 0.6 + Math.sin(time * 4) * 0.4;
+
+                // Exit glow
+                const gradient = ctx.createRadialGradient(
+                    screenX, drawY + spriteHeight/2, 0,
+                    screenX, drawY + spriteHeight/2, spriteHeight * 0.8
+                );
+                gradient.addColorStop(0, `rgba(255, 200, 0, ${shade * pulse * 0.9})`);
+                gradient.addColorStop(0.3, `rgba(255, 100, 0, ${shade * pulse * 0.5})`);
+                gradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(screenX, drawY + spriteHeight/2, spriteHeight * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Exit diamond
+                ctx.fillStyle = `rgba(255, 220, 50, ${shade * pulse})`;
+                ctx.save();
+                ctx.translate(screenX, drawY + spriteHeight / 2);
+                ctx.rotate(time * 2);
+                const s = spriteHeight * 0.15;
+                ctx.beginPath();
+                ctx.moveTo(0, -s);
+                ctx.lineTo(s, 0);
+                ctx.lineTo(0, s);
+                ctx.lineTo(-s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Direction indicator when exit is off screen
+            if (dist > 2) {
+                const indicatorAngle = Math.atan2(dy, dx) - pa;
+                let na = indicatorAngle;
+                while (na > Math.PI) na -= Math.PI * 2;
+                while (na < -Math.PI) na += Math.PI * 2;
+
+                const arrowX = W / 2 + Math.cos(0) * 0; // we draw an arrow at edge
+                const edgePad = 30;
+                const indicatorX = Math.max(edgePad, Math.min(W - edgePad, W / 2 + na * (W / FOV)));
+                const pulse2 = 0.5 + Math.sin(time * 3) * 0.3;
+
+                ctx.fillStyle = `rgba(255, 200, 0, ${pulse2})`;
+                ctx.font = '16px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('\u2B50', indicatorX, 22);
+                ctx.textAlign = 'left';
+            }
+        }
+
+        function renderMinimap() {
+            const mapSize = 140;
+            const mapX = 10;
+            const mapY = H - mapSize - 10;
+            const viewRadius = 6; // how many cells to show around player
+
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(mapX, mapY, mapSize, mapSize);
+            ctx.strokeStyle = 'rgba(0, 217, 255, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+
+            const cellSize = mapSize / (viewRadius * 2 + 1);
+            const startCellX = Math.floor(px) - viewRadius;
+            const startCellY = Math.floor(py) - viewRadius;
+
+            for (let dy = 0; dy <= viewRadius * 2; dy++) {
+                for (let dx = 0; dx <= viewRadius * 2; dx++) {
+                    const mx = startCellX + dx;
+                    const my = startCellY + dy;
+                    const drawX = mapX + dx * cellSize;
+                    const drawY = mapY + dy * cellSize;
+
+                    if (mx < 0 || mx >= mazeW || my < 0 || my >= mazeH) {
+                        ctx.fillStyle = 'rgba(0, 50, 80, 0.3)';
+                        ctx.fillRect(drawX, drawY, cellSize, cellSize);
+                        continue;
+                    }
+
+                    if (maze[my][mx] === 0) {
+                        // Wall
+                        ctx.fillStyle = 'rgba(0, 120, 160, 0.5)';
+                        ctx.fillRect(drawX, drawY, cellSize, cellSize);
+                    } else {
+                        // Floor
+                        ctx.fillStyle = 'rgba(0, 30, 40, 0.4)';
+                        ctx.fillRect(drawX, drawY, cellSize, cellSize);
+                    }
+
+                    // Exit
+                    if (mx === exitX && my === exitY) {
+                        ctx.fillStyle = 'rgba(255, 200, 0, 0.8)';
+                        ctx.fillRect(drawX + 1, drawY + 1, cellSize - 2, cellSize - 2);
+                    }
+
+                    // Collectibles
+                    for (const c of collectibles) {
+                        if (!c.collected && c.x === mx && c.y === my) {
+                            ctx.fillStyle = 'rgba(0, 255, 136, 0.8)';
+                            ctx.beginPath();
+                            ctx.arc(drawX + cellSize/2, drawY + cellSize/2, cellSize * 0.25, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            // Player dot
+            const playerMapX = mapX + (px - startCellX) * cellSize;
+            const playerMapY = mapY + (py - startCellY) * cellSize;
+
+            // View cone
+            ctx.fillStyle = 'rgba(0, 217, 255, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(playerMapX, playerMapY);
+            const coneLen = cellSize * 3;
+            ctx.lineTo(
+                playerMapX + Math.cos(pa - FOV/2) * coneLen,
+                playerMapY + Math.sin(pa - FOV/2) * coneLen
+            );
+            ctx.lineTo(
+                playerMapX + Math.cos(pa + FOV/2) * coneLen,
+                playerMapY + Math.sin(pa + FOV/2) * coneLen
+            );
+            ctx.closePath();
+            ctx.fill();
+
+            // Direction line
+            ctx.strokeStyle = '#00d9ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(playerMapX, playerMapY);
+            ctx.lineTo(
+                playerMapX + Math.cos(pa) * cellSize * 1.5,
+                playerMapY + Math.sin(pa) * cellSize * 1.5
+            );
+            ctx.stroke();
+
+            // Player
+            ctx.fillStyle = '#00ff88';
+            ctx.beginPath();
+            ctx.arc(playerMapX, playerMapY, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Border
+            ctx.strokeStyle = 'rgba(0, 217, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+
+            // Label
+            ctx.fillStyle = 'rgba(0, 217, 255, 0.6)';
+            ctx.font = '10px Courier New';
+            ctx.fillText('MAP', mapX + 4, mapY + 12);
+        }
+
+        // ========== MOVEMENT & COLLISION ==========
+        function isWall(x, y) {
+            const mx = Math.floor(x);
+            const my = Math.floor(y);
+            if (mx < 0 || mx >= mazeW || my < 0 || my >= mazeH) return true;
+            return maze[my][mx] === 0;
+        }
+
+        function movePlayer(dx, dy) {
+            const newX = px + dx;
+            const newY = py + dy;
+            const r = PLAYER_RADIUS;
+
+            // Sliding collision: try X and Y independently
+            if (!isWall(newX + r, py) && !isWall(newX - r, py) &&
+                !isWall(newX + r, py + r) && !isWall(newX + r, py - r) &&
+                !isWall(newX - r, py + r) && !isWall(newX - r, py - r)) {
+                px = newX;
+            }
+            if (!isWall(px, newY + r) && !isWall(px, newY - r) &&
+                !isWall(px + r, newY + r) && !isWall(px + r, newY - r) &&
+                !isWall(px - r, newY + r) && !isWall(px - r, newY - r)) {
+                py = newY;
+            }
+        }
+
+        function checkCollectibles() {
+            for (const c of collectibles) {
+                if (c.collected) continue;
+                const dx = (c.x + 0.5) - px;
+                const dy = (c.y + 0.5) - py;
+                if (dx * dx + dy * dy < 0.5) {
+                    c.collected = true;
+                    collectibleCount++;
+                    score += 50 * level;
+                    scoreDisplay.textContent = score;
+                }
+            }
+        }
+
+        function checkExit() {
+            const dx = (exitX + 0.5) - px;
+            const dy = (exitY + 0.5) - py;
+            if (dx * dx + dy * dy < 0.6) {
+                levelComplete();
+            }
+        }
+
+        // ========== GAME FLOW ==========
+        function levelComplete() {
+            gameRunning = false;
+
+            // Time bonus
+            const timeSec = Math.floor(elapsedTime / 1000);
+            const baseTimeLimit = 30 + level * 20;
+            const timeBonus = Math.max(0, (baseTimeLimit - timeSec) * 10);
+            const collectBonus = collectibleCount * 50 * level;
+            const levelBonus = level * 100;
+            const totalAdded = timeBonus + levelBonus;
+            score += timeBonus + levelBonus;
+
+            const isNewHigh = score > highScore;
+            if (isNewHigh) {
+                highScore = score;
+                localStorage.setItem('maze3dHighScore', highScore);
+                highScoreDisplay.textContent = highScore;
+            }
+            scoreDisplay.textContent = score;
+
+            goTitle.textContent = 'Maze Complete!';
+            goSubtitle.textContent = `Level ${level} Cleared`;
+            goStats.innerHTML =
+                `<div>Time <span class="val">${formatTime(elapsedTime)}</span></div>` +
+                `<div>Orbs Collected <span class="val">${collectibleCount}/${totalCollectibles}</span></div>` +
+                `<div>Time Bonus <span class="val">+${timeBonus}</span></div>` +
+                `<div>Level Bonus <span class="val">+${levelBonus}</span></div>` +
+                `<div>Total Score <span class="val">${score}</span></div>`;
+
+            goNewRecord.classList.toggle('hidden', !isNewHigh);
+            nextBtn.textContent = 'NEXT LEVEL';
+            nextBtn.style.display = 'inline-block';
+            gameOverOverlay.classList.remove('hidden');
+        }
+
+        function formatTime(ms) {
+            const totalSec = Math.floor(ms / 1000);
+            const min = Math.floor(totalSec / 60);
+            const sec = totalSec % 60;
+            return `${min}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function startGame() {
+            level = 1;
+            score = 0;
+            scoreDisplay.textContent = '0';
+            levelDisplay.textContent = '1';
+            startOverlay.classList.add('hidden');
+            gameOverOverlay.classList.add('hidden');
+            initLevel();
+            gameRunning = true;
+            canvas.focus();
+        }
+
+        function nextLevel() {
+            level++;
+            levelDisplay.textContent = level;
+            gameOverOverlay.classList.add('hidden');
+            initLevel();
+            gameRunning = true;
+        }
+
+        function restartGame() {
+            level = 1;
+            score = 0;
+            scoreDisplay.textContent = '0';
+            levelDisplay.textContent = '1';
+            gameOverOverlay.classList.add('hidden');
+            initLevel();
+            gameRunning = true;
+        }
+
+        // ========== INPUT HANDLING ==========
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+            // Start game on any key if on start screen
+            if (!startOverlay.classList.contains('hidden')) {
+                startGame();
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Touch controls
+        const touchBtns = document.querySelectorAll('.touch-btn');
+        touchBtns.forEach(btn => {
+            const action = btn.dataset.action;
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchActions[action] = true;
+            });
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                touchActions[action] = false;
+            });
+            btn.addEventListener('touchcancel', (e) => {
+                touchActions[action] = false;
+            });
+            // Mouse fallback for testing
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                touchActions[action] = true;
+            });
+            btn.addEventListener('mouseup', (e) => {
+                touchActions[action] = false;
+            });
+            btn.addEventListener('mouseleave', (e) => {
+                touchActions[action] = false;
+            });
+        });
+
+        // ========== BUTTON HANDLERS ==========
+        startBtn.addEventListener('click', startGame);
+        nextBtn.addEventListener('click', nextLevel);
+        restartBtn.addEventListener('click', restartGame);
+
+        // Fullscreen
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        });
+
+        // ========== MAIN GAME LOOP ==========
+        let lastTime = 0;
+
+        function gameLoop(timestamp) {
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.05); // cap delta
+            lastTime = timestamp;
+
+            if (gameRunning) {
+                // Update timer
+                elapsedTime = timestamp - startTime;
+                timeDisplay.textContent = formatTime(elapsedTime);
+
+                // Process input
+                const moveX = Math.cos(pa);
+                const moveY = Math.sin(pa);
+                const speed = MOVE_SPEED * dt;
+                const rotSpeed = ROT_SPEED * dt;
+
+                if (keys['w'] || keys['arrowup'] || touchActions['forward']) {
+                    movePlayer(moveX * speed, moveY * speed);
+                }
+                if (keys['s'] || keys['arrowdown'] || touchActions['backward']) {
+                    movePlayer(-moveX * speed, -moveY * speed);
+                }
+                if (keys['a'] || keys['arrowleft'] || touchActions['rotLeft']) {
+                    pa -= rotSpeed;
+                }
+                if (keys['d'] || keys['arrowright'] || touchActions['rotRight']) {
+                    pa += rotSpeed;
+                }
+
+                // Normalize angle
+                while (pa > Math.PI * 2) pa -= Math.PI * 2;
+                while (pa < 0) pa += Math.PI * 2;
+
+                checkCollectibles();
+                checkExit();
+            }
+
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ========== INIT ==========
+        initLevel(); // Pre-generate a maze for background rendering
+        requestAnimationFrame(gameLoop);
+
+    })();
+    </script>
+</body>
+</html>

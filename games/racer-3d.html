@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racer 3D - Game Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+        }
+        canvas {
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            background: #000;
+            max-width: 100%;
+            cursor: none;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            min-width: 100px;
+        }
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+        .stat-value.score { color: #00ff88; }
+        .stat-value.speed { color: #00d9ff; }
+        .stat-value.high { color: #ffaa00; }
+        .stat-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .controls-hint {
+            color: #888;
+            font-size: 0.85rem;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        .touch-controls {
+            display: none;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(0, 217, 255, 0.2);
+            border: 2px solid rgba(0, 217, 255, 0.4);
+            color: #00d9ff;
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            transition: background 0.15s;
+        }
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(0, 217, 255, 0.5);
+        }
+        .touch-btn-accel {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: rgba(0, 255, 136, 0.4);
+            color: #00ff88;
+        }
+        .touch-btn-accel:active, .touch-btn-accel.active {
+            background: rgba(0, 255, 136, 0.5);
+        }
+        .touch-btn-brake {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: rgba(255, 107, 107, 0.4);
+            color: #ff6b6b;
+        }
+        .touch-btn-brake:active, .touch-btn-brake.active {
+            background: rgba(255, 107, 107, 0.5);
+        }
+        @media (pointer: coarse), (max-width: 768px) {
+            .touch-controls {
+                display: flex;
+            }
+            canvas {
+                cursor: default;
+            }
+        }
+        @media (max-width: 600px) {
+            .stat-box {
+                padding: 6px 12px;
+                min-width: 70px;
+            }
+            .stat-value {
+                font-size: 1.1rem;
+            }
+            .touch-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle Fullscreen">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#x1F3CE; Racer 3D</h1>
+            <div class="game-area">
+                <div class="stats-bar">
+                    <div class="stat-box">
+                        <div class="stat-value score" id="scoreDisplay">0</div>
+                        <div class="stat-label">Score</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value speed" id="speedDisplay">0</div>
+                        <div class="stat-label">MPH</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value high" id="highScoreDisplay">0</div>
+                        <div class="stat-label">Best</div>
+                    </div>
+                </div>
+                <canvas id="gameCanvas" width="800" height="500"></canvas>
+                <p class="controls-hint">Arrow Keys / WASD to steer and accelerate</p>
+                <div class="touch-controls" id="touchControls">
+                    <button class="touch-btn" id="touchLeft">&#9664;</button>
+                    <button class="touch-btn touch-btn-brake" id="touchBrake">&#x25BC;</button>
+                    <button class="touch-btn touch-btn-accel" id="touchAccel">&#x25B2;</button>
+                    <button class="touch-btn" id="touchRight">&#9654;</button>
+                </div>
+            </div>
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Race down the highway at breakneck speed! Dodge traffic, stay on the road, and rack up the highest score. Speed increases over time -- how far can you go?</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2>Game Over</h2>
+            <p>Score: <span id="finalScore" style="color:#00ff88;">0</span></p>
+            <p id="newHighScoreMsg" class="hidden" style="color:#ffaa00; font-size:1.2rem; margin-bottom:10px;">New High Score!</p>
+            <button class="btn btn-primary" id="restartBtn">Race Again</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // --- Canvas Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        // --- Game Constants ---
+        const SEGMENT_LENGTH = 200;      // Length of each road segment in world units
+        const ROAD_WIDTH = 2000;          // Half-width of road
+        const RUMBLE_WIDTH = 250;         // Rumble strip width
+        const LANE_COUNT = 3;
+        const DRAW_DISTANCE = 150;        // Number of segments to draw
+        const CAMERA_HEIGHT = 1000;       // Camera height above road
+        const CAMERA_DEPTH = 1 / Math.tan((80 / 2) * Math.PI / 180); // FOV 80 degrees
+        const TOTAL_SEGMENTS = 6000;      // Total track loop length
+
+        const COLORS = {
+            SKY_TOP: '#0a0a1e',
+            SKY_BOTTOM: '#1a1a3e',
+            TREE_TRUNK: '#4a3520',
+            TREE_CANOPY: '#0a6e2e',
+            TREE_CANOPY2: '#087030',
+            MOUNTAIN: '#1a2a4a',
+            MOUNTAIN2: '#152040',
+            GRASS_LIGHT: '#1a5c1a',
+            GRASS_DARK: '#145214',
+            ROAD_LIGHT: '#4a4a5a',
+            ROAD_DARK: '#3a3a4a',
+            RUMBLE_LIGHT: '#ff3333',
+            RUMBLE_DARK: '#ffffff',
+            LANE_LIGHT: '#ffffff',
+            LANE_DARK: 'transparent',
+            HORIZON_GLOW: 'rgba(0, 100, 180, 0.15)',
+            FOG: '#1a1a2e'
+        };
+
+        // --- State Variables ---
+        let segments = [];
+        let cars = [];
+        let position = 0;           // Player Z position in world
+        let speed = 0;
+        let maxSpeed = SEGMENT_LENGTH * 60;  // segments/sec * fps
+        let accel = maxSpeed / 120;
+        let braking = -maxSpeed / 60;
+        let decel = -maxSpeed / 300;
+        let offRoadDecel = -maxSpeed / 40;
+        let playerX = 0;            // -1 to 1 range across road
+        let playerSteer = 0;
+        let score = 0;
+        let scoreFloat = 0;
+        let highScore = parseInt(localStorage.getItem('racer3dHighScore')) || 0;
+        let gameRunning = false;
+        let gameStarted = false;
+        let gamePaused = false;
+        let speedBoostTimer = 0;
+        let difficultyMultiplier = 1;
+        let lastTimestamp = 0;
+        let animFrame = null;
+
+        // Input
+        let keys = {};
+        let touchState = { left: false, right: false, accel: false, brake: false };
+
+        // --- Initialize Road Segments ---
+        function buildRoad() {
+            segments = [];
+
+            // Build a varied track with curves and hills
+            addRoad(50, 0, 0);           // straight
+            addRoad(50, 0, 0);           // straight
+            addRoad(30, 1.5, 0);         // gentle right curve
+            addRoad(30, 0, 0);           // straight
+            addRoad(40, -2.0, 0);        // left curve
+            addRoad(20, 0, 20);          // small hill
+            addRoad(30, 0, 0);           // straight
+            addRoad(50, 3.0, 0);         // sharp right
+            addRoad(30, 0, -15);         // downhill
+            addRoad(40, -1.0, 0);        // gentle left
+            addRoad(30, 0, 30);          // big hill
+            addRoad(50, 0, 0);           // straight
+            addRoad(40, -3.5, 0);        // sharp left
+            addRoad(20, 0, -20);         // downhill
+            addRoad(50, 2.0, 10);        // curve + hill
+            addRoad(30, 0, 0);           // straight
+            addRoad(60, -1.5, -10);      // left curve + down
+            addRoad(40, 0, 0);           // straight
+            addRoad(50, 4.0, 0);         // very sharp right
+            addRoad(30, 0, 25);          // uphill
+            addRoad(40, -2.5, 0);        // left
+            addRoad(30, 0, -25);         // downhill
+            addRoad(60, 0, 0);           // long straight
+            addRoad(40, 1.0, 15);        // gentle right + hill
+            addRoad(30, 0, 0);           // straight
+
+            // Fill remaining segments straight
+            while (segments.length < TOTAL_SEGMENTS) {
+                addSegment(0, 0);
+            }
+
+            // Place scenery
+            for (let i = 0; i < segments.length; i++) {
+                let seg = segments[i];
+                // Trees and bushes along roadside
+                if (Math.random() < 0.15) {
+                    seg.spriteLeft = { type: 'tree', offset: -1.3 - Math.random() * 2 };
+                }
+                if (Math.random() < 0.15) {
+                    seg.spriteRight = { type: 'tree', offset: 1.3 + Math.random() * 2 };
+                }
+                if (Math.random() < 0.06) {
+                    seg.spriteLeft = { type: 'bush', offset: -1.1 - Math.random() * 0.5 };
+                }
+                if (Math.random() < 0.06) {
+                    seg.spriteRight = { type: 'bush', offset: 1.1 + Math.random() * 0.5 };
+                }
+            }
+        }
+
+        function addSegment(curve, y) {
+            let n = segments.length;
+            segments.push({
+                index: n,
+                p1: { world: { x: 0, y: lastY(), z: n * SEGMENT_LENGTH }, screen: {}, scale: 0 },
+                p2: { world: { x: 0, y: y, z: (n + 1) * SEGMENT_LENGTH }, screen: {}, scale: 0 },
+                curve: curve,
+                spriteLeft: null,
+                spriteRight: null,
+                cars: []
+            });
+        }
+
+        function lastY() {
+            return segments.length === 0 ? 0 : segments[segments.length - 1].p2.world.y;
+        }
+
+        function addRoad(num, curve, hillHeight) {
+            let startY = lastY();
+            let endY = startY + hillHeight * SEGMENT_LENGTH;
+            for (let i = 0; i < num; i++) {
+                let t = i / num;
+                let y = startY + (endY - startY) * easeInOut(t);
+                addSegment(curve, y);
+            }
+        }
+
+        function easeInOut(t) {
+            return 0.5 - Math.cos(t * Math.PI) / 2;
+        }
+
+        // --- Place Other Cars ---
+        function resetCars() {
+            cars = [];
+            let totalLen = segments.length * SEGMENT_LENGTH;
+            let numCars = 80;
+            for (let i = 0; i < numCars; i++) {
+                let offset = (-0.8 + Math.random() * 1.6);
+                let z = Math.floor(Math.random() * segments.length) * SEGMENT_LENGTH;
+                let spd = maxSpeed * (0.15 + Math.random() * 0.35);
+                let colorIdx = Math.floor(Math.random() * CAR_COLORS.length);
+                cars.push({
+                    offset: offset,
+                    z: z,
+                    speed: spd,
+                    color: CAR_COLORS[colorIdx],
+                    w: 300
+                });
+            }
+        }
+
+        const CAR_COLORS = [
+            '#ff3333', '#3333ff', '#ffcc00', '#ff6600',
+            '#cc33ff', '#33ccff', '#33ff33', '#ff3399',
+            '#ffffff', '#888888'
+        ];
+
+        // --- Projection ---
+        function project(p, cameraX, cameraY, cameraZ) {
+            let tx = p.world.x - cameraX;
+            let ty = p.world.y - cameraY;
+            let tz = p.world.z - cameraZ;
+            if (tz <= 0) tz = 0.001;
+            p.scale = CAMERA_DEPTH / tz;
+            p.screen.x = Math.round(W / 2 + p.scale * tx * W / 2);
+            p.screen.y = Math.round(H / 2 - p.scale * ty * W / 2);
+            p.screen.w = Math.round(p.scale * ROAD_WIDTH * W / 2);
+        }
+
+        // --- Drawing Helpers ---
+        function drawPolygon(ctx, x1, y1, w1, x2, y2, w2, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x1 - w1, y1);
+            ctx.lineTo(x1 + w1, y1);
+            ctx.lineTo(x2 + w2, y2);
+            ctx.lineTo(x2 - w2, y2);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawSegment(seg, clip) {
+            let p1 = seg.p1;
+            let p2 = seg.p2;
+            let dark = (Math.floor(seg.index / 3) % 2) === 0;
+
+            let grassColor = dark ? COLORS.GRASS_DARK : COLORS.GRASS_LIGHT;
+            let roadColor = dark ? COLORS.ROAD_DARK : COLORS.ROAD_LIGHT;
+            let rumbleColor = dark ? COLORS.RUMBLE_DARK : COLORS.RUMBLE_LIGHT;
+            let laneColor = dark ? COLORS.LANE_DARK : COLORS.LANE_LIGHT;
+
+            let x1 = p1.screen.x, y1 = p1.screen.y, w1 = p1.screen.w;
+            let x2 = p2.screen.x, y2 = p2.screen.y, w2 = p2.screen.w;
+
+            // Clip to bottom of previous segment
+            if (y2 >= clip) return;
+
+            // Grass
+            ctx.fillStyle = grassColor;
+            ctx.fillRect(0, y2, W, y1 - y2 > 0 ? y1 - y2 : 1);
+
+            // Rumble strips
+            let rw1 = w1 * (RUMBLE_WIDTH / ROAD_WIDTH);
+            let rw2 = w2 * (RUMBLE_WIDTH / ROAD_WIDTH);
+            drawPolygon(ctx, x1, y1, w1 + rw1, x2, y2, w2 + rw2, rumbleColor);
+
+            // Road surface
+            drawPolygon(ctx, x1, y1, w1, x2, y2, w2, roadColor);
+
+            // Lane markings
+            if (laneColor !== 'transparent') {
+                let lw1 = w1 * 0.02;
+                let lw2 = w2 * 0.02;
+                let laneW1 = w1 * 2 / LANE_COUNT;
+                let laneW2 = w2 * 2 / LANE_COUNT;
+                for (let lane = 1; lane < LANE_COUNT; lane++) {
+                    let lx1 = x1 - w1 + laneW1 * lane;
+                    let lx2 = x2 - w2 + laneW2 * lane;
+                    drawPolygon(ctx, lx1, y1, lw1, lx2, y2, lw2, laneColor);
+                }
+            }
+        }
+
+        // --- Draw Scenery Sprites ---
+        function drawSprite(seg, sprite, side) {
+            let p = seg.p1;
+            let spriteScale = p.scale;
+            let destX = p.screen.x + (spriteScale * sprite.offset * ROAD_WIDTH * W / 2);
+            let destY = p.screen.y;
+
+            if (sprite.type === 'tree') {
+                let treeH = 250 * spriteScale * W / 2;
+                let trunkW = 15 * spriteScale * W / 2;
+                let canopyW = 80 * spriteScale * W / 2;
+                let canopyH = 160 * spriteScale * W / 2;
+                if (treeH < 2) return;
+
+                // Trunk
+                ctx.fillStyle = COLORS.TREE_TRUNK;
+                ctx.fillRect(destX - trunkW / 2, destY - treeH * 0.4, trunkW, treeH * 0.4);
+
+                // Canopy (triangle-ish)
+                ctx.fillStyle = side < 0 ? COLORS.TREE_CANOPY : COLORS.TREE_CANOPY2;
+                ctx.beginPath();
+                ctx.moveTo(destX, destY - treeH);
+                ctx.lineTo(destX - canopyW / 2, destY - treeH * 0.3);
+                ctx.lineTo(destX + canopyW / 2, destY - treeH * 0.3);
+                ctx.closePath();
+                ctx.fill();
+            } else if (sprite.type === 'bush') {
+                let bushW = 50 * spriteScale * W / 2;
+                let bushH = 35 * spriteScale * W / 2;
+                if (bushH < 1) return;
+                ctx.fillStyle = '#0d7a30';
+                ctx.beginPath();
+                ctx.ellipse(destX, destY, bushW / 2, bushH / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // --- Draw Other Cars ---
+        function drawCar(car, seg) {
+            let p = seg.p1;
+            let spriteScale = p.scale;
+            let destX = p.screen.x + (spriteScale * car.offset * ROAD_WIDTH * W / 2);
+            let destY = p.screen.y;
+            let carW = car.w * spriteScale * W / 2;
+            let carH = carW * 0.6;
+
+            if (carH < 2) return;
+
+            // Car body
+            ctx.fillStyle = car.color;
+            let bx = destX - carW / 2;
+            let by = destY - carH;
+            ctx.fillRect(bx, by, carW, carH);
+
+            // Roof
+            ctx.fillStyle = shadeColor(car.color, -30);
+            let roofW = carW * 0.6;
+            let roofH = carH * 0.5;
+            ctx.fillRect(destX - roofW / 2, by - roofH * 0.5, roofW, roofH);
+
+            // Windshield
+            ctx.fillStyle = 'rgba(100, 200, 255, 0.6)';
+            let wsW = carW * 0.5;
+            let wsH = carH * 0.35;
+            ctx.fillRect(destX - wsW / 2, by - wsH * 0.3, wsW, wsH);
+
+            // Taillights
+            ctx.fillStyle = '#ff0000';
+            let tlSize = Math.max(carW * 0.08, 1);
+            ctx.fillRect(bx, by + carH - tlSize * 2, tlSize, tlSize);
+            ctx.fillRect(bx + carW - tlSize, by + carH - tlSize * 2, tlSize, tlSize);
+        }
+
+        function shadeColor(color, percent) {
+            let num = parseInt(color.replace('#', ''), 16);
+            let r = Math.min(255, Math.max(0, (num >> 16) + percent));
+            let g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
+            let b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
+            return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+        }
+
+        // --- Draw Player Car ---
+        function drawPlayer() {
+            let destX = W / 2 + playerX * W / 4;
+            let destY = H - 20;
+            let carW = 60;
+            let carH = 40;
+            let roofH = 20;
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath();
+            ctx.ellipse(destX, destY, carW * 0.7, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Body
+            let bodyGrad = ctx.createLinearGradient(destX - carW / 2, destY - carH, destX + carW / 2, destY - carH);
+            bodyGrad.addColorStop(0, '#0088ff');
+            bodyGrad.addColorStop(0.5, '#00bbff');
+            bodyGrad.addColorStop(1, '#0066dd');
+            ctx.fillStyle = bodyGrad;
+
+            // Body shape (rounded)
+            ctx.beginPath();
+            ctx.moveTo(destX - carW / 2, destY);
+            ctx.lineTo(destX - carW / 2, destY - carH * 0.7);
+            ctx.quadraticCurveTo(destX - carW / 2, destY - carH, destX - carW * 0.3, destY - carH);
+            ctx.lineTo(destX + carW * 0.3, destY - carH);
+            ctx.quadraticCurveTo(destX + carW / 2, destY - carH, destX + carW / 2, destY - carH * 0.7);
+            ctx.lineTo(destX + carW / 2, destY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Roof
+            ctx.fillStyle = '#005599';
+            ctx.beginPath();
+            ctx.moveTo(destX - carW * 0.3, destY - carH);
+            ctx.lineTo(destX - carW * 0.22, destY - carH - roofH);
+            ctx.lineTo(destX + carW * 0.22, destY - carH - roofH);
+            ctx.lineTo(destX + carW * 0.3, destY - carH);
+            ctx.closePath();
+            ctx.fill();
+
+            // Windshield
+            ctx.fillStyle = 'rgba(100, 220, 255, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(destX - carW * 0.25, destY - carH - 2);
+            ctx.lineTo(destX - carW * 0.18, destY - carH - roofH + 3);
+            ctx.lineTo(destX + carW * 0.18, destY - carH - roofH + 3);
+            ctx.lineTo(destX + carW * 0.25, destY - carH - 2);
+            ctx.closePath();
+            ctx.fill();
+
+            // Headlights glow (subtle)
+            let glowGrad = ctx.createRadialGradient(destX - carW * 0.35, destY - carH * 0.5, 0, destX - carW * 0.35, destY - carH * 0.5, 15);
+            glowGrad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
+            glowGrad.addColorStop(1, 'rgba(255, 255, 200, 0)');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(destX - carW * 0.5, destY - carH * 0.7, 20, 20);
+
+            glowGrad = ctx.createRadialGradient(destX + carW * 0.35, destY - carH * 0.5, 0, destX + carW * 0.35, destY - carH * 0.5, 15);
+            glowGrad.addColorStop(0, 'rgba(255, 255, 200, 0.5)');
+            glowGrad.addColorStop(1, 'rgba(255, 255, 200, 0)');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(destX + carW * 0.3, destY - carH * 0.7, 20, 20);
+
+            // Taillights
+            ctx.fillStyle = '#ff2222';
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(destX - carW / 2 + 2, destY - 6, 6, 4);
+            ctx.fillRect(destX + carW / 2 - 8, destY - 6, 6, 4);
+            ctx.shadowBlur = 0;
+
+            // Steering visual: slight tilt based on steer
+            // (handled by car shape already shifting with playerX)
+        }
+
+        // --- Draw Sky / Background ---
+        function drawBackground() {
+            // Sky gradient
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+            skyGrad.addColorStop(0, COLORS.SKY_TOP);
+            skyGrad.addColorStop(1, COLORS.SKY_BOTTOM);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, W, H * 0.55);
+
+            // Stars
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            let starSeed = 42;
+            for (let i = 0; i < 60; i++) {
+                starSeed = (starSeed * 16807 + 7) % 2147483647;
+                let sx = (starSeed % W);
+                starSeed = (starSeed * 16807 + 7) % 2147483647;
+                let sy = (starSeed % (H * 0.4));
+                starSeed = (starSeed * 16807 + 7) % 2147483647;
+                let ss = (starSeed % 3) + 1;
+                ctx.fillRect(sx, sy, ss, ss);
+            }
+
+            // Mountains (silhouette) - parallax
+            let mountainOffset = (position / SEGMENT_LENGTH * 0.3) % W;
+            drawMountains(mountainOffset);
+
+            // Horizon glow
+            let horizonY = H * 0.5;
+            let glowGrad = ctx.createRadialGradient(W / 2, horizonY, 0, W / 2, horizonY, W * 0.5);
+            glowGrad.addColorStop(0, 'rgba(0, 100, 200, 0.15)');
+            glowGrad.addColorStop(1, 'rgba(0, 100, 200, 0)');
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(0, horizonY - 100, W, 200);
+        }
+
+        function drawMountains(offset) {
+            ctx.fillStyle = COLORS.MOUNTAIN;
+            ctx.beginPath();
+            ctx.moveTo(0, H * 0.52);
+            let mw = W / 4;
+            for (let i = -1; i < 6; i++) {
+                let mx = i * mw - (offset % mw);
+                ctx.lineTo(mx, H * 0.52);
+                ctx.lineTo(mx + mw * 0.5, H * 0.35 - (i % 3) * 20);
+                ctx.lineTo(mx + mw, H * 0.52);
+            }
+            ctx.lineTo(W + 10, H * 0.52);
+            ctx.lineTo(W + 10, H * 0.55);
+            ctx.lineTo(-10, H * 0.55);
+            ctx.closePath();
+            ctx.fill();
+
+            // Second layer mountains
+            ctx.fillStyle = COLORS.MOUNTAIN2;
+            ctx.beginPath();
+            ctx.moveTo(0, H * 0.53);
+            let mw2 = W / 3;
+            let offset2 = offset * 0.6;
+            for (let i = -1; i < 5; i++) {
+                let mx = i * mw2 - (offset2 % mw2) + mw2 * 0.3;
+                ctx.lineTo(mx, H * 0.53);
+                ctx.lineTo(mx + mw2 * 0.5, H * 0.42 - ((i + 1) % 2) * 15);
+                ctx.lineTo(mx + mw2, H * 0.53);
+            }
+            ctx.lineTo(W + 10, H * 0.53);
+            ctx.lineTo(W + 10, H * 0.56);
+            ctx.lineTo(-10, H * 0.56);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // --- Fog Effect ---
+        function applyFog(segIndex, baseSegIndex) {
+            let dist = segIndex - baseSegIndex;
+            let fogAmount = dist / DRAW_DISTANCE;
+            fogAmount = Math.pow(fogAmount, 2.0);
+            return Math.min(fogAmount, 1);
+        }
+
+        // --- Collision Detection ---
+        function checkCollision(carObj) {
+            let playerW = 0.15; // Player half-width in normalized coords
+            let carHalfW = carObj.w / ROAD_WIDTH * 0.5;
+            let dx = Math.abs(playerX - carObj.offset);
+            return dx < (playerW + carHalfW);
+        }
+
+        // --- Main Render ---
+        function render() {
+            ctx.clearRect(0, 0, W, H);
+
+            drawBackground();
+
+            let baseSegIndex = Math.floor(position / SEGMENT_LENGTH) % segments.length;
+            let basePercent = (position % SEGMENT_LENGTH) / SEGMENT_LENGTH;
+            let playerY = segments[baseSegIndex].p1.world.y +
+                (segments[baseSegIndex].p2.world.y - segments[baseSegIndex].p1.world.y) * basePercent;
+
+            let maxY = H;
+            let x = 0;
+            let dx = 0;
+
+            // Project all visible segments
+            let cameraZ = position - CAMERA_DEPTH * CAMERA_HEIGHT;
+
+            for (let n = 0; n < DRAW_DISTANCE; n++) {
+                let idx = (baseSegIndex + n) % segments.length;
+                let seg = segments[idx];
+
+                // Apply curve
+                seg.looped = idx < baseSegIndex;
+                let zOffset = seg.looped ? segments.length * SEGMENT_LENGTH : 0;
+
+                let camX = playerX * ROAD_WIDTH - x;
+                let camY = playerY + CAMERA_HEIGHT;
+                let camZ = position;
+
+                // Adjust world x for curve
+                seg.p1.world.x = 0;
+                seg.p2.world.x = 0;
+
+                project(seg.p1, camX, camY, camZ - (seg.looped ? segments.length * SEGMENT_LENGTH : 0));
+                project(seg.p2, camX, camY, camZ - (seg.looped ? segments.length * SEGMENT_LENGTH : 0));
+
+                // Adjust screen x for accumulated curve
+                seg.p1.screen.x += Math.round(dx * W / 2);
+                seg.p2.screen.x += Math.round((dx + seg.curve * basePercent * (n === 0 ? 1 : 1)) * W / 2);
+
+                x += dx;
+                dx += seg.curve * (1 / DRAW_DISTANCE) * 2;
+
+                seg.clip = maxY;
+            }
+
+            // Draw segments back to front
+            for (let n = DRAW_DISTANCE - 1; n >= 0; n--) {
+                let idx = (baseSegIndex + n) % segments.length;
+                let seg = segments[idx];
+
+                // Skip if behind camera or above clip
+                if (seg.p1.screen.y <= seg.p2.screen.y) continue;
+
+                drawSegment(seg, seg.clip);
+
+                // Fog overlay
+                let fog = applyFog(n, 0);
+                if (fog > 0.01) {
+                    ctx.fillStyle = `rgba(26, 26, 46, ${fog * 0.9})`;
+                    let fy1 = seg.p2.screen.y;
+                    let fy2 = seg.p1.screen.y;
+                    if (fy2 > fy1) {
+                        ctx.fillRect(0, fy1, W, fy2 - fy1);
+                    }
+                }
+
+                // Update max Y for clipping
+                if (seg.p2.screen.y < seg.clip) {
+                    // Propagate clip for the next segment in front
+                    if (n > 0) {
+                        let frontIdx = (baseSegIndex + n - 1) % segments.length;
+                        // segments[frontIdx].clip is already H initially
+                    }
+                }
+            }
+
+            // Draw sprites and cars back to front
+            for (let n = DRAW_DISTANCE - 1; n > 0; n--) {
+                let idx = (baseSegIndex + n) % segments.length;
+                let seg = segments[idx];
+
+                if (seg.p1.screen.y <= seg.p2.screen.y) continue;
+
+                // Left sprite
+                if (seg.spriteLeft) {
+                    drawSprite(seg, seg.spriteLeft, -1);
+                }
+                // Right sprite
+                if (seg.spriteRight) {
+                    drawSprite(seg, seg.spriteRight, 1);
+                }
+
+                // Cars in this segment
+                for (let c = 0; c < cars.length; c++) {
+                    let car = cars[c];
+                    let carSegIdx = Math.floor(car.z / SEGMENT_LENGTH) % segments.length;
+                    if (carSegIdx === idx) {
+                        drawCar(car, seg);
+                    }
+                }
+            }
+
+            // Draw player car
+            drawPlayer();
+
+            // HUD - Speed bar
+            drawSpeedBar();
+        }
+
+        function drawSpeedBar() {
+            let barW = 150;
+            let barH = 8;
+            let barX = W - barW - 20;
+            let barY = H - 25;
+            let ratio = speed / maxSpeed;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 4);
+
+            let barGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+            barGrad.addColorStop(0, '#00ff88');
+            barGrad.addColorStop(0.6, '#ffcc00');
+            barGrad.addColorStop(1, '#ff3333');
+            ctx.fillStyle = barGrad;
+            ctx.fillRect(barX, barY, barW * ratio, barH);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.strokeRect(barX, barY, barW, barH);
+        }
+
+        // --- Update Logic ---
+        function update(dt) {
+            if (!gameRunning) return;
+
+            let steerInput = 0;
+            let accelInput = false;
+            let brakeInput = false;
+
+            // Keyboard input
+            if (keys['ArrowLeft'] || keys['KeyA']) steerInput -= 1;
+            if (keys['ArrowRight'] || keys['KeyD']) steerInput += 1;
+            if (keys['ArrowUp'] || keys['KeyW']) accelInput = true;
+            if (keys['ArrowDown'] || keys['KeyS']) brakeInput = true;
+
+            // Touch input
+            if (touchState.left) steerInput -= 1;
+            if (touchState.right) steerInput += 1;
+            if (touchState.accel) accelInput = true;
+            if (touchState.brake) brakeInput = true;
+
+            // Apply acceleration
+            if (accelInput) {
+                speed += accel * dt;
+            } else if (brakeInput) {
+                speed += braking * dt;
+            } else {
+                speed += decel * dt;
+            }
+
+            // Off-road slowdown
+            let absX = Math.abs(playerX);
+            if (absX > 0.9) {
+                speed += offRoadDecel * dt * (absX - 0.9) * 5;
+            }
+
+            speed = Math.max(0, Math.min(speed, maxSpeed));
+
+            // Steering
+            let steerAmount = steerInput * 0.035 * dt * (speed / maxSpeed);
+            playerX += steerAmount;
+
+            // Apply centrifugal force from curves
+            let baseSegIndex = Math.floor(position / SEGMENT_LENGTH) % segments.length;
+            let currentCurve = segments[baseSegIndex].curve;
+            playerX -= currentCurve * (speed / maxSpeed) * 0.003 * dt;
+
+            // Clamp player position
+            if (Math.abs(playerX) > 1.8) {
+                playerX = Math.sign(playerX) * 1.8;
+                speed *= 0.95; // Slow down when hitting edges
+            }
+
+            // Off-road crash: too far off = game over
+            if (Math.abs(playerX) > 1.75 && speed > maxSpeed * 0.3) {
+                speed *= 0.92;
+            }
+
+            // Update position
+            position += speed * dt;
+            let trackLen = segments.length * SEGMENT_LENGTH;
+            while (position >= trackLen) position -= trackLen;
+            while (position < 0) position += trackLen;
+
+            // Update and check other cars
+            for (let i = 0; i < cars.length; i++) {
+                let car = cars[i];
+                car.z += car.speed * dt;
+                while (car.z >= trackLen) car.z -= trackLen;
+                while (car.z < 0) car.z += trackLen;
+
+                // Check collision with player
+                let dz = car.z - position;
+                if (dz < 0) dz += trackLen;
+                if (dz > trackLen / 2) dz -= trackLen;
+
+                if (Math.abs(dz) < SEGMENT_LENGTH * 0.8 && speed > 0) {
+                    if (checkCollision(car)) {
+                        // Collision!
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+
+            // Score
+            scoreFloat += speed * dt / SEGMENT_LENGTH;
+            score = Math.floor(scoreFloat);
+
+            // Increase difficulty over time
+            difficultyMultiplier = 1 + score / 500 * 0.15;
+            maxSpeed = SEGMENT_LENGTH * 60 * Math.min(difficultyMultiplier, 1.8);
+
+            // Update display
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('speedDisplay').textContent = Math.floor(speed / (SEGMENT_LENGTH * 60) * 200);
+        }
+
+        // --- Game Over ---
+        function gameOver() {
+            gameRunning = false;
+            if (animFrame) cancelAnimationFrame(animFrame);
+
+            // Save high score
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('racer3dHighScore', highScore);
+                document.getElementById('highScoreDisplay').textContent = highScore;
+                document.getElementById('newHighScoreMsg').classList.remove('hidden');
+            } else {
+                document.getElementById('newHighScoreMsg').classList.add('hidden');
+            }
+
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverOverlay').classList.remove('hidden');
+        }
+
+        // --- Game Loop ---
+        function gameLoop(timestamp) {
+            if (!gameRunning) return;
+
+            let dt = 0;
+            if (lastTimestamp > 0) {
+                dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05); // Cap dt to prevent spikes
+            }
+            lastTimestamp = timestamp;
+
+            update(dt * 60);  // Normalize to ~60fps
+            render();
+
+            animFrame = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Start / Restart ---
+        function startGame() {
+            buildRoad();
+            resetCars();
+
+            position = 0;
+            speed = 0;
+            playerX = 0;
+            score = 0;
+            scoreFloat = 0;
+            maxSpeed = SEGMENT_LENGTH * 60;
+            difficultyMultiplier = 1;
+            lastTimestamp = 0;
+
+            document.getElementById('scoreDisplay').textContent = '0';
+            document.getElementById('speedDisplay').textContent = '0';
+            document.getElementById('highScoreDisplay').textContent = highScore;
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+
+            gameRunning = true;
+            gameStarted = true;
+            animFrame = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Start Screen ---
+        function drawStartScreen() {
+            ctx.clearRect(0, 0, W, H);
+
+            // Dark background
+            let bg = ctx.createLinearGradient(0, 0, 0, H);
+            bg.addColorStop(0, '#0a0a1e');
+            bg.addColorStop(1, '#1a1a2e');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, W, H);
+
+            // Road perspective lines
+            ctx.strokeStyle = 'rgba(0, 217, 255, 0.15)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 20; i++) {
+                let y = H * 0.4 + i * (H * 0.6 / 20);
+                let spread = (y - H * 0.4) / (H * 0.6);
+                let lx = W / 2 - spread * W * 0.4;
+                let rx = W / 2 + spread * W * 0.4;
+                ctx.beginPath();
+                ctx.moveTo(lx, y);
+                ctx.lineTo(rx, y);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(0, 217, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(W / 2, H * 0.4);
+            ctx.lineTo(W * 0.1, H);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(W / 2, H * 0.4);
+            ctx.lineTo(W * 0.9, H);
+            ctx.stroke();
+
+            // Title
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#00d9ff';
+            ctx.font = 'bold 48px Inter, sans-serif';
+            ctx.shadowColor = '#00d9ff';
+            ctx.shadowBlur = 20;
+            ctx.fillText('RACER 3D', W / 2, H * 0.25);
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '18px Inter, sans-serif';
+            ctx.fillText('Dodge traffic and race to the highest score!', W / 2, H * 0.35);
+
+            // Start prompt (blinking)
+            let alpha = 0.5 + 0.5 * Math.sin(Date.now() / 400);
+            ctx.fillStyle = `rgba(0, 255, 136, ${alpha})`;
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.fillText('Press any key or tap to start', W / 2, H * 0.65);
+
+            ctx.fillStyle = '#888';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText('Arrow Keys / WASD to steer and accelerate', W / 2, H * 0.75);
+
+            if (!gameStarted) {
+                requestAnimationFrame(drawStartScreen);
+            }
+        }
+
+        // --- Input Handling ---
+        function setupInput() {
+            document.addEventListener('keydown', function(e) {
+                keys[e.code] = true;
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                    e.preventDefault();
+                }
+                if (!gameStarted && !gameRunning) {
+                    startGame();
+                }
+            });
+
+            document.addEventListener('keyup', function(e) {
+                keys[e.code] = false;
+            });
+
+            // Canvas click to start
+            canvas.addEventListener('click', function() {
+                if (!gameStarted && !gameRunning) {
+                    startGame();
+                }
+            });
+
+            // Touch controls
+            setupTouchButton('touchLeft', 'left');
+            setupTouchButton('touchRight', 'right');
+            setupTouchButton('touchAccel', 'accel');
+            setupTouchButton('touchBrake', 'brake');
+
+            // Touch on canvas to start
+            canvas.addEventListener('touchstart', function(e) {
+                if (!gameStarted && !gameRunning) {
+                    e.preventDefault();
+                    startGame();
+                }
+            }, { passive: false });
+        }
+
+        function setupTouchButton(btnId, stateKey) {
+            let btn = document.getElementById(btnId);
+            if (!btn) return;
+
+            function activate(e) {
+                e.preventDefault();
+                touchState[stateKey] = true;
+                btn.classList.add('active');
+                if (!gameStarted && !gameRunning) {
+                    startGame();
+                }
+            }
+            function deactivate(e) {
+                e.preventDefault();
+                touchState[stateKey] = false;
+                btn.classList.remove('active');
+            }
+
+            btn.addEventListener('touchstart', activate, { passive: false });
+            btn.addEventListener('touchend', deactivate, { passive: false });
+            btn.addEventListener('touchcancel', deactivate, { passive: false });
+            btn.addEventListener('mousedown', activate);
+            btn.addEventListener('mouseup', deactivate);
+            btn.addEventListener('mouseleave', deactivate);
+        }
+
+        // --- Fullscreen ---
+        document.getElementById('fullscreenBtn').addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(function() {});
+            } else {
+                document.exitFullscreen().catch(function() {});
+            }
+        });
+
+        // --- Restart Button ---
+        document.getElementById('restartBtn').addEventListener('click', function() {
+            gameStarted = false;
+            startGame();
+        });
+
+        // --- Responsive Canvas ---
+        function resizeCanvas() {
+            let containerWidth = canvas.parentElement.clientWidth;
+            if (containerWidth < 800) {
+                canvas.style.width = containerWidth + 'px';
+                canvas.style.height = Math.floor(containerWidth * 500 / 800) + 'px';
+            } else {
+                canvas.style.width = '';
+                canvas.style.height = '';
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- Init ---
+        document.getElementById('highScoreDisplay').textContent = highScore;
+        setupInput();
+        drawStartScreen();
+
+    })();
+    </script>
+</body>
+</html>
