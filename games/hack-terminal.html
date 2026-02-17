@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hack Terminal - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 700px; }
+        .terminal {
+            background: #0a0a0a;
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+            position: relative;
+            overflow: hidden;
+        }
+        .terminal::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 255, 65, 0.03) 0px,
+                rgba(0, 255, 65, 0.03) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+        .terminal-header .status { color: #ff6b6b; }
+        .terminal-header .status.connected { color: #00ff41; }
+        .hack-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .hack-info span { white-space: nowrap; }
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background: #1a1a1a;
+            border: 1px solid #00ff41;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: #00ff41;
+            transition: width 0.1s linear, background-color 0.3s;
+            border-radius: 3px;
+        }
+        .timer-fill.warning { background: #ffc107; }
+        .timer-fill.danger { background: #ff6b6b; }
+
+        .target-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px dashed #00ff4180;
+            border-radius: 4px;
+        }
+        .target-label { font-size: 0.75rem; color: #00ff4180; margin-bottom: 6px; }
+        .target-sequences { display: flex; flex-direction: column; gap: 6px; }
+        .target-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .target-row .seq-label {
+            font-size: 0.7rem;
+            color: #00ff4180;
+            width: 50px;
+        }
+        .target-row .seq-codes { display: flex; gap: 4px; }
+        .target-code {
+            padding: 3px 6px;
+            border: 1px solid #00ff4140;
+            border-radius: 3px;
+            font-size: 0.85rem;
+            min-width: 28px;
+            text-align: center;
+        }
+        .target-code.matched { background: #00ff4130; border-color: #00ff41; }
+        .target-row.completed .target-code { background: #00ff4140; border-color: #00ff41; }
+        .target-row.failed .target-code { border-color: #ff6b6b40; color: #ff6b6b60; }
+
+        .buffer-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #00d9ff60;
+            border-radius: 4px;
+        }
+        .buffer-label { font-size: 0.75rem; color: #00d9ff80; margin-bottom: 6px; }
+        .buffer-slots { display: flex; gap: 6px; flex-wrap: wrap; }
+        .buffer-slot {
+            width: 42px;
+            height: 36px;
+            border: 1px solid #00d9ff40;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: #00d9ff;
+        }
+        .buffer-slot.filled { border-color: #00d9ff; background: #00d9ff15; }
+        .buffer-slot.active { border-color: #00d9ff; box-shadow: 0 0 8px #00d9ff40; }
+
+        .matrix-section { margin-bottom: 15px; }
+        .matrix-label { font-size: 0.75rem; color: #00ff4180; margin-bottom: 8px; }
+        .matrix-grid {
+            display: inline-grid;
+            gap: 4px;
+            justify-content: center;
+            width: 100%;
+        }
+        .matrix-cell {
+            width: 48px;
+            height: 40px;
+            border: 1px solid #00ff4130;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: transparent;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+        }
+        .matrix-cell:hover:not(.disabled):not(.selected) {
+            border-color: #00ff41;
+            background: #00ff4115;
+        }
+        .matrix-cell.selectable {
+            border-color: #00ff4180;
+            box-shadow: 0 0 4px #00ff4120;
+        }
+        .matrix-cell.selected {
+            background: #00ff4130;
+            border-color: #00ff41;
+            color: #0a0a0a;
+            background: #00ff41;
+        }
+        .matrix-cell.disabled {
+            opacity: 0.25;
+            cursor: not-allowed;
+        }
+        .highlight-row, .highlight-col {
+            position: absolute;
+            background: #00ff4108;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hack-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .hack-btn {
+            padding: 10px 24px;
+            background: transparent;
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .hack-btn:hover {
+            background: #00ff4120;
+            box-shadow: 0 0 15px #00ff4130;
+        }
+        .hack-btn.abort { border-color: #ff6b6b; color: #ff6b6b; }
+        .hack-btn.abort:hover { background: #ff6b6b20; }
+
+        .hack-log {
+            margin-top: 15px;
+            padding: 10px;
+            background: #0a0a0a;
+            border: 1px solid #00ff4120;
+            border-radius: 4px;
+            max-height: 80px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            color: #00ff4180;
+        }
+        .hack-log .log-entry { margin-bottom: 2px; }
+        .hack-log .success { color: #00ff41; }
+        .hack-log .error { color: #ff6b6b; }
+        .hack-log .info { color: #00d9ff; }
+
+        .results-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #0a0a0a;
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+        }
+        .results-box.failed { border-color: #ff6b6b; }
+        .results-box.failed h2 { color: #ff6b6b; }
+        .results-box h2 { font-size: 1.5rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; }
+        .results-box .stats span { color: #00d9ff; }
+
+        .level-display {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #00d9ff;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        .score-display div {
+            font-size: 0.9rem;
+        }
+        .score-display .value { color: #00d9ff; }
+
+        @media (max-width: 600px) {
+            .terminal { padding: 12px; }
+            .matrix-cell { width: 40px; height: 34px; font-size: 0.8rem; }
+            .buffer-slot { width: 36px; height: 30px; font-size: 0.8rem; }
+            .target-code { font-size: 0.75rem; min-width: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#128421; Hack Terminal</h1>
+
+            <div class="score-display">
+                <div>SCORE: <span class="value" id="totalScore">0</span></div>
+                <div>HIGH: <span class="value" id="highScore">0</span></div>
+            </div>
+
+            <div class="terminal" id="terminal">
+                <div class="terminal-header">
+                    <span>BREACH PROTOCOL v3.1</span>
+                    <span class="status" id="connectionStatus">DISCONNECTED</span>
+                </div>
+
+                <div class="level-display" id="levelDisplay">LEVEL 1</div>
+
+                <div class="hack-info">
+                    <span>TIME: <span id="timerText">30.0s</span></span>
+                    <span>BUFFER: <span id="bufferInfo">0/4</span></span>
+                </div>
+                <div class="timer-bar">
+                    <div class="timer-fill" id="timerFill"></div>
+                </div>
+
+                <div class="target-section">
+                    <div class="target-label">// TARGET SEQUENCES</div>
+                    <div class="target-sequences" id="targetSequences"></div>
+                </div>
+
+                <div class="buffer-section">
+                    <div class="buffer-label">// BUFFER</div>
+                    <div class="buffer-slots" id="bufferSlots"></div>
+                </div>
+
+                <div class="matrix-section">
+                    <div class="matrix-label">// CODE MATRIX</div>
+                    <div class="matrix-grid" id="matrixGrid"></div>
+                </div>
+
+                <div class="hack-log" id="hackLog"></div>
+            </div>
+
+            <div class="hack-controls" id="controls">
+                <button class="hack-btn" id="startBtn" onclick="startHack()">INITIATE BREACH</button>
+            </div>
+
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Hack the system by selecting codes from the matrix to match target sequences.</p>
+                <ul style="text-align:left; color:#ccc; font-size:0.9rem; margin-top:8px;">
+                    <li>Select codes alternating between <strong>rows</strong> and <strong>columns</strong></li>
+                    <li>First pick is from the <strong>top row</strong></li>
+                    <li>After picking, next pick must be from the <strong>same column</strong></li>
+                    <li>Then from the <strong>same row</strong>, and so on</li>
+                    <li>Fill target sequences in your buffer to score points</li>
+                    <li>Complete all sequences before time runs out</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">BREACH COMPLETE</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="hack-controls">
+                <button class="hack-btn" onclick="nextLevel()">NEXT TARGET</button>
+                <button class="hack-btn abort" onclick="resetGame()">DISCONNECT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fullscreen
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        const HEX_CODES = ['1C', '55', 'BD', 'E9', '7A', 'FF', '3D', 'A2', 'C8', '6F', '0B', 'D4'];
+
+        let state = {
+            level: 1,
+            totalScore: 0,
+            highScore: parseInt(localStorage.getItem('hackTerminalHighScore') || '0'),
+            matrix: [],
+            gridSize: 5,
+            bufferSize: 4,
+            buffer: [],
+            targets: [],
+            targetMatched: [],
+            timer: 30,
+            maxTime: 30,
+            timerInterval: null,
+            selectingRow: true,
+            activeIndex: 0, // row or col index to select from
+            selectedCells: [],
+            hacking: false
+        };
+
+        document.getElementById('highScore').textContent = state.highScore;
+
+        function log(msg, type = '') {
+            const el = document.getElementById('hackLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = '> ' + msg;
+            el.appendChild(entry);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function generateMatrix(size) {
+            const matrix = [];
+            for (let r = 0; r < size; r++) {
+                const row = [];
+                for (let c = 0; c < size; c++) {
+                    row.push(HEX_CODES[Math.floor(Math.random() * HEX_CODES.length)]);
+                }
+                matrix.push(row);
+            }
+            return matrix;
+        }
+
+        function generateTargets(matrix, count, minLen, maxLen) {
+            const targets = [];
+            for (let i = 0; i < count; i++) {
+                const len = minLen + Math.floor(Math.random() * (maxLen - minLen + 1));
+                const seq = [];
+                for (let j = 0; j < len; j++) {
+                    const r = Math.floor(Math.random() * matrix.length);
+                    const c = Math.floor(Math.random() * matrix[0].length);
+                    seq.push(matrix[r][c]);
+                }
+                targets.push(seq);
+            }
+            return targets;
+        }
+
+        function getLevelConfig(level) {
+            if (level <= 2) return { gridSize: 5, bufferSize: 4, targets: 1, minSeq: 2, maxSeq: 3, time: 30 };
+            if (level <= 4) return { gridSize: 5, bufferSize: 5, targets: 2, minSeq: 2, maxSeq: 3, time: 35 };
+            if (level <= 6) return { gridSize: 6, bufferSize: 6, targets: 2, minSeq: 3, maxSeq: 4, time: 40 };
+            return { gridSize: 6, bufferSize: 7, targets: 3, minSeq: 3, maxSeq: 4, time: 45 };
+        }
+
+        function startHack() {
+            const config = getLevelConfig(state.level);
+            state.gridSize = config.gridSize;
+            state.bufferSize = config.bufferSize;
+            state.maxTime = config.time;
+            state.timer = config.time;
+            state.buffer = [];
+            state.selectedCells = [];
+            state.selectingRow = true;
+            state.activeIndex = 0;
+            state.hacking = true;
+
+            state.matrix = generateMatrix(config.gridSize);
+            state.targets = generateTargets(state.matrix, config.targets, config.minSeq, config.maxSeq);
+            state.targetMatched = state.targets.map(() => false);
+
+            document.getElementById('hackLog').innerHTML = '';
+            document.getElementById('connectionStatus').textContent = 'CONNECTED';
+            document.getElementById('connectionStatus').className = 'status connected';
+            document.getElementById('levelDisplay').textContent = 'LEVEL ' + state.level;
+            document.getElementById('startBtn').style.display = 'none';
+
+            log('Connection established...', 'info');
+            log('Initiating breach protocol...', 'info');
+            log('Select codes from highlighted row', 'success');
+
+            renderMatrix();
+            renderBuffer();
+            renderTargets();
+            startTimer();
+        }
+
+        function renderMatrix() {
+            const grid = document.getElementById('matrixGrid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${state.gridSize}, 48px)`;
+
+            for (let r = 0; r < state.gridSize; r++) {
+                for (let c = 0; c < state.gridSize; c++) {
+                    const cell = document.createElement('button');
+                    cell.className = 'matrix-cell';
+                    cell.textContent = state.matrix[r][c];
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    const isSelected = state.selectedCells.some(s => s.r === r && s.c === c);
+                    if (isSelected) {
+                        cell.classList.add('selected', 'disabled');
+                    } else if (state.selectingRow && r === state.activeIndex) {
+                        cell.classList.add('selectable');
+                    } else if (!state.selectingRow && c === state.activeIndex) {
+                        cell.classList.add('selectable');
+                    } else {
+                        cell.classList.add('disabled');
+                    }
+
+                    cell.addEventListener('click', () => selectCell(r, c));
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        function renderBuffer() {
+            const container = document.getElementById('bufferSlots');
+            container.innerHTML = '';
+            for (let i = 0; i < state.bufferSize; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'buffer-slot';
+                if (i < state.buffer.length) {
+                    slot.textContent = state.buffer[i];
+                    slot.classList.add('filled');
+                } else if (i === state.buffer.length) {
+                    slot.classList.add('active');
+                    slot.textContent = '__';
+                } else {
+                    slot.textContent = '__';
+                }
+                container.appendChild(slot);
+            }
+            document.getElementById('bufferInfo').textContent = state.buffer.length + '/' + state.bufferSize;
+        }
+
+        function renderTargets() {
+            const container = document.getElementById('targetSequences');
+            container.innerHTML = '';
+            state.targets.forEach((target, ti) => {
+                const row = document.createElement('div');
+                row.className = 'target-row';
+                if (state.targetMatched[ti]) row.classList.add('completed');
+
+                const label = document.createElement('span');
+                label.className = 'seq-label';
+                const points = target.length * 100;
+                label.textContent = points + 'pts';
+
+                const codes = document.createElement('div');
+                codes.className = 'seq-codes';
+                target.forEach((code, ci) => {
+                    const el = document.createElement('span');
+                    el.className = 'target-code';
+                    el.textContent = code;
+                    // Check if this part of target is matched in buffer
+                    if (state.targetMatched[ti]) el.classList.add('matched');
+                    codes.appendChild(el);
+                });
+
+                row.appendChild(label);
+                row.appendChild(codes);
+                container.appendChild(row);
+            });
+        }
+
+        function checkTargets() {
+            const bufStr = state.buffer.join(',');
+            state.targets.forEach((target, ti) => {
+                if (state.targetMatched[ti]) return;
+                const tarStr = target.join(',');
+                if (bufStr.includes(tarStr)) {
+                    state.targetMatched[ti] = true;
+                    const points = target.length * 100;
+                    state.totalScore += points;
+                    document.getElementById('totalScore').textContent = state.totalScore;
+                    log('SEQUENCE ' + (ti + 1) + ' MATCHED! +' + points + 'pts', 'success');
+                }
+            });
+        }
+
+        function selectCell(r, c) {
+            if (!state.hacking) return;
+            const isSelected = state.selectedCells.some(s => s.r === r && s.c === c);
+            if (isSelected) return;
+            if (state.buffer.length >= state.bufferSize) return;
+
+            if (state.selectingRow && r !== state.activeIndex) return;
+            if (!state.selectingRow && c !== state.activeIndex) return;
+
+            state.buffer.push(state.matrix[r][c]);
+            state.selectedCells.push({ r, c });
+
+            log('Selected ' + state.matrix[r][c] + ' at [' + r + ',' + c + ']', 'info');
+
+            // Toggle row/col and set new active index
+            if (state.selectingRow) {
+                state.selectingRow = false;
+                state.activeIndex = c;
+            } else {
+                state.selectingRow = true;
+                state.activeIndex = r;
+            }
+
+            checkTargets();
+            renderMatrix();
+            renderBuffer();
+            renderTargets();
+
+            // Check win/lose
+            const allMatched = state.targetMatched.every(m => m);
+            if (allMatched) {
+                endHack(true);
+                return;
+            }
+            if (state.buffer.length >= state.bufferSize) {
+                // Buffer full, check if any unmatched
+                if (!allMatched) {
+                    endHack(false);
+                }
+            }
+        }
+
+        function startTimer() {
+            const fill = document.getElementById('timerFill');
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                if (state.timer <= 0) {
+                    state.timer = 0;
+                    endHack(false);
+                }
+                const pct = (state.timer / state.maxTime) * 100;
+                fill.style.width = pct + '%';
+                fill.className = 'timer-fill' + (pct < 20 ? ' danger' : pct < 40 ? ' warning' : '');
+                document.getElementById('timerText').textContent = state.timer.toFixed(1) + 's';
+            }, 100);
+        }
+
+        function endHack(success) {
+            state.hacking = false;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            const overlay = document.getElementById('resultsOverlay');
+            const box = document.getElementById('resultsBox');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+
+            if (success) {
+                const timeBonus = Math.round(state.timer * 10);
+                state.totalScore += timeBonus;
+                document.getElementById('totalScore').textContent = state.totalScore;
+                log('BREACH SUCCESSFUL', 'success');
+
+                title.textContent = 'BREACH COMPLETE';
+                box.className = 'results-box';
+                const seqMatched = state.targetMatched.filter(m => m).length;
+                stats.innerHTML =
+                    'Sequences matched: <span>' + seqMatched + '/' + state.targets.length + '</span><br>' +
+                    'Time bonus: <span>+' + timeBonus + '</span><br>' +
+                    'Total score: <span>' + state.totalScore + '</span>';
+
+                document.getElementById('connectionStatus').textContent = 'BREACHED';
+            } else {
+                log('BREACH FAILED - ICE detected', 'error');
+                title.textContent = 'BREACH FAILED';
+                box.className = 'results-box failed';
+                const seqMatched = state.targetMatched.filter(m => m).length;
+                stats.innerHTML =
+                    'Sequences matched: <span>' + seqMatched + '/' + state.targets.length + '</span><br>' +
+                    'Total score: <span>' + state.totalScore + '</span>';
+
+                document.getElementById('connectionStatus').textContent = 'BLOCKED';
+                document.getElementById('connectionStatus').className = 'status';
+            }
+
+            if (state.totalScore > state.highScore) {
+                state.highScore = state.totalScore;
+                localStorage.setItem('hackTerminalHighScore', state.highScore);
+                document.getElementById('highScore').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+
+            overlay.classList.add('show');
+        }
+
+        function nextLevel() {
+            state.level++;
+            document.getElementById('resultsOverlay').classList.remove('show');
+            startHack();
+        }
+
+        function resetGame() {
+            state.level = 1;
+            state.totalScore = 0;
+            document.getElementById('totalScore').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = '';
+            document.getElementById('connectionStatus').textContent = 'DISCONNECTED';
+            document.getElementById('connectionStatus').className = 'status';
+            document.getElementById('levelDisplay').textContent = 'LEVEL 1';
+            document.getElementById('matrixGrid').innerHTML = '';
+            document.getElementById('bufferSlots').innerHTML = '';
+            document.getElementById('targetSequences').innerHTML = '';
+            document.getElementById('hackLog').innerHTML = '';
+            document.getElementById('timerFill').style.width = '100%';
+            document.getElementById('timerText').textContent = '30.0s';
+            document.getElementById('bufferInfo').textContent = '0/4';
+        }
+    </script>
+</body>
+</html>

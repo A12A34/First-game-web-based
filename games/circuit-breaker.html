@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Breaker - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 650px; }
+        .circuit-board {
+            background: #0a0f0a;
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+        }
+        .circuit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .circuit-info {
+            display: flex;
+            gap: 20px;
+            font-family: 'Courier New', monospace;
+            color: #00d9ff;
+            font-size: 0.9rem;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        .circuit-info .value { color: #00ff41; }
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background: #1a1a1a;
+            border: 1px solid #00ff41;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: #00ff41;
+            transition: width 0.1s linear, background-color 0.3s;
+            border-radius: 3px;
+        }
+        .timer-fill.warning { background: #ffc107; }
+        .timer-fill.danger { background: #ff6b6b; }
+
+        canvas#circuitCanvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #00ff4140;
+            border-radius: 4px;
+            cursor: pointer;
+            touch-action: none;
+            max-width: 100%;
+        }
+
+        .power-status {
+            text-align: center;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        .power-status.disconnected { color: #ff6b6b; border: 1px solid #ff6b6b40; }
+        .power-status.connected { color: #00ff41; border: 1px solid #00ff4140; background: #00ff4110; }
+
+        .circuit-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .circuit-btn {
+            padding: 10px 24px;
+            background: transparent;
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .circuit-btn:hover {
+            background: #00ff4120;
+            box-shadow: 0 0 15px #00ff4130;
+        }
+        .circuit-btn.reset { border-color: #ffc107; color: #ffc107; }
+        .circuit-btn.reset:hover { background: #ffc10720; }
+
+        .results-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #0a0a0a;
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+        }
+        .results-box.failed { border-color: #ff6b6b; }
+        .results-box.failed h2 { color: #ff6b6b; }
+        .results-box h2 { font-size: 1.4rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; }
+        .results-box .stats span { color: #00d9ff; }
+
+        @media (max-width: 500px) {
+            .circuit-board { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#9889; Circuit Breaker</h1>
+
+            <div class="circuit-info">
+                <div>LEVEL: <span class="value" id="levelDisplay">1</span></div>
+                <div>SCORE: <span class="value" id="scoreDisplay">0</span></div>
+                <div>HIGH: <span class="value" id="highScore">0</span></div>
+            </div>
+
+            <div class="circuit-board">
+                <div class="circuit-header">
+                    <span>CIRCUIT GRID</span>
+                    <span>TIME: <span id="timerText">45.0s</span></span>
+                </div>
+                <div class="timer-bar">
+                    <div class="timer-fill" id="timerFill"></div>
+                </div>
+
+                <canvas id="circuitCanvas" width="480" height="480"></canvas>
+
+                <div class="power-status disconnected" id="powerStatus">
+                    CIRCUIT: DISCONNECTED
+                </div>
+            </div>
+
+            <div class="circuit-controls">
+                <button class="circuit-btn" id="startBtn" onclick="startGame()">START HACK</button>
+            </div>
+
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Rotate circuit pieces to connect power from the <strong style="color:#00ff41">green source (left)</strong> to the <strong style="color:#ff6b6b">red target (right)</strong>.</p>
+                <ul style="text-align:left; color:#ccc; font-size:0.9rem; margin-top:8px;">
+                    <li><strong>Click/Tap</strong> a tile to rotate it 90 degrees</li>
+                    <li>Connect all pipe segments to complete the circuit</li>
+                    <li>Solve before the timer runs out</li>
+                    <li>Faster completion = more bonus points</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">CIRCUIT COMPLETE</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="circuit-controls">
+                <button class="circuit-btn" onclick="nextLevel()">NEXT CIRCUIT</button>
+                <button class="circuit-btn reset" onclick="resetGame()">RESET</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        const canvas = document.getElementById('circuitCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Piece types: each has 4 rotation states defining which sides are open
+        // Sides: 0=top, 1=right, 2=bottom, 3=left
+        const PIECE_TYPES = {
+            straight: [[0,2], [1,3]],      // vertical or horizontal
+            corner: [[0,1], [1,2], [2,3], [3,0]], // L-shape
+            tee: [[0,1,2], [1,2,3], [2,3,0], [3,0,1]], // T-shape
+            cross: [[0,1,2,3]],             // + all sides
+            empty: [[]]                      // no connections
+        };
+
+        let state = {
+            level: 1,
+            score: 0,
+            highScore: parseInt(localStorage.getItem('circuitBreakerHighScore') || '0'),
+            gridSize: 4,
+            grid: [],       // [{type, rotation, connections}]
+            cellSize: 0,
+            timer: 45,
+            maxTime: 45,
+            timerInterval: null,
+            playing: false,
+            sourceRow: 0,
+            targetRow: 0
+        };
+
+        document.getElementById('highScore').textContent = state.highScore;
+
+        function getLevelConfig(level) {
+            if (level <= 2) return { gridSize: 4, time: 45 };
+            if (level <= 4) return { gridSize: 5, time: 55 };
+            if (level <= 6) return { gridSize: 6, time: 65 };
+            return { gridSize: 7, time: 75 };
+        }
+
+        function getConnections(type, rotation) {
+            const states = PIECE_TYPES[type];
+            const stateIndex = rotation % states.length;
+            return states[stateIndex];
+        }
+
+        function generatePuzzle(size) {
+            // Build a solvable path first, then fill rest with random pieces
+            const grid = [];
+            for (let i = 0; i < size * size; i++) {
+                grid.push({ type: 'empty', rotation: 0 });
+            }
+
+            // Create a path from left to right using BFS-like random walk
+            state.sourceRow = Math.floor(Math.random() * size);
+            state.targetRow = Math.floor(Math.random() * size);
+
+            const path = [];
+            const visited = new Set();
+            let cr = state.sourceRow, cc = 0;
+            visited.add(cr * size + cc);
+            path.push({ r: cr, c: cc });
+
+            // Simple random walk from left column to right column
+            while (cc < size - 1) {
+                const options = [];
+                // Prefer going right
+                if (cc + 1 < size && !visited.has(cr * size + (cc + 1))) options.push({ r: cr, c: cc + 1 });
+                if (cr - 1 >= 0 && !visited.has((cr - 1) * size + cc)) options.push({ r: cr - 1, c: cc });
+                if (cr + 1 < size && !visited.has((cr + 1) * size + cc)) options.push({ r: cr + 1, c: cc });
+
+                if (options.length === 0) break; // stuck, restart would be needed
+
+                // Bias toward right movement
+                let next;
+                if (options.some(o => o.c === cc + 1) && Math.random() < 0.6) {
+                    next = options.find(o => o.c === cc + 1);
+                } else {
+                    next = options[Math.floor(Math.random() * options.length)];
+                }
+
+                visited.add(next.r * size + next.c);
+                path.push(next);
+                cr = next.r;
+                cc = next.c;
+            }
+
+            state.targetRow = cr;
+
+            // Determine connections for path cells
+            for (let i = 0; i < path.length; i++) {
+                const { r, c } = path[i];
+                const connections = new Set();
+
+                if (i > 0) {
+                    const prev = path[i - 1];
+                    if (prev.r < r) connections.add(0); // top
+                    if (prev.r > r) connections.add(2); // bottom
+                    if (prev.c < c) connections.add(3); // left
+                    if (prev.c > c) connections.add(1); // right
+                }
+                if (i < path.length - 1) {
+                    const next = path[i + 1];
+                    if (next.r < r) connections.add(0);
+                    if (next.r > r) connections.add(2);
+                    if (next.c < c) connections.add(3);
+                    if (next.c > c) connections.add(1);
+                }
+
+                // Add left connection for source
+                if (i === 0) connections.add(3);
+                // Add right connection for target
+                if (i === path.length - 1) connections.add(1);
+
+                const conArr = [...connections].sort();
+                const { type, rotation } = findPieceForConnections(conArr);
+                grid[r * size + c] = { type, rotation, solutionRotation: rotation };
+            }
+
+            // Fill remaining cells with random pieces
+            for (let i = 0; i < size * size; i++) {
+                if (grid[i].type === 'empty') {
+                    const types = ['straight', 'corner', 'tee'];
+                    const type = types[Math.floor(Math.random() * types.length)];
+                    const rotation = Math.floor(Math.random() * 4);
+                    grid[i] = { type, rotation, solutionRotation: rotation };
+                }
+            }
+
+            // Scramble all rotations
+            for (let i = 0; i < size * size; i++) {
+                if (grid[i].type !== 'cross') {
+                    const scramble = 1 + Math.floor(Math.random() * 3);
+                    grid[i].rotation = (grid[i].rotation + scramble) % 4;
+                }
+            }
+
+            return grid;
+        }
+
+        function findPieceForConnections(conArr) {
+            const key = conArr.join(',');
+            // Map connection sets to piece types and rotations
+            const map = {
+                '0,2': { type: 'straight', rotation: 0 },
+                '1,3': { type: 'straight', rotation: 1 },
+                '0,1': { type: 'corner', rotation: 0 },
+                '1,2': { type: 'corner', rotation: 1 },
+                '2,3': { type: 'corner', rotation: 2 },
+                '0,3': { type: 'corner', rotation: 3 },
+                '0,1,2': { type: 'tee', rotation: 0 },
+                '1,2,3': { type: 'tee', rotation: 1 },
+                '0,2,3': { type: 'tee', rotation: 2 },
+                '0,1,3': { type: 'tee', rotation: 3 },
+                '0,1,2,3': { type: 'cross', rotation: 0 },
+                '0': { type: 'straight', rotation: 0 },
+                '1': { type: 'straight', rotation: 1 },
+                '2': { type: 'straight', rotation: 0 },
+                '3': { type: 'straight', rotation: 1 },
+            };
+            return map[key] || { type: 'straight', rotation: 0 };
+        }
+
+        function drawGrid() {
+            const size = state.gridSize;
+            const cellSize = Math.floor(canvas.width / size);
+            state.cellSize = cellSize;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background
+            ctx.fillStyle = '#0a0f0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid lines
+            ctx.strokeStyle = '#00ff4115';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= size; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize, 0);
+                ctx.lineTo(i * cellSize, size * cellSize);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(size * cellSize, i * cellSize);
+                ctx.stroke();
+            }
+
+            // Check connectivity for coloring
+            const powered = checkPower();
+
+            // Draw pieces
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const piece = state.grid[r * size + c];
+                    const x = c * cellSize;
+                    const y = r * cellSize;
+                    const isPowered = powered.has(r * size + c);
+                    drawPiece(x, y, cellSize, piece, isPowered);
+                }
+            }
+
+            // Draw source indicator (left side)
+            const sy = state.sourceRow * cellSize + cellSize / 2;
+            ctx.fillStyle = '#00ff41';
+            ctx.shadowColor = '#00ff41';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(-2, sy, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Source line
+            ctx.strokeStyle = '#00ff41';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(-2, sy);
+            ctx.lineTo(6, sy);
+            ctx.stroke();
+
+            // Draw target indicator (right side)
+            const ty = state.targetRow * cellSize + cellSize / 2;
+            ctx.fillStyle = '#ff6b6b';
+            ctx.shadowColor = '#ff6b6b';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(size * cellSize + 2, ty, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Target line
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(size * cellSize + 2, ty);
+            ctx.lineTo(size * cellSize - 6, ty);
+            ctx.stroke();
+        }
+
+        function drawPiece(x, y, size, piece, powered) {
+            const cx = x + size / 2;
+            const cy = y + size / 2;
+            const connections = getConnections(piece.type, piece.rotation);
+            const color = powered ? '#00ff41' : '#00ff4160';
+            const glowColor = powered ? '#00ff41' : 'transparent';
+
+            ctx.save();
+            if (powered) {
+                ctx.shadowColor = '#00ff41';
+                ctx.shadowBlur = 8;
+            }
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+
+            // Draw pipe segments from center to edges
+            connections.forEach(dir => {
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                switch (dir) {
+                    case 0: ctx.lineTo(cx, y + 4); break;      // top
+                    case 1: ctx.lineTo(x + size - 4, cy); break; // right
+                    case 2: ctx.lineTo(cx, y + size - 4); break; // bottom
+                    case 3: ctx.lineTo(x + 4, cy); break;       // left
+                }
+                ctx.stroke();
+            });
+
+            // Draw center node
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function checkPower() {
+            const size = state.gridSize;
+            const powered = new Set();
+            const queue = [];
+
+            // Start from source
+            const startIdx = state.sourceRow * size + 0;
+            const startPiece = state.grid[startIdx];
+            const startConns = getConnections(startPiece.type, startPiece.rotation);
+
+            // Source connects from left (side 3)
+            if (startConns.includes(3)) {
+                powered.add(startIdx);
+                queue.push(startIdx);
+            }
+
+            while (queue.length > 0) {
+                const idx = queue.shift();
+                const r = Math.floor(idx / size);
+                const c = idx % size;
+                const piece = state.grid[idx];
+                const conns = getConnections(piece.type, piece.rotation);
+
+                // Check each connection
+                const neighbors = [
+                    { dir: 0, dr: -1, dc: 0, opposite: 2 }, // top
+                    { dir: 1, dr: 0, dc: 1, opposite: 3 },  // right
+                    { dir: 2, dr: 1, dc: 0, opposite: 0 },  // bottom
+                    { dir: 3, dr: 0, dc: -1, opposite: 1 }  // left
+                ];
+
+                neighbors.forEach(n => {
+                    if (!conns.includes(n.dir)) return;
+                    const nr = r + n.dr;
+                    const nc = c + n.dc;
+                    if (nr < 0 || nr >= size || nc < 0 || nc >= size) return;
+                    const nIdx = nr * size + nc;
+                    if (powered.has(nIdx)) return;
+                    const nPiece = state.grid[nIdx];
+                    const nConns = getConnections(nPiece.type, nPiece.rotation);
+                    if (nConns.includes(n.opposite)) {
+                        powered.add(nIdx);
+                        queue.push(nIdx);
+                    }
+                });
+            }
+
+            return powered;
+        }
+
+        function isCircuitComplete() {
+            const size = state.gridSize;
+            const powered = checkPower();
+
+            // Check if target cell (rightmost column, targetRow) is powered
+            // AND has a right connection
+            const targetIdx = state.targetRow * size + (size - 1);
+            if (!powered.has(targetIdx)) return false;
+            const targetPiece = state.grid[targetIdx];
+            const targetConns = getConnections(targetPiece.type, targetPiece.rotation);
+            return targetConns.includes(1); // must connect to right side
+        }
+
+        function handleClick(e) {
+            if (!state.playing) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+
+            const c = Math.floor(mx / state.cellSize);
+            const r = Math.floor(my / state.cellSize);
+            if (r < 0 || r >= state.gridSize || c < 0 || c >= state.gridSize) return;
+
+            const idx = r * state.gridSize + c;
+            const piece = state.grid[idx];
+            piece.rotation = (piece.rotation + 1) % 4;
+
+            drawGrid();
+
+            if (isCircuitComplete()) {
+                endGame(true);
+            }
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleClick(touch);
+        }
+
+        canvas.addEventListener('click', handleClick);
+        canvas.addEventListener('touchstart', handleTouch, { passive: false });
+
+        function startGame() {
+            const config = getLevelConfig(state.level);
+            state.gridSize = config.gridSize;
+            state.maxTime = config.time;
+            state.timer = config.time;
+            state.playing = true;
+
+            // Resize canvas
+            const maxW = Math.min(480, window.innerWidth - 80);
+            canvas.width = maxW;
+            canvas.height = maxW;
+
+            state.grid = generatePuzzle(state.gridSize);
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('levelDisplay').textContent = state.level;
+
+            drawGrid();
+            startTimer();
+        }
+
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                if (state.timer <= 0) {
+                    state.timer = 0;
+                    endGame(false);
+                }
+                const pct = (state.timer / state.maxTime) * 100;
+                const fill = document.getElementById('timerFill');
+                fill.style.width = pct + '%';
+                fill.className = 'timer-fill' + (pct < 20 ? ' danger' : pct < 40 ? ' warning' : '');
+                document.getElementById('timerText').textContent = state.timer.toFixed(1) + 's';
+            }, 100);
+        }
+
+        function endGame(success) {
+            state.playing = false;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            const overlay = document.getElementById('resultsOverlay');
+            const box = document.getElementById('resultsBox');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+
+            if (success) {
+                const timeBonus = Math.round(state.timer * 10);
+                const levelBonus = state.level * 50;
+                const roundScore = 200 + timeBonus + levelBonus;
+                state.score += roundScore;
+                document.getElementById('scoreDisplay').textContent = state.score;
+
+                const statusEl = document.getElementById('powerStatus');
+                statusEl.textContent = 'CIRCUIT: CONNECTED';
+                statusEl.className = 'power-status connected';
+
+                title.textContent = 'CIRCUIT COMPLETE';
+                box.className = 'results-box';
+                stats.innerHTML =
+                    'Base points: <span>200</span><br>' +
+                    'Time bonus: <span>+' + timeBonus + '</span><br>' +
+                    'Level bonus: <span>+' + levelBonus + '</span><br>' +
+                    'Total score: <span>' + state.score + '</span>';
+            } else {
+                title.textContent = 'TIME EXPIRED';
+                box.className = 'results-box failed';
+                stats.innerHTML =
+                    'The circuit could not be completed in time.<br>' +
+                    'Final score: <span>' + state.score + '</span>';
+            }
+
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('circuitBreakerHighScore', state.highScore);
+                document.getElementById('highScore').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+
+            overlay.classList.add('show');
+        }
+
+        function nextLevel() {
+            state.level++;
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('powerStatus').textContent = 'CIRCUIT: DISCONNECTED';
+            document.getElementById('powerStatus').className = 'power-status disconnected';
+            startGame();
+        }
+
+        function resetGame() {
+            state.level = 1;
+            state.score = 0;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            document.getElementById('scoreDisplay').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = '';
+            document.getElementById('powerStatus').textContent = 'CIRCUIT: DISCONNECTED';
+            document.getElementById('powerStatus').className = 'power-status disconnected';
+            document.getElementById('timerFill').style.width = '100%';
+            document.getElementById('timerText').textContent = '45.0s';
+            document.getElementById('levelDisplay').textContent = '1';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fingerprint Hack - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 650px; }
+        .scanner-ui {
+            background: #0a0a12;
+            border: 2px solid #00d9ff;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            color: #00d9ff;
+        }
+        .scanner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #00d9ff40;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+        .scanner-info {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+        }
+        .scanner-info .value { color: #00ff88; }
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background: #1a1a2e;
+            border: 1px solid #00d9ff;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: #00d9ff;
+            transition: width 0.1s linear, background-color 0.3s;
+            border-radius: 3px;
+        }
+        .timer-fill.warning { background: #ffc107; }
+        .timer-fill.danger { background: #ff6b6b; }
+
+        .scan-label {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #00d9ff80;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .target-print {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .target-print canvas {
+            border: 2px solid #00d9ff;
+            border-radius: 8px;
+            box-shadow: 0 0 20px #00d9ff30;
+        }
+
+        .scan-line {
+            position: relative;
+            overflow: hidden;
+        }
+        .scan-line::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00d9ff, transparent);
+            animation: scanline 2s linear infinite;
+        }
+        @keyframes scanline {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        .options-label {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #00d9ff80;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .option-card {
+            border: 2px solid #00d9ff40;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            background: transparent;
+        }
+        .option-card:hover {
+            border-color: #00d9ff;
+            background: #00d9ff10;
+            box-shadow: 0 0 15px #00d9ff20;
+        }
+        .option-card canvas {
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+        .option-card .option-label {
+            font-size: 0.75rem;
+            color: #00d9ff80;
+            margin-top: 6px;
+            font-family: 'Courier New', monospace;
+        }
+        .option-card.correct {
+            border-color: #00ff88;
+            background: #00ff8815;
+            box-shadow: 0 0 20px #00ff8830;
+        }
+        .option-card.wrong {
+            border-color: #ff6b6b;
+            background: #ff6b6b15;
+        }
+        .option-card.disabled { pointer-events: none; opacity: 0.5; }
+
+        .round-display {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #00d9ff80;
+            margin-bottom: 8px;
+        }
+
+        .feedback {
+            text-align: center;
+            font-size: 1.1rem;
+            min-height: 30px;
+            margin-bottom: 10px;
+            transition: opacity 0.3s;
+        }
+        .feedback.match { color: #00ff88; }
+        .feedback.no-match { color: #ff6b6b; }
+
+        .hack-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .hack-btn {
+            padding: 10px 24px;
+            background: transparent;
+            border: 2px solid #00d9ff;
+            color: #00d9ff;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .hack-btn:hover {
+            background: #00d9ff20;
+            box-shadow: 0 0 15px #00d9ff30;
+        }
+
+        .results-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #0a0a12;
+            border: 2px solid #00d9ff;
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            color: #00d9ff;
+        }
+        .results-box h2 { font-size: 1.4rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; }
+        .results-box .stats span { color: #00ff88; }
+
+        @media (max-width: 500px) {
+            .scanner-ui { padding: 12px; }
+            .options-grid { gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#128270; Fingerprint Hack</h1>
+
+            <div class="scanner-info">
+                <div>SCORE: <span class="value" id="scoreDisplay">0</span></div>
+                <div>HIGH: <span class="value" id="highScore">0</span></div>
+            </div>
+
+            <div class="scanner-ui" id="scannerUI">
+                <div class="scanner-header">
+                    <span>BIOMETRIC SCANNER v2.4</span>
+                    <span id="timerText">8.0s</span>
+                </div>
+
+                <div class="timer-bar">
+                    <div class="timer-fill" id="timerFill"></div>
+                </div>
+
+                <div class="round-display" id="roundDisplay">ROUND 1 / 8</div>
+
+                <div class="scan-label">TARGET PRINT</div>
+                <div class="target-print scan-line">
+                    <canvas id="targetCanvas" width="160" height="160"></canvas>
+                </div>
+
+                <div class="feedback" id="feedback">&nbsp;</div>
+
+                <div class="options-label">SELECT MATCHING PRINT</div>
+                <div class="options-grid" id="optionsGrid">
+                    <div class="option-card" id="opt0">
+                        <canvas width="120" height="120"></canvas>
+                        <div class="option-label">SAMPLE A</div>
+                    </div>
+                    <div class="option-card" id="opt1">
+                        <canvas width="120" height="120"></canvas>
+                        <div class="option-label">SAMPLE B</div>
+                    </div>
+                    <div class="option-card" id="opt2">
+                        <canvas width="120" height="120"></canvas>
+                        <div class="option-label">SAMPLE C</div>
+                    </div>
+                    <div class="option-card" id="opt3">
+                        <canvas width="120" height="120"></canvas>
+                        <div class="option-label">SAMPLE D</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hack-controls">
+                <button class="hack-btn" id="startBtn" onclick="startGame()">START SCAN</button>
+            </div>
+
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Match the target fingerprint by selecting the correct sample from four options.</p>
+                <ul style="text-align:left; color:#ccc; font-size:0.9rem; margin-top:8px;">
+                    <li>Study the <strong>target print</strong> pattern carefully</li>
+                    <li>Select the <strong>matching sample</strong> from the grid below</li>
+                    <li>Each round gets harder with more similar patterns</li>
+                    <li>Answer before the timer runs out</li>
+                    <li>Faster matches earn more bonus points</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">SCAN COMPLETE</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="hack-controls">
+                <button class="hack-btn" onclick="startGame()">SCAN AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        let state = {
+            score: 0,
+            highScore: parseInt(localStorage.getItem('fingerprintHackHighScore') || '0'),
+            round: 0,
+            maxRounds: 8,
+            correctIndex: 0,
+            timer: 8,
+            maxTime: 8,
+            timerInterval: null,
+            playing: false,
+            correctCount: 0,
+            patterns: [] // stored pattern params for current round
+        };
+
+        document.getElementById('highScore').textContent = state.highScore;
+
+        // Fingerprint pattern generator
+        // A "fingerprint" is defined by: center offset, arc count, arc spacing, curve style, ridge breaks
+        function generatePrintParams(difficulty) {
+            const cx = 0.5 + (Math.random() - 0.5) * 0.15;
+            const cy = 0.45 + (Math.random() - 0.5) * 0.15;
+            const ridgeCount = 8 + Math.floor(Math.random() * 5);
+            const spacing = 3 + Math.random() * 2;
+            const style = Math.floor(Math.random() * 3); // 0=loop, 1=whorl, 2=arch
+            const angle = Math.random() * Math.PI * 0.3 - Math.PI * 0.15;
+            const squeeze = 0.6 + Math.random() * 0.5;
+            const seed = Math.floor(Math.random() * 10000);
+            return { cx, cy, ridgeCount, spacing, style, angle, squeeze, seed };
+        }
+
+        function drawFingerprint(canvas, params, color) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Background
+            ctx.fillStyle = '#0a0a12';
+            ctx.fillRect(0, 0, w, h);
+
+            const cx = params.cx * w;
+            const cy = params.cy * h;
+
+            ctx.strokeStyle = color || '#00d9ff';
+            ctx.lineWidth = 1.5;
+            ctx.globalAlpha = 0.8;
+
+            // Seeded random for consistent breaks
+            let rng = params.seed;
+            function seededRandom() {
+                rng = (rng * 16807 + 0) % 2147483647;
+                return rng / 2147483647;
+            }
+
+            for (let i = 1; i <= params.ridgeCount; i++) {
+                const radius = i * params.spacing;
+
+                ctx.beginPath();
+                const steps = 60;
+                let started = false;
+
+                for (let s = 0; s <= steps; s++) {
+                    const t = (s / steps) * Math.PI * 2;
+                    let x, y;
+
+                    if (params.style === 0) {
+                        // Loop pattern
+                        x = cx + Math.cos(t + params.angle) * radius;
+                        y = cy + Math.sin(t + params.angle) * radius * params.squeeze;
+                    } else if (params.style === 1) {
+                        // Whorl pattern
+                        const spiralR = radius + i * 0.3 * Math.sin(t * 2);
+                        x = cx + Math.cos(t + params.angle + i * 0.1) * spiralR;
+                        y = cy + Math.sin(t + params.angle + i * 0.1) * spiralR * params.squeeze;
+                    } else {
+                        // Arch pattern
+                        const archT = (s / steps) * Math.PI;
+                        x = cx + (s / steps - 0.5) * radius * 2.5;
+                        y = cy - Math.sin(archT) * radius * params.squeeze * 0.8 + radius * 0.3;
+                    }
+
+                    // Clip to canvas bounds with padding
+                    if (x < 5 || x > w - 5 || y < 5 || y > h - 5) {
+                        started = false;
+                        continue;
+                    }
+
+                    // Random ridge breaks for realism
+                    if (seededRandom() < 0.03) {
+                        started = false;
+                        continue;
+                    }
+
+                    if (!started) {
+                        ctx.moveTo(x, y);
+                        started = true;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            ctx.globalAlpha = 1;
+        }
+
+        function mutateParams(params, amount) {
+            return {
+                cx: params.cx + (Math.random() - 0.5) * amount * 0.3,
+                cy: params.cy + (Math.random() - 0.5) * amount * 0.3,
+                ridgeCount: params.ridgeCount + Math.floor((Math.random() - 0.5) * amount * 6),
+                spacing: params.spacing + (Math.random() - 0.5) * amount * 3,
+                style: Math.random() < amount * 0.5 ? Math.floor(Math.random() * 3) : params.style,
+                angle: params.angle + (Math.random() - 0.5) * amount * 0.8,
+                squeeze: params.squeeze + (Math.random() - 0.5) * amount * 0.4,
+                seed: Math.random() < amount * 0.5 ? Math.floor(Math.random() * 10000) : params.seed
+            };
+        }
+
+        function setupRound() {
+            if (state.round >= state.maxRounds) {
+                endGame();
+                return;
+            }
+
+            state.round++;
+            const difficulty = Math.min(state.round / state.maxRounds, 0.9);
+            const mutationAmount = Math.max(0.15, 1 - difficulty); // less mutation = harder
+
+            document.getElementById('roundDisplay').textContent = 'ROUND ' + state.round + ' / ' + state.maxRounds;
+            document.getElementById('feedback').innerHTML = '&nbsp;';
+
+            // Generate target pattern
+            const targetParams = generatePrintParams(difficulty);
+
+            // Draw target
+            const targetCanvas = document.getElementById('targetCanvas');
+            drawFingerprint(targetCanvas, targetParams, '#00d9ff');
+
+            // Generate options: one correct, three wrong
+            state.correctIndex = Math.floor(Math.random() * 4);
+            state.patterns = [];
+
+            const labels = ['SAMPLE A', 'SAMPLE B', 'SAMPLE C', 'SAMPLE D'];
+            for (let i = 0; i < 4; i++) {
+                const card = document.getElementById('opt' + i);
+                card.className = 'option-card';
+                const optCanvas = card.querySelector('canvas');
+                card.querySelector('.option-label').textContent = labels[i];
+
+                let p;
+                if (i === state.correctIndex) {
+                    p = targetParams; // exact match
+                } else {
+                    p = mutateParams(targetParams, mutationAmount);
+                }
+                state.patterns.push(p);
+                drawFingerprint(optCanvas, p, '#00d9ff80');
+
+                // Click handler
+                card.onclick = () => selectOption(i);
+            }
+
+            // Timer
+            state.maxTime = Math.max(4, 8 - state.round * 0.3);
+            state.timer = state.maxTime;
+            startTimer();
+        }
+
+        function selectOption(index) {
+            if (!state.playing) return;
+
+            // Disable all options
+            for (let i = 0; i < 4; i++) {
+                document.getElementById('opt' + i).classList.add('disabled');
+            }
+
+            const feedback = document.getElementById('feedback');
+
+            if (index === state.correctIndex) {
+                document.getElementById('opt' + index).classList.add('correct');
+                const timeBonus = Math.round(state.timer * 15);
+                const roundScore = 100 + timeBonus;
+                state.score += roundScore;
+                state.correctCount++;
+                feedback.textContent = 'MATCH CONFIRMED +' + roundScore;
+                feedback.className = 'feedback match';
+            } else {
+                document.getElementById('opt' + index).classList.add('wrong');
+                document.getElementById('opt' + state.correctIndex).classList.add('correct');
+                feedback.textContent = 'NO MATCH - INCORRECT SAMPLE';
+                feedback.className = 'feedback no-match';
+            }
+
+            document.getElementById('scoreDisplay').textContent = state.score;
+
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            setTimeout(() => {
+                if (state.playing) setupRound();
+            }, 1200);
+        }
+
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                if (state.timer <= 0) {
+                    state.timer = 0;
+                    clearInterval(state.timerInterval);
+                    // Time out - wrong answer
+                    const feedback = document.getElementById('feedback');
+                    feedback.textContent = 'SCAN TIMEOUT';
+                    feedback.className = 'feedback no-match';
+                    document.getElementById('opt' + state.correctIndex).classList.add('correct');
+                    for (let i = 0; i < 4; i++) {
+                        document.getElementById('opt' + i).classList.add('disabled');
+                    }
+                    setTimeout(() => {
+                        if (state.playing) setupRound();
+                    }, 1200);
+                }
+                const pct = (state.timer / state.maxTime) * 100;
+                const fill = document.getElementById('timerFill');
+                fill.style.width = pct + '%';
+                fill.className = 'timer-fill' + (pct < 20 ? ' danger' : pct < 40 ? ' warning' : '');
+                document.getElementById('timerText').textContent = state.timer.toFixed(1) + 's';
+            }, 100);
+        }
+
+        function startGame() {
+            state.score = 0;
+            state.round = 0;
+            state.correctCount = 0;
+            state.playing = true;
+            document.getElementById('scoreDisplay').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = 'none';
+            setupRound();
+        }
+
+        function endGame() {
+            state.playing = false;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            const overlay = document.getElementById('resultsOverlay');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+
+            const accuracy = Math.round((state.correctCount / state.maxRounds) * 100);
+            title.textContent = accuracy >= 60 ? 'SCAN COMPLETE' : 'SCAN FAILED';
+
+            stats.innerHTML =
+                'Correct matches: <span>' + state.correctCount + '/' + state.maxRounds + '</span><br>' +
+                'Accuracy: <span>' + accuracy + '%</span><br>' +
+                'Final score: <span>' + state.score + '</span>';
+
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('fingerprintHackHighScore', state.highScore);
+                document.getElementById('highScore').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+
+            overlay.classList.add('show');
+        }
+    </script>
+</body>
+</html>
