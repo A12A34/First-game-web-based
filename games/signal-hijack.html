@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Hijack - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 650px; }
+        .signal-panel {
+            background: #0a0a14;
+            border: 2px solid #00d9ff;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            color: #00d9ff;
+        }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #00d9ff40; padding-bottom: 10px; margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+        .info-row {
+            display: flex; gap: 20px; justify-content: center; margin-bottom: 15px;
+            font-size: 0.9rem; color: #ccc; flex-wrap: wrap;
+        }
+        .info-row .val { color: #00ff88; }
+        .timer-bar {
+            width: 100%; height: 6px; background: #1a1a2e;
+            border: 1px solid #00d9ff; border-radius: 3px; margin-bottom: 15px; overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%; background: #00d9ff;
+            transition: width 0.1s linear, background-color 0.3s; border-radius: 3px;
+        }
+        .timer-fill.warning { background: #ffc107; }
+        .timer-fill.danger { background: #ff6b6b; }
+
+        .scope-label {
+            font-size: 0.75rem; color: #00d9ff80; margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .oscilloscope {
+            background: #050510;
+            border: 2px solid #00d9ff40;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        .oscilloscope canvas {
+            display: block; width: 100%;
+        }
+        .oscilloscope::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg, rgba(0,217,255,0.015) 0px, rgba(0,217,255,0.015) 1px,
+                transparent 1px, transparent 4px
+            );
+            pointer-events: none;
+        }
+        .match-meter {
+            margin-bottom: 15px; text-align: center;
+        }
+        .match-label { font-size: 0.8rem; color: #00d9ff80; margin-bottom: 4px; }
+        .match-bar-outer {
+            width: 100%; height: 20px; background: #0a0a1e;
+            border: 1px solid #00d9ff40; border-radius: 10px; overflow: hidden;
+        }
+        .match-bar-inner {
+            height: 100%; background: linear-gradient(90deg, #ff6b6b, #ffc107, #00ff88);
+            transition: width 0.15s; border-radius: 10px;
+        }
+        .match-pct { font-size: 0.9rem; margin-top: 4px; }
+
+        .controls-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;
+        }
+        .ctrl-group {
+            background: #0a0a1e; border: 1px solid #00d9ff20;
+            border-radius: 6px; padding: 10px;
+        }
+        .ctrl-label {
+            font-size: 0.7rem; color: #00d9ff80; margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .ctrl-group input[type="range"] {
+            width: 100%; accent-color: #00d9ff;
+            -webkit-appearance: none; height: 6px; background: #1a1a2e;
+            border-radius: 3px; outline: none;
+        }
+        .ctrl-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px;
+            border-radius: 50%; background: #00d9ff; cursor: pointer;
+            box-shadow: 0 0 8px #00d9ff80;
+        }
+        .ctrl-value {
+            text-align: center; font-size: 0.85rem; color: #00d9ff; margin-top: 4px;
+        }
+
+        .hack-controls {
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+        }
+        .hack-btn {
+            padding: 10px 24px; background: transparent;
+            border: 2px solid #00d9ff; color: #00d9ff;
+            font-family: 'Courier New', monospace; font-size: 1rem;
+            cursor: pointer; border-radius: 4px; transition: all 0.2s;
+        }
+        .hack-btn:hover { background: #00d9ff20; box-shadow: 0 0 15px #00d9ff30; }
+        .hack-btn.lock { border-color: #00ff88; color: #00ff88; }
+        .hack-btn.lock:hover { background: #00ff8820; }
+
+        .results-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92); z-index: 100;
+            align-items: center; justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #0a0a14; border: 2px solid #00d9ff; border-radius: 10px;
+            padding: 30px; max-width: 400px; width: 90%; text-align: center;
+            font-family: 'Courier New', monospace; color: #00d9ff;
+        }
+        .results-box.failed { border-color: #ff6b6b; }
+        .results-box.failed h2 { color: #ff6b6b; }
+        .results-box h2 { font-size: 1.4rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; color: #ccc; }
+        .results-box .stats span { color: #00ff88; }
+
+        @media (max-width: 500px) {
+            .signal-panel { padding: 12px; }
+            .controls-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#128225; Signal Hijack</h1>
+            <div class="info-row">
+                <div>LEVEL: <span class="val" id="levelDisp">1</span></div>
+                <div>SCORE: <span class="val" id="scoreDisp">0</span></div>
+                <div>HIGH: <span class="val" id="highDisp">0</span></div>
+            </div>
+            <div class="signal-panel">
+                <div class="panel-header">
+                    <span>SIGNAL INTERCEPTOR</span>
+                    <span id="timerText">30.0s</span>
+                </div>
+                <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+
+                <div class="scope-label">// Target Signal</div>
+                <div class="oscilloscope">
+                    <canvas id="targetScope" width="560" height="120"></canvas>
+                </div>
+
+                <div class="scope-label">// Your Signal</div>
+                <div class="oscilloscope">
+                    <canvas id="playerScope" width="560" height="120"></canvas>
+                </div>
+
+                <div class="match-meter">
+                    <div class="match-label">SIGNAL MATCH</div>
+                    <div class="match-bar-outer">
+                        <div class="match-bar-inner" id="matchBar" style="width:0%"></div>
+                    </div>
+                    <div class="match-pct" id="matchPct">0%</div>
+                </div>
+
+                <div class="controls-grid" id="controlsGrid"></div>
+
+                <div class="hack-controls">
+                    <button class="hack-btn lock" id="lockBtn" onclick="lockSignal()" style="display:none">LOCK SIGNAL</button>
+                </div>
+            </div>
+            <div class="hack-controls" style="margin-top:15px;">
+                <button class="hack-btn" id="startBtn" onclick="startGame()">INTERCEPT</button>
+            </div>
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Match the target signal by adjusting your frequency parameters.</p>
+                <ul style="text-align:left;color:#ccc;font-size:0.9rem;margin-top:8px;">
+                    <li>Adjust <strong>sliders</strong> to shape your waveform</li>
+                    <li>Match the <strong>target signal</strong> pattern shown above</li>
+                    <li>Get above <strong>90% match</strong> to lock the signal</li>
+                    <li>Higher match accuracy earns more points</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">SIGNAL LOCKED</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="hack-controls">
+                <button class="hack-btn" onclick="nextLevel()">NEXT SIGNAL</button>
+                <button class="hack-btn" style="border-color:#ff6b6b;color:#ff6b6b" onclick="resetGame()">DISCONNECT</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        let state = {
+            level: 1, score: 0,
+            highScore: parseInt(localStorage.getItem('signalHijackHighScore') || '0'),
+            timer: 30, maxTime: 30, timerInterval: null, animFrame: null,
+            playing: false,
+            target: {}, player: {}, paramCount: 2,
+            params: [] // {name, min, max, step, targetVal, playerVal}
+        };
+        document.getElementById('highDisp').textContent = state.highScore;
+
+        function getLevelConfig(lv) {
+            if (lv <= 2) return { params: 2, time: 30, threshold: 0.90 };
+            if (lv <= 4) return { params: 3, time: 35, threshold: 0.90 };
+            if (lv <= 6) return { params: 4, time: 40, threshold: 0.92 };
+            return { params: 5, time: 45, threshold: 0.92 };
+        }
+
+        const PARAM_DEFS = [
+            { name: 'Frequency',  min: 0.5, max: 5,   step: 0.1, unit: 'Hz' },
+            { name: 'Amplitude',  min: 0.2, max: 1,   step: 0.05, unit: '' },
+            { name: 'Phase',      min: 0,   max: 6.28, step: 0.1, unit: 'rad' },
+            { name: 'Harmonics',  min: 0,   max: 3,   step: 0.1, unit: '' },
+            { name: 'Noise',      min: 0,   max: 0.5, step: 0.02, unit: '' },
+        ];
+
+        function generateSignal(params, x) {
+            const freq = params[0] || 1;
+            const amp = params[1] || 0.5;
+            const phase = params[2] || 0;
+            const harmonics = params[3] || 0;
+            const noise = params[4] || 0;
+            let y = amp * Math.sin(freq * x * Math.PI * 2 + phase);
+            if (harmonics > 0) y += (harmonics / 3) * amp * Math.sin(freq * 2 * x * Math.PI * 2 + phase);
+            if (harmonics > 1) y += (harmonics / 6) * amp * Math.sin(freq * 3 * x * Math.PI * 2 + phase * 1.5);
+            if (noise > 0) y += (Math.random() - 0.5) * noise;
+            return y;
+        }
+
+        function drawWaveform(canvas, paramValues, color, noiseStable) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Grid
+            ctx.strokeStyle = '#00d9ff10';
+            ctx.lineWidth = 1;
+            for (let gx = 0; gx < w; gx += 40) {
+                ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke();
+            }
+            for (let gy = 0; gy < h; gy += 20) {
+                ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
+            }
+            // Center line
+            ctx.strokeStyle = '#00d9ff20'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+
+            // Waveform
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            for (let px = 0; px < w; px++) {
+                const x = px / w * 4; // 4 cycles width
+                const tempParams = [...paramValues];
+                if (noiseStable) tempParams[4] = 0; // no random noise for target display
+                const y = generateSignal(tempParams, x);
+                const sy = h / 2 - y * (h / 2 - 10);
+                if (px === 0) ctx.moveTo(px, sy);
+                else ctx.lineTo(px, sy);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function calculateMatch() {
+            const samples = 200;
+            let totalDiff = 0;
+            for (let i = 0; i < samples; i++) {
+                const x = (i / samples) * 4;
+                const tParams = state.params.map(p => p.targetVal);
+                const pParams = state.params.map(p => p.playerVal);
+                // Remove noise for comparison
+                tParams[4] = 0; pParams[4] = 0;
+                const ty = generateSignal(tParams, x);
+                const py = generateSignal(pParams, x);
+                totalDiff += Math.abs(ty - py);
+            }
+            const avgDiff = totalDiff / samples;
+            const match = Math.max(0, Math.min(1, 1 - avgDiff / 1.5));
+            return match;
+        }
+
+        function updateDisplay() {
+            const tParams = state.params.map(p => p.targetVal);
+            const pParams = state.params.map(p => p.playerVal);
+            // Extend to 5 params with defaults
+            while (tParams.length < 5) tParams.push(PARAM_DEFS[tParams.length].min);
+            while (pParams.length < 5) pParams.push(PARAM_DEFS[pParams.length].min);
+
+            drawWaveform(document.getElementById('targetScope'), tParams, '#00ff88', true);
+            drawWaveform(document.getElementById('playerScope'), pParams, '#00d9ff', false);
+
+            const match = calculateMatch();
+            const pct = Math.round(match * 100);
+            document.getElementById('matchBar').style.width = pct + '%';
+            document.getElementById('matchPct').textContent = pct + '%';
+            document.getElementById('matchPct').style.color = pct >= 90 ? '#00ff88' : pct >= 60 ? '#ffc107' : '#ff6b6b';
+
+            const lockBtn = document.getElementById('lockBtn');
+            lockBtn.style.display = state.playing ? '' : 'none';
+            lockBtn.disabled = pct < 90;
+            lockBtn.style.opacity = pct >= 90 ? '1' : '0.4';
+        }
+
+        function buildControls() {
+            const grid = document.getElementById('controlsGrid');
+            grid.innerHTML = '';
+            state.params.forEach((p, i) => {
+                const group = document.createElement('div');
+                group.className = 'ctrl-group';
+                group.innerHTML =
+                    '<div class="ctrl-label">' + p.name + '</div>' +
+                    '<input type="range" min="' + p.min + '" max="' + p.max + '" step="' + p.step +
+                    '" value="' + p.playerVal + '" id="slider' + i + '">' +
+                    '<div class="ctrl-value" id="val' + i + '">' + p.playerVal.toFixed(2) + '</div>';
+                grid.appendChild(group);
+
+                const slider = group.querySelector('input');
+                slider.addEventListener('input', () => {
+                    p.playerVal = parseFloat(slider.value);
+                    document.getElementById('val' + i).textContent = p.playerVal.toFixed(2);
+                    updateDisplay();
+                });
+            });
+        }
+
+        function startGame() {
+            const cfg = getLevelConfig(state.level);
+            state.maxTime = cfg.time;
+            state.timer = cfg.time;
+            state.playing = true;
+            state.paramCount = cfg.params;
+
+            state.params = [];
+            for (let i = 0; i < cfg.params; i++) {
+                const def = PARAM_DEFS[i];
+                const targetVal = def.min + Math.random() * (def.max - def.min);
+                const playerVal = def.min + Math.random() * (def.max - def.min);
+                state.params.push({
+                    name: def.name, min: def.min, max: def.max,
+                    step: def.step, unit: def.unit,
+                    targetVal: Math.round(targetVal / def.step) * def.step,
+                    playerVal: Math.round(playerVal / def.step) * def.step,
+                });
+            }
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('levelDisp').textContent = state.level;
+
+            buildControls();
+            updateDisplay();
+            startTimer();
+        }
+
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                if (state.timer <= 0) { state.timer = 0; endGame(false); }
+                const pct = (state.timer / state.maxTime) * 100;
+                const fill = document.getElementById('timerFill');
+                fill.style.width = pct + '%';
+                fill.className = 'timer-fill' + (pct < 20 ? ' danger' : pct < 40 ? ' warning' : '');
+                document.getElementById('timerText').textContent = state.timer.toFixed(1) + 's';
+            }, 100);
+        }
+
+        function lockSignal() {
+            if (!state.playing) return;
+            const match = calculateMatch();
+            if (match >= 0.90) {
+                endGame(true, match);
+            }
+        }
+
+        function endGame(success, match) {
+            state.playing = false;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            document.getElementById('lockBtn').style.display = 'none';
+
+            const overlay = document.getElementById('resultsOverlay');
+            const box = document.getElementById('resultsBox');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+
+            if (success) {
+                match = match || calculateMatch();
+                const matchPct = Math.round(match * 100);
+                const timeBonus = Math.round(state.timer * 10);
+                const matchBonus = Math.round((match - 0.9) * 1000);
+                const roundScore = 200 + timeBonus + matchBonus + state.level * 50;
+                state.score += roundScore;
+                document.getElementById('scoreDisp').textContent = state.score;
+
+                title.textContent = 'SIGNAL LOCKED';
+                box.className = 'results-box';
+                stats.innerHTML =
+                    'Match accuracy: <span>' + matchPct + '%</span><br>' +
+                    'Time bonus: <span>+' + timeBonus + '</span><br>' +
+                    'Round score: <span>+' + roundScore + '</span><br>' +
+                    'Total: <span>' + state.score + '</span>';
+            } else {
+                title.textContent = 'SIGNAL LOST';
+                box.className = 'results-box failed';
+                stats.innerHTML = 'Failed to match the signal in time.<br>Final score: <span>' + state.score + '</span>';
+            }
+
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('signalHijackHighScore', state.highScore);
+                document.getElementById('highDisp').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+            overlay.classList.add('show');
+        }
+
+        function nextLevel() {
+            state.level++;
+            document.getElementById('resultsOverlay').classList.remove('show');
+            startGame();
+        }
+        function resetGame() {
+            state.level = 1; state.score = 0;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            document.getElementById('scoreDisp').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = '';
+            document.getElementById('lockBtn').style.display = 'none';
+            document.getElementById('timerFill').style.width = '100%';
+            document.getElementById('timerText').textContent = '30.0s';
+            document.getElementById('levelDisp').textContent = '1';
+            document.getElementById('controlsGrid').innerHTML = '';
+            document.getElementById('matchBar').style.width = '0%';
+            document.getElementById('matchPct').textContent = '0%';
+            const tc = document.getElementById('targetScope').getContext('2d');
+            tc.clearRect(0, 0, tc.canvas.width, tc.canvas.height);
+            const pc = document.getElementById('playerScope').getContext('2d');
+            pc.clearRect(0, 0, pc.canvas.width, pc.canvas.height);
+        }
+    </script>
+</body>
+</html>

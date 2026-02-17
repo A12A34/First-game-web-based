@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keypad Cracker - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 550px; }
+        .vault-panel {
+            background: #12121e;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            color: #ffc107;
+        }
+        .vault-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #ffc10740; padding-bottom: 10px; margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+        .info-row {
+            display: flex; gap: 20px; justify-content: center; margin-bottom: 12px;
+            font-size: 0.9rem; color: #ccc; flex-wrap: wrap;
+        }
+        .info-row .val { color: #00d9ff; }
+
+        .pin-display {
+            display: flex; justify-content: center; gap: 8px; margin-bottom: 15px;
+        }
+        .pin-digit {
+            width: 48px; height: 56px;
+            border: 2px solid #ffc10760; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; color: #ffc107; background: #0a0a14;
+        }
+        .pin-digit.filled { border-color: #ffc107; background: #ffc10710; }
+        .pin-digit.active { border-color: #ffc107; box-shadow: 0 0 10px #ffc10740; }
+
+        .attempts-section {
+            margin-bottom: 15px; max-height: 200px; overflow-y: auto;
+        }
+        .attempt-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 0; border-bottom: 1px solid #ffffff08;
+            font-size: 0.85rem;
+        }
+        .attempt-num { color: #ffffff40; width: 20px; }
+        .attempt-digits { display: flex; gap: 4px; }
+        .attempt-digit {
+            width: 32px; height: 32px; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; font-weight: bold;
+        }
+        .digit-correct { background: #00ff8830; color: #00ff88; border: 1px solid #00ff8860; }
+        .digit-misplaced { background: #ffc10730; color: #ffc107; border: 1px solid #ffc10760; }
+        .digit-wrong { background: #ffffff10; color: #ffffff40; border: 1px solid #ffffff15; }
+        .attempt-hint { font-size: 0.75rem; color: #ffffff60; margin-left: 8px; }
+
+        .keypad {
+            display: grid; grid-template-columns: repeat(3,1fr); gap: 8px;
+            max-width: 280px; margin: 0 auto 15px;
+        }
+        .key-btn {
+            height: 52px; border: 2px solid #ffc10760; border-radius: 8px;
+            background: #0a0a14; color: #ffc107; font-size: 1.3rem;
+            font-family: 'Courier New', monospace; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .key-btn:hover { border-color: #ffc107; background: #ffc10715; box-shadow: 0 0 10px #ffc10730; }
+        .key-btn:active { transform: scale(0.95); }
+        .key-btn.action { font-size: 0.8rem; color: #00d9ff; border-color: #00d9ff60; }
+        .key-btn.action:hover { border-color: #00d9ff; background: #00d9ff15; }
+        .key-btn.submit { color: #00ff88; border-color: #00ff8860; }
+        .key-btn.submit:hover { border-color: #00ff88; background: #00ff8815; }
+        .key-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .legend {
+            display: flex; gap: 15px; justify-content: center; margin-bottom: 10px;
+            font-size: 0.75rem; color: #ccc; flex-wrap: wrap;
+        }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .legend-dot {
+            width: 12px; height: 12px; border-radius: 3px;
+        }
+
+        .hack-controls {
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+        }
+        .hack-btn {
+            padding: 10px 24px; background: transparent;
+            border: 2px solid #ffc107; color: #ffc107;
+            font-family: 'Courier New', monospace; font-size: 1rem;
+            cursor: pointer; border-radius: 4px; transition: all 0.2s;
+        }
+        .hack-btn:hover { background: #ffc10720; box-shadow: 0 0 15px #ffc10730; }
+
+        .results-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92); z-index: 100;
+            align-items: center; justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #12121e; border: 2px solid #00ff88; border-radius: 10px;
+            padding: 30px; max-width: 400px; width: 90%; text-align: center;
+            font-family: 'Courier New', monospace; color: #00ff88;
+        }
+        .results-box.failed { border-color: #ff6b6b; }
+        .results-box.failed h2 { color: #ff6b6b; }
+        .results-box h2 { font-size: 1.4rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; color: #ccc; }
+        .results-box .stats span { color: #00d9ff; }
+
+        @media (max-width: 450px) {
+            .vault-panel { padding: 12px; }
+            .pin-digit { width: 40px; height: 48px; font-size: 1.5rem; }
+            .key-btn { height: 46px; font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#128274; Keypad Cracker</h1>
+            <div class="info-row">
+                <div>LEVEL: <span class="val" id="levelDisp">1</span></div>
+                <div>SCORE: <span class="val" id="scoreDisp">0</span></div>
+                <div>HIGH: <span class="val" id="highDisp">0</span></div>
+            </div>
+            <div class="vault-panel" id="panel">
+                <div class="vault-header">
+                    <span>VAULT ACCESS PANEL</span>
+                    <span>ATTEMPTS: <span id="attemptsLeft">8</span></span>
+                </div>
+                <div class="pin-display" id="pinDisplay"></div>
+                <div class="legend">
+                    <div class="legend-item"><div class="legend-dot" style="background:#00ff8850;border:1px solid #00ff88"></div> Correct</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#ffc10740;border:1px solid #ffc107"></div> Wrong spot</div>
+                    <div class="legend-item"><div class="legend-dot" style="background:#ffffff15;border:1px solid #ffffff30"></div> Not in code</div>
+                </div>
+                <div class="attempts-section" id="attemptsSection"></div>
+                <div class="keypad" id="keypad"></div>
+            </div>
+            <div class="hack-controls" style="margin-top:15px;">
+                <button class="hack-btn" id="startBtn" onclick="startGame()">CRACK VAULT</button>
+            </div>
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Crack the vault's PIN code using logic and deduction.</p>
+                <ul style="text-align:left;color:#ccc;font-size:0.9rem;margin-top:8px;">
+                    <li>Enter a PIN guess and submit it</li>
+                    <li><strong style="color:#00ff88">Green</strong> = correct digit in correct position</li>
+                    <li><strong style="color:#ffc107">Yellow</strong> = correct digit, wrong position</li>
+                    <li><strong style="color:#888">Gray</strong> = digit not in the code</li>
+                    <li>Crack the code before running out of attempts</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">VAULT OPENED</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="hack-controls">
+                <button class="hack-btn" onclick="nextLevel()">NEXT VAULT</button>
+                <button class="hack-btn" style="border-color:#ff6b6b;color:#ff6b6b" onclick="resetGame()">QUIT</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        let state = {
+            level: 1, score: 0,
+            highScore: parseInt(localStorage.getItem('keypadCrackerHighScore') || '0'),
+            pinLength: 4, maxAttempts: 8, attemptsUsed: 0,
+            secretPin: [], currentInput: [],
+            playing: false, attempts: []
+        };
+        document.getElementById('highDisp').textContent = state.highScore;
+
+        function getLevelConfig(lv) {
+            if (lv <= 2) return { pinLength: 4, maxAttempts: 8, digits: 6 };  // 0-5
+            if (lv <= 4) return { pinLength: 4, maxAttempts: 7, digits: 8 };  // 0-7
+            if (lv <= 6) return { pinLength: 5, maxAttempts: 8, digits: 8 };
+            return { pinLength: 5, maxAttempts: 7, digits: 10 };  // 0-9
+        }
+
+        function startGame() {
+            const cfg = getLevelConfig(state.level);
+            state.pinLength = cfg.pinLength;
+            state.maxAttempts = cfg.maxAttempts;
+            state.attemptsUsed = 0;
+            state.attempts = [];
+            state.currentInput = [];
+            state.playing = true;
+
+            // Generate secret PIN (no repeats for lower levels, repeats allowed later)
+            const pool = [];
+            for (let i = 0; i < cfg.digits; i++) pool.push(i);
+            state.secretPin = [];
+            if (state.level <= 4) {
+                // No repeats
+                const shuffled = pool.sort(() => Math.random() - 0.5);
+                state.secretPin = shuffled.slice(0, cfg.pinLength);
+            } else {
+                for (let i = 0; i < cfg.pinLength; i++) {
+                    state.secretPin.push(pool[Math.floor(Math.random() * pool.length)]);
+                }
+            }
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('levelDisp').textContent = state.level;
+            document.getElementById('attemptsLeft').textContent = state.maxAttempts;
+            document.getElementById('attemptsSection').innerHTML = '';
+
+            buildKeypad(cfg.digits);
+            renderPinDisplay();
+        }
+
+        function buildKeypad(digitCount) {
+            const pad = document.getElementById('keypad');
+            pad.innerHTML = '';
+            for (let i = 1; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'key-btn';
+                if (i >= digitCount) btn.classList.add('disabled');
+                btn.textContent = i;
+                btn.addEventListener('click', () => { if (i < digitCount) pressDigit(i); });
+                pad.appendChild(btn);
+            }
+            // Bottom row: DEL, 0, ENTER
+            const del = document.createElement('button');
+            del.className = 'key-btn action';
+            del.textContent = 'DEL';
+            del.addEventListener('click', pressDelete);
+            pad.appendChild(del);
+
+            const zero = document.createElement('button');
+            zero.className = 'key-btn';
+            zero.textContent = '0';
+            zero.addEventListener('click', () => pressDigit(0));
+            pad.appendChild(zero);
+
+            const enter = document.createElement('button');
+            enter.className = 'key-btn submit';
+            enter.textContent = 'ENTER';
+            enter.addEventListener('click', submitGuess);
+            pad.appendChild(enter);
+        }
+
+        function pressDigit(d) {
+            if (!state.playing) return;
+            if (state.currentInput.length >= state.pinLength) return;
+            state.currentInput.push(d);
+            renderPinDisplay();
+        }
+
+        function pressDelete() {
+            if (!state.playing) return;
+            state.currentInput.pop();
+            renderPinDisplay();
+        }
+
+        function renderPinDisplay() {
+            const container = document.getElementById('pinDisplay');
+            container.innerHTML = '';
+            for (let i = 0; i < state.pinLength; i++) {
+                const el = document.createElement('div');
+                el.className = 'pin-digit';
+                if (i < state.currentInput.length) {
+                    el.textContent = state.currentInput[i];
+                    el.classList.add('filled');
+                } else if (i === state.currentInput.length) {
+                    el.textContent = '_';
+                    el.classList.add('active');
+                } else {
+                    el.textContent = '_';
+                }
+                container.appendChild(el);
+            }
+        }
+
+        function submitGuess() {
+            if (!state.playing) return;
+            if (state.currentInput.length !== state.pinLength) return;
+
+            state.attemptsUsed++;
+            const guess = [...state.currentInput];
+            const result = evaluateGuess(guess);
+            state.attempts.push({ guess, result });
+            state.currentInput = [];
+
+            renderAttempt(state.attempts.length, guess, result);
+            renderPinDisplay();
+            document.getElementById('attemptsLeft').textContent = state.maxAttempts - state.attemptsUsed;
+
+            // Check win
+            if (result.every(r => r === 'correct')) {
+                endGame(true);
+                return;
+            }
+            // Check lose
+            if (state.attemptsUsed >= state.maxAttempts) {
+                endGame(false);
+            }
+        }
+
+        function evaluateGuess(guess) {
+            const result = new Array(guess.length).fill('wrong');
+            const secretCopy = [...state.secretPin];
+            const guessCopy = [...guess];
+
+            // First pass: correct positions
+            for (let i = 0; i < guess.length; i++) {
+                if (guessCopy[i] === secretCopy[i]) {
+                    result[i] = 'correct';
+                    secretCopy[i] = -1;
+                    guessCopy[i] = -2;
+                }
+            }
+            // Second pass: misplaced
+            for (let i = 0; i < guess.length; i++) {
+                if (result[i] === 'correct') continue;
+                const idx = secretCopy.indexOf(guessCopy[i]);
+                if (idx !== -1) {
+                    result[i] = 'misplaced';
+                    secretCopy[idx] = -1;
+                }
+            }
+            return result;
+        }
+
+        function renderAttempt(num, guess, result) {
+            const section = document.getElementById('attemptsSection');
+            const row = document.createElement('div');
+            row.className = 'attempt-row';
+
+            const numEl = document.createElement('span');
+            numEl.className = 'attempt-num';
+            numEl.textContent = num;
+            row.appendChild(numEl);
+
+            const digits = document.createElement('div');
+            digits.className = 'attempt-digits';
+            guess.forEach((d, i) => {
+                const el = document.createElement('div');
+                el.className = 'attempt-digit digit-' + result[i];
+                el.textContent = d;
+                digits.appendChild(el);
+            });
+            row.appendChild(digits);
+
+            const correctCount = result.filter(r => r === 'correct').length;
+            const misplacedCount = result.filter(r => r === 'misplaced').length;
+            const hint = document.createElement('span');
+            hint.className = 'attempt-hint';
+            hint.textContent = correctCount + ' exact, ' + misplacedCount + ' misplaced';
+            row.appendChild(hint);
+
+            section.appendChild(row);
+            section.scrollTop = section.scrollHeight;
+        }
+
+        function endGame(success) {
+            state.playing = false;
+            const overlay = document.getElementById('resultsOverlay');
+            const box = document.getElementById('resultsBox');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+
+            if (success) {
+                const attemptBonus = (state.maxAttempts - state.attemptsUsed) * 50;
+                const roundScore = 200 + attemptBonus + state.level * 50;
+                state.score += roundScore;
+                document.getElementById('scoreDisp').textContent = state.score;
+
+                title.textContent = 'VAULT OPENED';
+                box.className = 'results-box';
+                stats.innerHTML =
+                    'Code: <span>' + state.secretPin.join(' ') + '</span><br>' +
+                    'Attempts used: <span>' + state.attemptsUsed + '/' + state.maxAttempts + '</span><br>' +
+                    'Round score: <span>+' + roundScore + '</span><br>' +
+                    'Total: <span>' + state.score + '</span>';
+            } else {
+                title.textContent = 'VAULT LOCKED';
+                box.className = 'results-box failed';
+                stats.innerHTML =
+                    'The code was: <span>' + state.secretPin.join(' ') + '</span><br>' +
+                    'Final score: <span>' + state.score + '</span>';
+            }
+
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('keypadCrackerHighScore', state.highScore);
+                document.getElementById('highDisp').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+            overlay.classList.add('show');
+        }
+
+        function nextLevel() {
+            state.level++;
+            document.getElementById('resultsOverlay').classList.remove('show');
+            startGame();
+        }
+        function resetGame() {
+            state.level = 1; state.score = 0;
+            document.getElementById('scoreDisp').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = '';
+            document.getElementById('levelDisp').textContent = '1';
+            document.getElementById('attemptsLeft').textContent = '8';
+            document.getElementById('pinDisplay').innerHTML = '';
+            document.getElementById('attemptsSection').innerHTML = '';
+            document.getElementById('keypad').innerHTML = '';
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', e => {
+            if (!state.playing) return;
+            if (e.key >= '0' && e.key <= '9') pressDigit(parseInt(e.key));
+            else if (e.key === 'Backspace') pressDelete();
+            else if (e.key === 'Enter') submitGuess();
+        });
+    </script>
+</body>
+</html>

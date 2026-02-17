@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Cutter - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 650px; }
+        .bomb-panel {
+            background: #1a1a1a;
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            position: relative;
+            overflow: hidden;
+        }
+        .bomb-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                rgba(255,107,107,0.02) 0px,
+                rgba(255,107,107,0.02) 1px,
+                transparent 1px,
+                transparent 4px
+            );
+            pointer-events: none;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #ff6b6b;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #ff6b6b40;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .panel-header .safe { color: #00ff88; }
+        .countdown {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #ff6b6b;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff6b6b60;
+            letter-spacing: 4px;
+        }
+        .countdown.warning { color: #ffc107; }
+        .countdown.danger { animation: pulse 0.5s infinite alternate; }
+        @keyframes pulse {
+            from { opacity: 1; text-shadow: 0 0 20px #ff6b6b60; }
+            to { opacity: 0.6; text-shadow: 0 0 40px #ff6b6b; }
+        }
+        .info-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #ccc;
+            flex-wrap: wrap;
+        }
+        .info-row .val { color: #00d9ff; }
+
+        .clues-section {
+            background: #0d0d0d;
+            border: 1px solid #ffffff15;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+        .clues-title {
+            font-size: 0.75rem;
+            color: #ffc107;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .clue-list { list-style: none; padding: 0; margin: 0; }
+        .clue-list li {
+            padding: 4px 0;
+            font-size: 0.85rem;
+            color: #ccc;
+            border-bottom: 1px solid #ffffff08;
+        }
+        .clue-list li:last-child { border-bottom: none; }
+        .clue-list .highlight { color: #ffc107; font-weight: bold; }
+
+        .wires-container {
+            position: relative;
+            margin: 0 auto 20px;
+            max-width: 400px;
+        }
+        .wire-canvas {
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 400px;
+        }
+        .wire-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .wire-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            background: transparent;
+        }
+        .wire-btn:hover:not(.cut):not(.disabled) {
+            transform: translateX(4px);
+            box-shadow: 0 0 15px currentColor;
+            filter: brightness(1.3);
+        }
+        .wire-btn .wire-swatch {
+            width: 30px;
+            height: 8px;
+            border-radius: 4px;
+        }
+        .wire-btn.cut {
+            opacity: 0.3;
+            text-decoration: line-through;
+            cursor: not-allowed;
+            border-style: dashed;
+        }
+        .wire-btn.correct {
+            background: rgba(0,255,136,0.1);
+            box-shadow: 0 0 10px #00ff8840;
+        }
+        .wire-btn.wrong {
+            background: rgba(255,107,107,0.15);
+        }
+        .wire-btn.disabled { cursor: not-allowed; opacity: 0.5; }
+
+        .feedback-msg {
+            text-align: center;
+            min-height: 28px;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        .feedback-msg.good { color: #00ff88; }
+        .feedback-msg.bad { color: #ff6b6b; }
+
+        .hack-controls {
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+        }
+        .hack-btn {
+            padding: 10px 24px;
+            background: transparent;
+            border: 2px solid #ff6b6b;
+            color: #ff6b6b;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .hack-btn:hover { background: #ff6b6b20; box-shadow: 0 0 15px #ff6b6b30; }
+        .hack-btn.go { border-color: #00ff88; color: #00ff88; }
+        .hack-btn.go:hover { background: #00ff8820; }
+
+        .results-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92); z-index: 100;
+            align-items: center; justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #1a1a1a; border: 2px solid #00ff88; border-radius: 10px;
+            padding: 30px; max-width: 400px; width: 90%; text-align: center;
+            font-family: 'Courier New', monospace; color: #00ff88;
+        }
+        .results-box.failed { border-color: #ff6b6b; }
+        .results-box.failed h2 { color: #ff6b6b; }
+        .results-box h2 { font-size: 1.4rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; color: #ccc; }
+        .results-box .stats span { color: #00d9ff; }
+
+        @media (max-width: 500px) {
+            .bomb-panel { padding: 12px; }
+            .countdown { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#9986; Wire Cutter</h1>
+            <div class="info-row">
+                <div>LEVEL: <span class="val" id="levelDisp">1</span></div>
+                <div>SCORE: <span class="val" id="scoreDisp">0</span></div>
+                <div>HIGH: <span class="val" id="highDisp">0</span></div>
+            </div>
+            <div class="bomb-panel" id="panel">
+                <div class="panel-header">
+                    <span>EXPLOSIVE DEVICE</span>
+                    <span id="statusText" class="safe">ARMED</span>
+                </div>
+                <div class="countdown" id="countdown">00:30</div>
+                <div class="clues-section" id="cluesSection">
+                    <div class="clues-title">// Intel Report</div>
+                    <ul class="clue-list" id="clueList"></ul>
+                </div>
+                <div class="feedback-msg" id="feedback">&nbsp;</div>
+                <div class="wire-buttons" id="wireButtons"></div>
+            </div>
+            <div class="hack-controls" style="margin-top:15px;">
+                <button class="hack-btn go" id="startBtn" onclick="startGame()">ARM DEVICE</button>
+            </div>
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Cut the wires in the <strong>correct order</strong> to defuse the device before it detonates.</p>
+                <ul style="text-align:left;color:#ccc;font-size:0.9rem;margin-top:8px;">
+                    <li>Read the <strong>intel clues</strong> carefully to deduce the safe order</li>
+                    <li>Click a wire to cut it &mdash; wrong cuts cost time</li>
+                    <li>Cut all wires in order before the countdown hits zero</li>
+                    <li>Faster defusals earn bonus points</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">DEFUSED</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="hack-controls">
+                <button class="hack-btn go" onclick="nextLevel()">NEXT DEVICE</button>
+                <button class="hack-btn" onclick="resetGame()">QUIT</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        const WIRE_COLORS = [
+            { name: 'RED',    color: '#ff4444', border: '#ff4444' },
+            { name: 'BLUE',   color: '#4488ff', border: '#4488ff' },
+            { name: 'GREEN',  color: '#44dd66', border: '#44dd66' },
+            { name: 'YELLOW', color: '#ffcc00', border: '#ffcc00' },
+            { name: 'WHITE',  color: '#dddddd', border: '#dddddd' },
+            { name: 'PURPLE', color: '#bb66ff', border: '#bb66ff' },
+            { name: 'ORANGE', color: '#ff8833', border: '#ff8833' },
+        ];
+
+        let state = {
+            level: 1, score: 0,
+            highScore: parseInt(localStorage.getItem('wireCutterHighScore') || '0'),
+            wires: [], correctOrder: [], cutSoFar: 0,
+            timer: 30, maxTime: 30, timerInterval: null, playing: false, mistakes: 0
+        };
+        document.getElementById('highDisp').textContent = state.highScore;
+
+        function getLevelConfig(lv) {
+            if (lv <= 2) return { wireCount: 4, time: 30, clueClarity: 1 };
+            if (lv <= 4) return { wireCount: 5, time: 35, clueClarity: 0.8 };
+            if (lv <= 6) return { wireCount: 6, time: 40, clueClarity: 0.6 };
+            return { wireCount: 7, time: 45, clueClarity: 0.5 };
+        }
+
+        function shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function generateClues(wires, order, clarity) {
+            const clues = [];
+            const names = wires.map(w => w.name);
+            // Always give a direct first-wire clue
+            clues.push('Cut the <span class="highlight">' + order[0].name + '</span> wire first.');
+
+            // Generate relational clues for the rest
+            for (let i = 1; i < order.length; i++) {
+                const curr = order[i];
+                const prev = order[i - 1];
+                const templates = [
+                    'Cut <span class="highlight">' + curr.name + '</span> immediately after <span class="highlight">' + prev.name + '</span>.',
+                    '<span class="highlight">' + curr.name + '</span> is wire #' + (i + 1) + ' in the sequence.',
+                    'The <span class="highlight">' + curr.name + '</span> wire comes after <span class="highlight">' + prev.name + '</span>.',
+                ];
+                // Pick a clue; at lower clarity, skip some
+                if (Math.random() < clarity || i === order.length - 1) {
+                    clues.push(templates[Math.floor(Math.random() * templates.length)]);
+                }
+            }
+
+            // Add a "last wire" clue at higher difficulties
+            if (clarity < 1) {
+                clues.push('The <span class="highlight">' + order[order.length - 1].name + '</span> wire is cut last.');
+            }
+
+            // Add a red-herring-style negative clue at high difficulties
+            if (clarity < 0.7 && order.length > 3) {
+                const notSecond = wires.find(w => w.name !== order[1].name && w.name !== order[0].name);
+                if (notSecond) {
+                    clues.push('Do NOT cut <span class="highlight">' + notSecond.name + '</span> second.');
+                }
+            }
+
+            return clues;
+        }
+
+        function startGame() {
+            const cfg = getLevelConfig(state.level);
+            const chosen = shuffle(WIRE_COLORS).slice(0, cfg.wireCount);
+            state.wires = chosen;
+            state.correctOrder = shuffle([...chosen]);
+            state.cutSoFar = 0;
+            state.mistakes = 0;
+            state.timer = cfg.time;
+            state.maxTime = cfg.time;
+            state.playing = true;
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('levelDisp').textContent = state.level;
+            document.getElementById('statusText').textContent = 'ARMED';
+            document.getElementById('statusText').className = '';
+            document.getElementById('statusText').style.color = '#ff6b6b';
+            document.getElementById('feedback').innerHTML = '&nbsp;';
+
+            // Clues
+            const clues = generateClues(state.wires, state.correctOrder, cfg.clueClarity);
+            const list = document.getElementById('clueList');
+            list.innerHTML = '';
+            clues.forEach(c => { const li = document.createElement('li'); li.innerHTML = c; list.appendChild(li); });
+
+            renderWires();
+            startTimer();
+        }
+
+        function renderWires() {
+            const container = document.getElementById('wireButtons');
+            container.innerHTML = '';
+            state.wires.forEach((w, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'wire-btn';
+                btn.style.borderColor = w.border;
+                btn.style.color = w.color;
+                btn.innerHTML = '<span class="wire-swatch" style="background:' + w.color + '"></span> ' + w.name + ' WIRE';
+                btn.dataset.index = i;
+                if (w._cut) {
+                    btn.classList.add('cut');
+                    if (w._correct) btn.classList.add('correct');
+                }
+                btn.addEventListener('click', () => cutWire(i));
+                container.appendChild(btn);
+            });
+        }
+
+        function cutWire(idx) {
+            if (!state.playing) return;
+            const w = state.wires[idx];
+            if (w._cut) return;
+
+            const expected = state.correctOrder[state.cutSoFar];
+            if (w.name === expected.name) {
+                w._cut = true;
+                w._correct = true;
+                state.cutSoFar++;
+                document.getElementById('feedback').textContent = w.name + ' wire cut successfully!';
+                document.getElementById('feedback').className = 'feedback-msg good';
+
+                if (state.cutSoFar === state.correctOrder.length) {
+                    endGame(true);
+                    return;
+                }
+            } else {
+                state.mistakes++;
+                state.timer = Math.max(0, state.timer - 5); // penalty
+                document.getElementById('feedback').textContent = 'WRONG! -5 seconds. Try again.';
+                document.getElementById('feedback').className = 'feedback-msg bad';
+            }
+            renderWires();
+        }
+
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                if (state.timer <= 0) { state.timer = 0; endGame(false); }
+                const s = Math.floor(state.timer);
+                const ms = Math.floor((state.timer % 1) * 10);
+                const display = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+                const el = document.getElementById('countdown');
+                el.textContent = display;
+                el.className = 'countdown' + (state.timer < 5 ? ' danger' : state.timer < 15 ? ' warning' : '');
+            }, 100);
+        }
+
+        function endGame(success) {
+            state.playing = false;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+
+            const overlay = document.getElementById('resultsOverlay');
+            const box = document.getElementById('resultsBox');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+
+            if (success) {
+                const timeBonus = Math.round(state.timer * 10);
+                const mistakePenalty = state.mistakes * 50;
+                const roundScore = Math.max(0, 200 + timeBonus + state.level * 50 - mistakePenalty);
+                state.score += roundScore;
+                document.getElementById('scoreDisp').textContent = state.score;
+                document.getElementById('statusText').textContent = 'DEFUSED';
+                document.getElementById('statusText').style.color = '#00ff88';
+
+                title.textContent = 'DEVICE DEFUSED';
+                box.className = 'results-box';
+                stats.innerHTML =
+                    'Time remaining: <span>' + state.timer.toFixed(1) + 's</span><br>' +
+                    'Mistakes: <span>' + state.mistakes + '</span><br>' +
+                    'Round score: <span>+' + roundScore + '</span><br>' +
+                    'Total: <span>' + state.score + '</span>';
+            } else {
+                title.textContent = 'DETONATION';
+                box.className = 'results-box failed';
+                stats.innerHTML = 'The device exploded.<br>Final score: <span>' + state.score + '</span>';
+                document.getElementById('statusText').textContent = 'DETONATED';
+                document.getElementById('countdown').textContent = '00:00';
+            }
+
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('wireCutterHighScore', state.highScore);
+                document.getElementById('highDisp').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+            overlay.classList.add('show');
+        }
+
+        function nextLevel() {
+            state.level++;
+            document.getElementById('resultsOverlay').classList.remove('show');
+            startGame();
+        }
+        function resetGame() {
+            state.level = 1; state.score = 0;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            document.getElementById('scoreDisp').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = '';
+            document.getElementById('countdown').textContent = '00:30';
+            document.getElementById('countdown').className = 'countdown';
+            document.getElementById('levelDisp').textContent = '1';
+            document.getElementById('wireButtons').innerHTML = '';
+            document.getElementById('clueList').innerHTML = '';
+            document.getElementById('feedback').innerHTML = '&nbsp;';
+            document.getElementById('statusText').textContent = 'STANDBY';
+            document.getElementById('statusText').style.color = '#00ff88';
+        }
+    </script>
+</body>
+</html>

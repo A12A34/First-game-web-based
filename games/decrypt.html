@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decrypt - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-container { max-width: 700px; }
+        .decrypt-panel {
+            background: #0a100a;
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            color: #00ff41;
+        }
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #00ff4140; padding-bottom: 10px; margin-bottom: 15px;
+            font-size: 0.85rem;
+        }
+        .info-row {
+            display: flex; gap: 20px; justify-content: center; margin-bottom: 12px;
+            font-size: 0.9rem; color: #ccc; flex-wrap: wrap;
+        }
+        .info-row .val { color: #00d9ff; }
+        .timer-bar {
+            width: 100%; height: 6px; background: #1a1a1a;
+            border: 1px solid #00ff41; border-radius: 3px; margin-bottom: 15px; overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%; background: #00ff41;
+            transition: width 0.1s linear, background-color 0.3s; border-radius: 3px;
+        }
+        .timer-fill.warning { background: #ffc107; }
+        .timer-fill.danger { background: #ff6b6b; }
+
+        .section-label {
+            font-size: 0.75rem; color: #00ff4180; margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .cipher-text {
+            background: #050805;
+            border: 1px solid #00ff4130;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            line-height: 2;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            word-wrap: break-word;
+            min-height: 60px;
+        }
+        .cipher-char {
+            display: inline-block;
+            padding: 2px 1px;
+            cursor: default;
+            transition: color 0.2s;
+        }
+        .cipher-char.letter {
+            cursor: pointer;
+            border-bottom: 2px solid #00ff4140;
+        }
+        .cipher-char.letter:hover {
+            color: #00d9ff;
+            border-bottom-color: #00d9ff;
+        }
+        .cipher-char.decoded {
+            color: #00d9ff;
+            border-bottom-color: #00d9ff;
+        }
+        .cipher-char.selected {
+            background: #00ff4130;
+            color: #fff;
+            border-bottom-color: #fff;
+        }
+        .cipher-char.space { width: 12px; }
+        .cipher-char.punct { color: #00ff4160; }
+
+        .decoded-text {
+            background: #050810;
+            border: 1px solid #00d9ff30;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            line-height: 2;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            color: #00d9ff;
+            min-height: 60px;
+            word-wrap: break-word;
+        }
+
+        .substitution-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+            gap: 4px;
+            margin-bottom: 15px;
+        }
+        .sub-cell {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 4px; border: 1px solid #00ff4120; border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .sub-from { color: #00ff41; font-size: 0.9rem; }
+        .sub-arrow { color: #ffffff30; font-size: 0.6rem; }
+        .sub-to { color: #00d9ff; font-size: 0.9rem; min-height: 1.1em; }
+        .sub-cell.mapped { border-color: #00d9ff60; background: #00d9ff08; }
+
+        .letter-picker {
+            display: none;
+            position: fixed; z-index: 50;
+            background: #1a1a2e;
+            border: 2px solid #00d9ff;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        .letter-picker.show { display: block; }
+        .picker-title {
+            text-align: center; font-size: 0.8rem; color: #00d9ff;
+            margin-bottom: 8px; font-family: 'Courier New', monospace;
+        }
+        .picker-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+        }
+        .picker-btn {
+            width: 34px; height: 34px; border: 1px solid #00d9ff60;
+            border-radius: 4px; background: transparent;
+            color: #00d9ff; font-family: 'Courier New', monospace;
+            font-size: 1rem; cursor: pointer; transition: all 0.15s;
+        }
+        .picker-btn:hover { background: #00d9ff20; border-color: #00d9ff; }
+        .picker-btn.used { opacity: 0.3; }
+        .picker-btn.clear { border-color: #ff6b6b60; color: #ff6b6b; }
+        .picker-btn.clear:hover { background: #ff6b6b20; }
+
+        .hack-controls {
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+        }
+        .hack-btn {
+            padding: 10px 24px; background: transparent;
+            border: 2px solid #00ff41; color: #00ff41;
+            font-family: 'Courier New', monospace; font-size: 1rem;
+            cursor: pointer; border-radius: 4px; transition: all 0.2s;
+        }
+        .hack-btn:hover { background: #00ff4120; box-shadow: 0 0 15px #00ff4130; }
+        .hack-btn.submit { border-color: #00d9ff; color: #00d9ff; }
+
+        .results-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92); z-index: 100;
+            align-items: center; justify-content: center;
+        }
+        .results-overlay.show { display: flex; }
+        .results-box {
+            background: #0a100a; border: 2px solid #00ff41; border-radius: 10px;
+            padding: 30px; max-width: 450px; width: 90%; text-align: center;
+            font-family: 'Courier New', monospace; color: #00ff41;
+        }
+        .results-box.failed { border-color: #ff6b6b; }
+        .results-box.failed h2 { color: #ff6b6b; }
+        .results-box h2 { font-size: 1.3rem; margin-bottom: 15px; }
+        .results-box .stats { margin: 20px 0; font-size: 0.9rem; line-height: 1.8; color: #ccc; }
+        .results-box .stats span { color: #00d9ff; }
+        .results-box .answer { color: #00d9ff; font-size: 0.85rem; margin-top: 10px; word-wrap: break-word; }
+
+        @media (max-width: 500px) {
+            .decrypt-panel { padding: 12px; }
+            .cipher-text, .decoded-text { font-size: 0.95rem; padding: 10px; }
+            .picker-grid { grid-template-columns: repeat(7, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+        <div class="game-container">
+            <h1 class="game-title">&#128272; Decrypt</h1>
+            <div class="info-row">
+                <div>LEVEL: <span class="val" id="levelDisp">1</span></div>
+                <div>SCORE: <span class="val" id="scoreDisp">0</span></div>
+                <div>HIGH: <span class="val" id="highDisp">0</span></div>
+            </div>
+            <div class="decrypt-panel">
+                <div class="panel-header">
+                    <span>DECRYPTION CONSOLE</span>
+                    <span id="timerText">90.0s</span>
+                </div>
+                <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+
+                <div class="section-label">// Encrypted Intercept</div>
+                <div class="cipher-text" id="cipherText"></div>
+
+                <div class="section-label">// Decoded Output</div>
+                <div class="decoded-text" id="decodedText"></div>
+
+                <div class="section-label">// Substitution Map</div>
+                <div class="substitution-grid" id="subGrid"></div>
+
+                <div class="hack-controls">
+                    <button class="hack-btn submit" id="submitBtn" onclick="checkSolution()" style="display:none">SUBMIT DECODE</button>
+                </div>
+            </div>
+            <div class="hack-controls" style="margin-top:15px;">
+                <button class="hack-btn" id="startBtn" onclick="startGame()">BEGIN DECRYPT</button>
+            </div>
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>Decode the encrypted message by figuring out the substitution cipher.</p>
+                <ul style="text-align:left;color:#ccc;font-size:0.9rem;margin-top:8px;">
+                    <li><strong>Click</strong> an encrypted letter to assign its decoded value</li>
+                    <li>Each cipher letter maps to exactly one real letter</li>
+                    <li>Use <strong>letter frequency</strong> and <strong>word patterns</strong> as clues</li>
+                    <li>Common English patterns: THE, AND, ING, TION...</li>
+                    <li>Decode fully before time runs out</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="letter-picker" id="letterPicker">
+        <div class="picker-title">Assign letter for: <span id="pickerTarget">A</span></div>
+        <div class="picker-grid" id="pickerGrid"></div>
+    </div>
+
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-box" id="resultsBox">
+            <h2 id="resultsTitle">DECRYPTED</h2>
+            <div class="stats" id="resultsStats"></div>
+            <div class="answer" id="resultsAnswer"></div>
+            <div class="hack-controls" style="margin-top:15px;">
+                <button class="hack-btn" onclick="nextLevel()">NEXT MESSAGE</button>
+                <button class="hack-btn" style="border-color:#ff6b6b;color:#ff6b6b" onclick="resetGame()">QUIT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('fullscreenBtn').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else document.exitFullscreen();
+        });
+
+        const PHRASES = [
+            "THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG",
+            "ACTIONS SPEAK LOUDER THAN WORDS",
+            "KNOWLEDGE IS POWER",
+            "FORTUNE FAVORS THE BOLD",
+            "HACK THE PLANET",
+            "TRUST NO ONE TRUST THE CODE",
+            "ACCESS GRANTED WELCOME BACK",
+            "EVERY CIPHER CAN BE BROKEN",
+            "THE BEST DEFENSE IS A GOOD OFFENSE",
+            "INFORMATION WANTS TO BE FREE",
+            "SECURITY IS JUST AN ILLUSION",
+            "TIME IS MONEY",
+            "ALL THAT GLITTERS IS NOT GOLD",
+            "WHERE THERE IS A WILL THERE IS A WAY",
+            "THE ONLY LIMIT IS YOUR IMAGINATION",
+            "BREAK THE CODE OPEN THE DOOR",
+            "DATA IS THE NEW CURRENCY",
+            "BEHIND EVERY FIREWALL IS A SECRET",
+            "ENCRYPT EVERYTHING TRUST NOTHING",
+            "PATIENCE IS THE KEY TO SUCCESS",
+        ];
+
+        let state = {
+            level: 1, score: 0,
+            highScore: parseInt(localStorage.getItem('decryptHighScore') || '0'),
+            timer: 90, maxTime: 90, timerInterval: null,
+            playing: false,
+            plaintext: '',
+            ciphertext: '',
+            cipherMap: {},      // plain -> cipher
+            reverseMap: {},     // cipher -> plain
+            playerMap: {},      // cipher -> player's guess
+            selectedCipher: null
+        };
+        document.getElementById('highDisp').textContent = state.highScore;
+
+        function shuffle(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function generateCipher() {
+            const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+            const shuffled = shuffle([...alpha]);
+            // Ensure no letter maps to itself
+            for (let i = 0; i < 26; i++) {
+                if (shuffled[i] === alpha[i]) {
+                    const swapIdx = (i + 1) % 26;
+                    [shuffled[i], shuffled[swapIdx]] = [shuffled[swapIdx], shuffled[i]];
+                }
+            }
+            const map = {};
+            const reverse = {};
+            for (let i = 0; i < 26; i++) {
+                map[alpha[i]] = shuffled[i];
+                reverse[shuffled[i]] = alpha[i];
+            }
+            return { map, reverse };
+        }
+
+        function encrypt(text, map) {
+            return text.split('').map(ch => {
+                if (map[ch]) return map[ch];
+                return ch;
+            }).join('');
+        }
+
+        function getLevelConfig(lv) {
+            if (lv <= 2) return { time: 120, hints: 3 };
+            if (lv <= 4) return { time: 100, hints: 2 };
+            if (lv <= 6) return { time: 90, hints: 1 };
+            return { time: 75, hints: 0 };
+        }
+
+        function startGame() {
+            const cfg = getLevelConfig(state.level);
+            state.maxTime = cfg.time;
+            state.timer = cfg.time;
+            state.playing = true;
+            state.selectedCipher = null;
+            state.playerMap = {};
+
+            // Pick phrase
+            state.plaintext = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+            const { map, reverse } = generateCipher();
+            state.cipherMap = map;
+            state.reverseMap = reverse;
+            state.ciphertext = encrypt(state.plaintext, map);
+
+            // Give some hints (pre-reveal some letters)
+            const uniqueLetters = [...new Set(state.plaintext.split('').filter(c => /[A-Z]/.test(c)))];
+            const hintLetters = shuffle(uniqueLetters).slice(0, cfg.hints);
+            hintLetters.forEach(plain => {
+                const cipher = map[plain];
+                state.playerMap[cipher] = plain;
+            });
+
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('submitBtn').style.display = '';
+            document.getElementById('levelDisp').textContent = state.level;
+
+            renderCipher();
+            renderDecoded();
+            renderSubGrid();
+            startTimer();
+        }
+
+        function renderCipher() {
+            const container = document.getElementById('cipherText');
+            container.innerHTML = '';
+            state.ciphertext.split('').forEach((ch, i) => {
+                const span = document.createElement('span');
+                span.className = 'cipher-char';
+                span.textContent = ch;
+                if (/[A-Z]/.test(ch)) {
+                    span.classList.add('letter');
+                    if (state.playerMap[ch]) span.classList.add('decoded');
+                    if (state.selectedCipher === ch) span.classList.add('selected');
+                    span.addEventListener('click', () => selectCipherLetter(ch, span));
+                } else if (ch === ' ') {
+                    span.classList.add('space');
+                    span.innerHTML = '&nbsp;';
+                } else {
+                    span.classList.add('punct');
+                }
+                container.appendChild(span);
+            });
+        }
+
+        function renderDecoded() {
+            const container = document.getElementById('decodedText');
+            let decoded = '';
+            state.ciphertext.split('').forEach(ch => {
+                if (/[A-Z]/.test(ch)) {
+                    decoded += state.playerMap[ch] || '_';
+                } else {
+                    decoded += ch;
+                }
+            });
+            container.textContent = decoded;
+        }
+
+        function renderSubGrid() {
+            const grid = document.getElementById('subGrid');
+            grid.innerHTML = '';
+            const usedCipherLetters = [...new Set(state.ciphertext.split('').filter(c => /[A-Z]/.test(c)))].sort();
+            usedCipherLetters.forEach(cipher => {
+                const cell = document.createElement('div');
+                cell.className = 'sub-cell';
+                if (state.playerMap[cipher]) cell.classList.add('mapped');
+                cell.innerHTML =
+                    '<span class="sub-from">' + cipher + '</span>' +
+                    '<span class="sub-arrow">&darr;</span>' +
+                    '<span class="sub-to">' + (state.playerMap[cipher] || '?') + '</span>';
+                cell.style.cursor = 'pointer';
+                cell.addEventListener('click', (e) => {
+                    selectCipherLetter(cipher, e.target);
+                });
+                grid.appendChild(cell);
+            });
+        }
+
+        function selectCipherLetter(cipher, element) {
+            if (!state.playing) return;
+            state.selectedCipher = cipher;
+            renderCipher();
+            showPicker(cipher, element);
+        }
+
+        function showPicker(cipher, anchor) {
+            const picker = document.getElementById('letterPicker');
+            const grid = document.getElementById('pickerGrid');
+            document.getElementById('pickerTarget').textContent = cipher;
+
+            grid.innerHTML = '';
+            const usedValues = Object.values(state.playerMap);
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
+                const btn = document.createElement('button');
+                btn.className = 'picker-btn';
+                btn.textContent = letter;
+                if (usedValues.includes(letter) && state.playerMap[cipher] !== letter) {
+                    btn.classList.add('used');
+                }
+                btn.addEventListener('click', () => {
+                    // Remove old mapping if this value was used elsewhere
+                    Object.keys(state.playerMap).forEach(k => {
+                        if (state.playerMap[k] === letter) delete state.playerMap[k];
+                    });
+                    state.playerMap[cipher] = letter;
+                    hidePicker();
+                    renderCipher();
+                    renderDecoded();
+                    renderSubGrid();
+                });
+                grid.appendChild(btn);
+            });
+            // Clear button
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'picker-btn clear';
+            clearBtn.textContent = 'X';
+            clearBtn.addEventListener('click', () => {
+                delete state.playerMap[cipher];
+                hidePicker();
+                renderCipher();
+                renderDecoded();
+                renderSubGrid();
+            });
+            grid.appendChild(clearBtn);
+
+            // Position picker near the click
+            const rect = anchor.getBoundingClientRect();
+            picker.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+            picker.style.top = Math.min(rect.bottom + 5, window.innerHeight - 200) + 'px';
+            picker.classList.add('show');
+        }
+
+        function hidePicker() {
+            document.getElementById('letterPicker').classList.remove('show');
+            state.selectedCipher = null;
+        }
+
+        // Close picker on outside click
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('letterPicker');
+            if (!picker.classList.contains('show')) return;
+            if (picker.contains(e.target)) return;
+            if (e.target.classList.contains('cipher-char') || e.target.classList.contains('sub-cell') ||
+                e.target.closest('.sub-cell')) return;
+            hidePicker();
+            renderCipher();
+        });
+
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                state.timer -= 0.1;
+                if (state.timer <= 0) { state.timer = 0; endGame(false); }
+                const pct = (state.timer / state.maxTime) * 100;
+                const fill = document.getElementById('timerFill');
+                fill.style.width = pct + '%';
+                fill.className = 'timer-fill' + (pct < 15 ? ' danger' : pct < 35 ? ' warning' : '');
+                document.getElementById('timerText').textContent = state.timer.toFixed(1) + 's';
+            }, 100);
+        }
+
+        function checkSolution() {
+            if (!state.playing) return;
+            // Check if all cipher letters have correct mapping
+            let correct = true;
+            const cipherLetters = [...new Set(state.ciphertext.split('').filter(c => /[A-Z]/.test(c)))];
+            for (const cl of cipherLetters) {
+                if (state.playerMap[cl] !== state.reverseMap[cl]) {
+                    correct = false;
+                    break;
+                }
+            }
+            if (correct) {
+                endGame(true);
+            } else {
+                // Count correct
+                const totalLetters = cipherLetters.length;
+                const correctCount = cipherLetters.filter(cl => state.playerMap[cl] === state.reverseMap[cl]).length;
+                document.getElementById('submitBtn').style.borderColor = '#ff6b6b';
+                document.getElementById('submitBtn').style.color = '#ff6b6b';
+                document.getElementById('submitBtn').textContent = correctCount + '/' + totalLetters + ' CORRECT';
+                setTimeout(() => {
+                    document.getElementById('submitBtn').style.borderColor = '#00d9ff';
+                    document.getElementById('submitBtn').style.color = '#00d9ff';
+                    document.getElementById('submitBtn').textContent = 'SUBMIT DECODE';
+                }, 1500);
+            }
+        }
+
+        function endGame(success) {
+            state.playing = false;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            hidePicker();
+            document.getElementById('submitBtn').style.display = 'none';
+
+            const overlay = document.getElementById('resultsOverlay');
+            const box = document.getElementById('resultsBox');
+            const title = document.getElementById('resultsTitle');
+            const stats = document.getElementById('resultsStats');
+            const answer = document.getElementById('resultsAnswer');
+
+            if (success) {
+                const timeBonus = Math.round(state.timer * 5);
+                const roundScore = 300 + timeBonus + state.level * 50;
+                state.score += roundScore;
+                document.getElementById('scoreDisp').textContent = state.score;
+
+                title.textContent = 'MESSAGE DECRYPTED';
+                box.className = 'results-box';
+                stats.innerHTML =
+                    'Time remaining: <span>' + state.timer.toFixed(1) + 's</span><br>' +
+                    'Time bonus: <span>+' + timeBonus + '</span><br>' +
+                    'Round score: <span>+' + roundScore + '</span><br>' +
+                    'Total: <span>' + state.score + '</span>';
+                answer.textContent = '"' + state.plaintext + '"';
+            } else {
+                title.textContent = 'DECRYPTION FAILED';
+                box.className = 'results-box failed';
+                stats.innerHTML = 'Time expired.<br>Final score: <span>' + state.score + '</span>';
+                answer.textContent = 'Message was: "' + state.plaintext + '"';
+            }
+
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem('decryptHighScore', state.highScore);
+                document.getElementById('highDisp').textContent = state.highScore;
+                stats.innerHTML += '<br><span style="color:#ffc107">NEW HIGH SCORE!</span>';
+            }
+            overlay.classList.add('show');
+        }
+
+        function nextLevel() {
+            state.level++;
+            document.getElementById('resultsOverlay').classList.remove('show');
+            startGame();
+        }
+        function resetGame() {
+            state.level = 1; state.score = 0;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            document.getElementById('scoreDisp').textContent = '0';
+            document.getElementById('resultsOverlay').classList.remove('show');
+            document.getElementById('startBtn').style.display = '';
+            document.getElementById('submitBtn').style.display = 'none';
+            document.getElementById('timerFill').style.width = '100%';
+            document.getElementById('timerText').textContent = '90.0s';
+            document.getElementById('levelDisp').textContent = '1';
+            document.getElementById('cipherText').innerHTML = '';
+            document.getElementById('decodedText').innerHTML = '';
+            document.getElementById('subGrid').innerHTML = '';
+            hidePicker();
+        }
+    </script>
+</body>
+</html>
