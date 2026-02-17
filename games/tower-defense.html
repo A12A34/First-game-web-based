@@ -47,19 +47,19 @@
         }
         .towers {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
             justify-content: center;
         }
         .tower-btn {
-            padding: 8px 12px;
+            padding: 6px 10px;
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
             text-align: center;
-            min-width: 70px;
+            min-width: 65px;
         }
         .tower-btn:hover:not(.selected):not(:disabled) {
             border-color: #ffd700;
@@ -75,14 +75,14 @@
             cursor: not-allowed;
         }
         .tower-icon {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
         }
         .tower-name {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: bold;
         }
         .tower-cost {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #ffd700;
         }
         .tower-btn.selected .tower-cost {
@@ -122,7 +122,7 @@
         }
         .info-panel {
             position: absolute;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.92);
             border: 1px solid #ffd700;
             border-radius: 8px;
             padding: 10px;
@@ -130,13 +130,57 @@
             font-size: 0.75rem;
             line-height: 1.4;
             z-index: 100;
-            min-width: 150px;
+            min-width: 170px;
         }
         .info-panel .title { color: #ffd700; font-weight: bold; font-size: 0.85rem; }
         .info-panel .stat { color: #ccc; }
         .info-panel .stat span { color: #fff; font-weight: bold; }
         .info-panel .upgrade { color: #00ff88; margin-top: 4px; }
+        .info-panel .upgrade-path { color: #00ccff; font-size: 0.7rem; }
         .info-panel .sell { color: #ff6b6b; }
+        .upgrade-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 12px;
+            padding: 12px;
+            z-index: 200;
+            min-width: 220px;
+            pointer-events: auto;
+        }
+        .upgrade-panel .title { color: #ffd700; font-weight: bold; font-size: 0.9rem; margin-bottom: 8px; }
+        .upgrade-option {
+            padding: 8px 10px;
+            margin: 4px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .upgrade-option:hover:not(.locked) {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .upgrade-option.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .upgrade-option .opt-name { color: #00ff88; font-weight: bold; font-size: 0.8rem; }
+        .upgrade-option .opt-desc { color: #aaa; font-size: 0.7rem; }
+        .upgrade-option .opt-cost { color: #ffd700; font-size: 0.7rem; font-weight: bold; }
+        .upgrade-close {
+            margin-top: 6px;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: block;
+            width: 100%;
+        }
+        .upgrade-close:hover { background: rgba(255,255,255,0.2); }
         .wave-preview {
             font-size: 0.8rem;
             color: #aaa;
@@ -166,15 +210,15 @@
             width: 100%;
             border-collapse: collapse;
             margin: 8px 0;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
         .instructions th, .instructions td {
-            padding: 4px 8px;
+            padding: 4px 6px;
             text-align: center;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         .instructions th { color: #ffd700; }
-        .enemy-legend { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; margin: 8px 0; font-size: 0.8rem; }
+        .enemy-legend { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 8px 0; font-size: 0.78rem; }
         .enemy-legend-item { display: flex; align-items: center; gap: 4px; }
     </style>
 </head>
@@ -232,11 +276,27 @@
                         <div class="tower-name">Lightning</div>
                         <div class="tower-cost">200g</div>
                     </button>
+                    <button class="tower-btn" data-tower="poison">
+                        <div class="tower-icon">&#x2622;&#xFE0F;</div>
+                        <div class="tower-name">Poison</div>
+                        <div class="tower-cost">125g</div>
+                    </button>
+                    <button class="tower-btn" data-tower="sniper">
+                        <div class="tower-icon">&#x1F3AF;</div>
+                        <div class="tower-name">Sniper</div>
+                        <div class="tower-cost">175g</div>
+                    </button>
+                    <button class="tower-btn" data-tower="tesla">
+                        <div class="tower-icon">&#x1F50C;</div>
+                        <div class="tower-name">Tesla</div>
+                        <div class="tower-cost">250g</div>
+                    </button>
                 </div>
 
                 <div class="canvas-wrapper">
                     <canvas id="gameCanvas" width="900" height="600"></canvas>
                     <div class="info-panel" id="infoPanel" style="display:none;"></div>
+                    <div class="upgrade-panel" id="upgradePanel" style="display:none;"></div>
                 </div>
 
                 <div class="message" id="message">Select a tower and click on grass to place it!</div>
@@ -254,7 +314,7 @@
             <div class="instructions">
                 <h3>How to Play</h3>
                 <p>Build and upgrade towers to stop enemies from reaching the end of the path. Earn gold by defeating enemies and completing waves!</p>
-                <p><strong>Left-click</strong> grass to place towers. <strong>Left-click</strong> an existing tower to upgrade it. <strong>Right-click</strong> a tower to sell it for 60% of total cost.</p>
+                <p><strong>Left-click</strong> grass to place towers. <strong>Left-click</strong> an existing tower to open upgrade paths. <strong>Right-click</strong> a tower to sell it for 60% of total cost.</p>
 
                 <h4>Towers</h4>
                 <table>
@@ -264,14 +324,22 @@
                     <tr><td>Ice</td><td>75g</td><td>5</td><td>100px</td><td>Medium</td><td>Slows 50%</td></tr>
                     <tr><td>Fire</td><td>150g</td><td>20</td><td>80px</td><td>Very Fast</td><td>Burn DOT</td></tr>
                     <tr><td>Lightning</td><td>200g</td><td>15</td><td>110px</td><td>Medium</td><td>Chain 3 targets</td></tr>
+                    <tr><td>Poison</td><td>125g</td><td>8</td><td>95px</td><td>Medium</td><td>Poison AOE</td></tr>
+                    <tr><td>Sniper</td><td>175g</td><td>60</td><td>200px</td><td>Very Slow</td><td>Crit chance</td></tr>
+                    <tr><td>Tesla</td><td>250g</td><td>25</td><td>100px</td><td>Medium</td><td>Hits all in range</td></tr>
                 </table>
+                <p style="font-size:0.78rem;color:#aaa;">Each tower has two upgrade paths: one focused on <span style="color:#ff6b6b;">Power</span> and one on <span style="color:#00ccff;">Range/Utility</span>. Choose wisely - you can mix paths!</p>
 
                 <h4>Enemies</h4>
                 <div class="enemy-legend">
                     <div class="enemy-legend-item"><span style="color:#ff4444">&#x25CF;</span> Normal</div>
                     <div class="enemy-legend-item"><span style="color:#44ff44">&#x25CF;</span> Fast (2x speed)</div>
                     <div class="enemy-legend-item"><span style="color:#8888ff">&#x25CF;</span> Armored (3x HP)</div>
-                    <div class="enemy-legend-item"><span style="color:#ff44ff">&#x25CF;</span> Boss (10x HP, high reward)</div>
+                    <div class="enemy-legend-item"><span style="color:#ff44ff">&#x25CF;</span> Boss (10x HP)</div>
+                    <div class="enemy-legend-item"><span style="color:#44ffcc">&#x25CF;</span> Healer (heals nearby)</div>
+                    <div class="enemy-legend-item"><span style="color:#888888">&#x25CF;</span> Stealth (invisible)</div>
+                    <div class="enemy-legend-item"><span style="color:#ffff44">&#x25CF;</span> Swarm (many, weak)</div>
+                    <div class="enemy-legend-item"><span style="color:#ff8844">&#x25CF;</span> Shield (has barrier)</div>
                 </div>
             </div>
         </div>
@@ -282,93 +350,187 @@
         const ctx = canvas.getContext('2d');
 
         const TILE = 40;
-        const COLS = Math.floor(canvas.width / TILE);  // 22
-        const ROWS = Math.floor(canvas.height / TILE);  // 15
+        const COLS = Math.floor(canvas.width / TILE);
+        const ROWS = Math.floor(canvas.height / TILE);
 
-        // Tower definitions with 3 upgrade levels
+        // Tower definitions with dual upgrade paths
         const TOWER_DATA = {
-            arrow:     { cost: 50,  damage: 10, range: 120, rate: 400,  color: '#8b6914', upgrades: [
-                { cost: 40,  damage: 18, range: 135, rate: 350 },
-                { cost: 80,  damage: 30, range: 150, rate: 300 }
-            ]},
-            cannon:    { cost: 100, damage: 35, range: 90,  rate: 1200, color: '#555', splash: 50, upgrades: [
-                { cost: 75,  damage: 55, range: 100, rate: 1100, splash: 60 },
-                { cost: 150, damage: 80, range: 110, rate: 1000, splash: 75 }
-            ]},
-            ice:       { cost: 75,  damage: 5,  range: 100, rate: 600,  color: '#00bfff', slow: 0.5, slowDuration: 1500, upgrades: [
-                { cost: 60,  damage: 10, range: 115, rate: 550, slow: 0.4, slowDuration: 2000 },
-                { cost: 120, damage: 18, range: 130, rate: 500, slow: 0.3, slowDuration: 2500 }
-            ]},
-            fire:      { cost: 150, damage: 20, range: 80,  rate: 350,  color: '#ff4500', burn: 5, burnDuration: 2000, upgrades: [
-                { cost: 100, damage: 30, range: 90,  rate: 300, burn: 8,  burnDuration: 2500 },
-                { cost: 200, damage: 45, range: 100, rate: 250, burn: 12, burnDuration: 3000 }
-            ]},
-            lightning: { cost: 200, damage: 15, range: 110, rate: 700,  color: '#ffff00', chain: 3, upgrades: [
-                { cost: 150, damage: 25, range: 120, rate: 650, chain: 4 },
-                { cost: 250, damage: 40, range: 135, rate: 600, chain: 5 }
-            ]}
+            arrow: {
+                cost: 50, damage: 10, range: 120, rate: 400, color: '#8b6914',
+                upgradePaths: {
+                    power: [
+                        { cost: 40, label: 'Sharp Tips', desc: 'Dmg 10→18, +pierce', damage: 18, rate: 380, pierce: true },
+                        { cost: 80, label: 'Flame Arrows', desc: 'Dmg 18→30, adds burn', damage: 30, rate: 350, burn: 3, burnDuration: 1500 },
+                        { cost: 160, label: 'Volley', desc: 'Dmg 30→22 but fires 3 arrows', damage: 22, rate: 300, multishot: 3 }
+                    ],
+                    range: [
+                        { cost: 35, label: 'Long Bow', desc: 'Range 120→150', range: 150, rate: 380 },
+                        { cost: 70, label: 'Eagle Eye', desc: 'Range 150→190, reveals stealth', range: 190, rate: 350, detectStealth: true },
+                        { cost: 140, label: 'Marksman', desc: 'Range 190→230, +crit 20%', range: 230, rate: 320, crit: 0.2, critMult: 2.5 }
+                    ]
+                }
+            },
+            cannon: {
+                cost: 100, damage: 35, range: 90, rate: 1200, color: '#555', splash: 50,
+                upgradePaths: {
+                    power: [
+                        { cost: 75, label: 'Heavy Shell', desc: 'Dmg 35→60, splash 50→65', damage: 60, splash: 65 },
+                        { cost: 150, label: 'Cluster Bomb', desc: 'Dmg 60→85, splash 65→85', damage: 85, splash: 85, rate: 1100 },
+                        { cost: 250, label: 'Mega Bomb', desc: 'Dmg 85→140, splash 85→110', damage: 140, splash: 110, rate: 1000 }
+                    ],
+                    range: [
+                        { cost: 60, label: 'Long Barrel', desc: 'Range 90→110, rate faster', range: 110, rate: 1050 },
+                        { cost: 120, label: 'Mortar', desc: 'Range 110→140, stuns 0.5s', range: 140, rate: 1000, stun: 500 },
+                        { cost: 200, label: 'Artillery', desc: 'Range 140→180, stuns 1s', range: 180, rate: 950, stun: 1000 }
+                    ]
+                }
+            },
+            ice: {
+                cost: 75, damage: 5, range: 100, rate: 600, color: '#00bfff', slow: 0.5, slowDuration: 1500,
+                upgradePaths: {
+                    power: [
+                        { cost: 60, label: 'Deep Freeze', desc: 'Slow 50%→60%, dmg 5→12', damage: 12, slow: 0.4, slowDuration: 2000 },
+                        { cost: 120, label: 'Permafrost', desc: 'Slow 60%→75%, dmg 12→20', damage: 20, slow: 0.25, slowDuration: 2500, rate: 550 },
+                        { cost: 200, label: 'Absolute Zero', desc: 'Freeze nearby for 1s', damage: 25, slow: 0.1, slowDuration: 3000, rate: 500, freezeAOE: 60 }
+                    ],
+                    range: [
+                        { cost: 50, label: 'Frost Field', desc: 'Range 100→125', range: 125, damage: 8, rate: 550 },
+                        { cost: 100, label: 'Blizzard', desc: 'Range 125→155, AOE slow', range: 155, damage: 12, slowAOE: 80, rate: 500 },
+                        { cost: 180, label: 'Ice Storm', desc: 'Range 155→185, bigger AOE', range: 185, damage: 18, slowAOE: 110, rate: 450 }
+                    ]
+                }
+            },
+            fire: {
+                cost: 150, damage: 20, range: 80, rate: 350, color: '#ff4500', burn: 5, burnDuration: 2000,
+                upgradePaths: {
+                    power: [
+                        { cost: 100, label: 'Inferno', desc: 'Dmg 20→32, burn 5→10', damage: 32, burn: 10, burnDuration: 2500, rate: 320 },
+                        { cost: 180, label: 'Hellfire', desc: 'Dmg 32→48, burn 10→16', damage: 48, burn: 16, burnDuration: 3000, rate: 280 },
+                        { cost: 300, label: 'Phoenix', desc: 'Dmg 48→65, burn spreads', damage: 65, burn: 20, burnDuration: 3500, rate: 250, burnSpread: true }
+                    ],
+                    range: [
+                        { cost: 80, label: 'Napalm', desc: 'Range 80→100, +fire trail', range: 100, damage: 25, burn: 7, burnDuration: 2200 },
+                        { cost: 160, label: 'Firestorm', desc: 'Range 100→120, fire AOE', range: 120, damage: 30, burn: 10, burnDuration: 2500, fireAOE: 60 },
+                        { cost: 260, label: 'Meteor', desc: 'Range 120→140, massive AOE', range: 140, damage: 40, burn: 14, burnDuration: 3000, fireAOE: 90, rate: 300 }
+                    ]
+                }
+            },
+            lightning: {
+                cost: 200, damage: 15, range: 110, rate: 700, color: '#ffff00', chain: 3,
+                upgradePaths: {
+                    power: [
+                        { cost: 150, label: 'High Voltage', desc: 'Dmg 15→28, chain 3→4', damage: 28, chain: 4, rate: 650 },
+                        { cost: 250, label: 'Thunder', desc: 'Dmg 28→45, chain 4→5', damage: 45, chain: 5, rate: 600 },
+                        { cost: 400, label: 'Storm Lord', desc: 'Dmg 45→65, chain 5→7', damage: 65, chain: 7, rate: 550 }
+                    ],
+                    range: [
+                        { cost: 120, label: 'Conductor', desc: 'Range 110→135, chain range+', range: 135, damage: 20, chain: 4 },
+                        { cost: 220, label: 'Tesla Field', desc: 'Range 135→160, stuns 0.3s', range: 160, damage: 30, chain: 5, stun: 300 },
+                        { cost: 350, label: 'Ion Cannon', desc: 'Range 160→190, reveals stealth', range: 190, damage: 40, chain: 6, stun: 500, detectStealth: true }
+                    ]
+                }
+            },
+            poison: {
+                cost: 125, damage: 8, range: 95, rate: 700, color: '#00cc44', poisonAOE: 55, poisonDmg: 4, poisonDuration: 3000,
+                upgradePaths: {
+                    power: [
+                        { cost: 80, label: 'Toxic', desc: 'Poison 4→8 dps, dmg 8→14', damage: 14, poisonDmg: 8, poisonDuration: 3500 },
+                        { cost: 160, label: 'Plague', desc: 'Poison 8→14 dps, weakens armor', damage: 20, poisonDmg: 14, poisonDuration: 4000, armorShred: 0.2 },
+                        { cost: 280, label: 'Bio Weapon', desc: 'Poison 14→22 dps, -30% armor', damage: 28, poisonDmg: 22, poisonDuration: 5000, armorShred: 0.3, rate: 600 }
+                    ],
+                    range: [
+                        { cost: 65, label: 'Wide Spray', desc: 'AOE 55→75, range 95→110', range: 110, poisonAOE: 75, damage: 10 },
+                        { cost: 130, label: 'Gas Cloud', desc: 'AOE 75→100, range 110→130', range: 130, poisonAOE: 100, damage: 14, poisonDuration: 3500 },
+                        { cost: 230, label: 'Miasma', desc: 'AOE 100→130, slows 30%', range: 145, poisonAOE: 130, damage: 18, poisonDuration: 4000, slow: 0.7, slowDuration: 1500 }
+                    ]
+                }
+            },
+            sniper: {
+                cost: 175, damage: 60, range: 200, rate: 2000, color: '#aa4400', crit: 0.15, critMult: 3,
+                upgradePaths: {
+                    power: [
+                        { cost: 120, label: 'Hollow Point', desc: 'Dmg 60→100, crit 15%→25%', damage: 100, crit: 0.25 },
+                        { cost: 220, label: 'Armor Piercing', desc: 'Dmg 100→150, ignores armor', damage: 150, crit: 0.3, armorPierce: true },
+                        { cost: 380, label: 'Railgun', desc: 'Dmg 150→250, crit 30%→40%', damage: 250, crit: 0.4, armorPierce: true, rate: 1800 }
+                    ],
+                    range: [
+                        { cost: 100, label: 'Scope', desc: 'Range 200→250, rate faster', range: 250, rate: 1800 },
+                        { cost: 200, label: 'Spotter', desc: 'Range 250→300, detects stealth', range: 300, rate: 1600, detectStealth: true },
+                        { cost: 350, label: 'Orbital', desc: 'Range 300→400, biggest range', range: 400, rate: 1500, detectStealth: true, damage: 80 }
+                    ]
+                }
+            },
+            tesla: {
+                cost: 250, damage: 25, range: 100, rate: 800, color: '#cc44ff', hitsAll: true,
+                upgradePaths: {
+                    power: [
+                        { cost: 180, label: 'Overcharge', desc: 'Dmg 25→40, shocks enemies', damage: 40, stun: 200, rate: 750 },
+                        { cost: 300, label: 'Surge', desc: 'Dmg 40→60, longer stun', damage: 60, stun: 400, rate: 700 },
+                        { cost: 450, label: 'Singularity', desc: 'Dmg 60→90, pulls enemies in', damage: 90, stun: 600, rate: 650, pull: true }
+                    ],
+                    range: [
+                        { cost: 150, label: 'Amplifier', desc: 'Range 100→125', range: 125, damage: 30, rate: 750 },
+                        { cost: 280, label: 'Field Gen', desc: 'Range 125→155, reveals stealth', range: 155, damage: 40, rate: 700, detectStealth: true },
+                        { cost: 420, label: 'Reactor', desc: 'Range 155→185, boosts nearby', range: 185, damage: 50, rate: 650, detectStealth: true, boostNearby: 0.2 }
+                    ]
+                }
+            }
         };
 
-        // Enemy types
+        // Enemy types (original 4 + 4 new)
         const ENEMY_TYPES = {
-            normal:  { color: '#ff4444', speedMult: 1,   healthMult: 1,  reward: 1,  radius: 10 },
+            normal:  { color: '#ff4444', speedMult: 1,   healthMult: 1,   reward: 1,   radius: 10 },
             fast:    { color: '#44ff44', speedMult: 2,   healthMult: 0.6, reward: 1.2, radius: 8 },
-            armored: { color: '#8888ff', speedMult: 0.6, healthMult: 3,  reward: 2,  radius: 13 },
-            boss:    { color: '#ff44ff', speedMult: 0.4, healthMult: 10, reward: 10, radius: 18 }
+            armored: { color: '#8888ff', speedMult: 0.6, healthMult: 3,   reward: 2,   radius: 13 },
+            boss:    { color: '#ff44ff', speedMult: 0.4, healthMult: 10,  reward: 10,  radius: 18 },
+            healer:  { color: '#44ffcc', speedMult: 0.7, healthMult: 1.5, reward: 3,   radius: 11, heals: true },
+            stealth: { color: '#888888', speedMult: 1.4, healthMult: 0.8, reward: 2.5, radius: 9,  stealthy: true },
+            swarm:   { color: '#ffff44', speedMult: 1.6, healthMult: 0.3, reward: 0.5, radius: 6 },
+            shield:  { color: '#ff8844', speedMult: 0.8, healthMult: 2,   reward: 3,   radius: 12, hasShield: true }
         };
 
-        // Map: 0=grass, 1=path, 2=start, 3=end
+        // Map data
         const MAP = [];
         const PATH = [];
 
         function generateMap() {
-            // Clear
             MAP.length = 0;
             PATH.length = 0;
             for (let y = 0; y < ROWS; y++) {
                 MAP.push(new Array(COLS).fill(0));
             }
 
-            // Multiple map layouts
             const MAPS = [
-                // Map 0: Original winding path
                 [
-                    {x: 0, y: 2}, {x: 5, y: 2}, {x: 5, y: 5}, {x: 1, y: 5},
-                    {x: 1, y: 8}, {x: 7, y: 8}, {x: 7, y: 3}, {x: 10, y: 3},
-                    {x: 10, y: 10}, {x: 14, y: 10}, {x: 14, y: 6}, {x: 11, y: 6},
-                    {x: 11, y: 1}, {x: 17, y: 1}, {x: 17, y: 7}, {x: 20, y: 7},
-                    {x: 20, y: 3}, {x: 21, y: 3}
+                    {x:0,y:2},{x:5,y:2},{x:5,y:5},{x:1,y:5},
+                    {x:1,y:8},{x:7,y:8},{x:7,y:3},{x:10,y:3},
+                    {x:10,y:10},{x:14,y:10},{x:14,y:6},{x:11,y:6},
+                    {x:11,y:1},{x:17,y:1},{x:17,y:7},{x:20,y:7},
+                    {x:20,y:3},{x:21,y:3}
                 ],
-                // Map 1: Spiral inward
                 [
-                    {x: 0, y: 0}, {x: 20, y: 0}, {x: 20, y: 13}, {x: 2, y: 13},
-                    {x: 2, y: 2}, {x: 18, y: 2}, {x: 18, y: 11}, {x: 4, y: 11},
-                    {x: 4, y: 4}, {x: 16, y: 4}, {x: 16, y: 9}, {x: 6, y: 9},
-                    {x: 6, y: 6}, {x: 14, y: 6}, {x: 14, y: 7}, {x: 10, y: 7}
+                    {x:0,y:0},{x:20,y:0},{x:20,y:13},{x:2,y:13},
+                    {x:2,y:2},{x:18,y:2},{x:18,y:11},{x:4,y:11},
+                    {x:4,y:4},{x:16,y:4},{x:16,y:9},{x:6,y:9},
+                    {x:6,y:6},{x:14,y:6},{x:14,y:7},{x:10,y:7}
                 ],
-                // Map 2: Zigzag vertical
                 [
-                    {x: 0, y: 7}, {x: 4, y: 7}, {x: 4, y: 1}, {x: 8, y: 1},
-                    {x: 8, y: 13}, {x: 12, y: 13}, {x: 12, y: 1}, {x: 16, y: 1},
-                    {x: 16, y: 13}, {x: 20, y: 13}, {x: 20, y: 7}, {x: 21, y: 7}
+                    {x:0,y:7},{x:4,y:7},{x:4,y:1},{x:8,y:1},
+                    {x:8,y:13},{x:12,y:13},{x:12,y:1},{x:16,y:1},
+                    {x:16,y:13},{x:20,y:13},{x:20,y:7},{x:21,y:7}
                 ]
             ];
             const waypoints = MAPS[mapIndex];
 
-            // Build path tile by tile between waypoints
             for (let w = 0; w < waypoints.length - 1; w++) {
                 const from = waypoints[w];
                 const to = waypoints[w + 1];
-
                 let cx = from.x, cy = from.y;
-
-                // Move horizontally first, then vertically
                 while (cx !== to.x) {
                     if (cx >= 0 && cx < COLS && cy >= 0 && cy < ROWS) {
                         MAP[cy][cx] = 1;
-                        // Avoid duplicate path entries
-                        if (PATH.length === 0 || PATH[PATH.length - 1].x !== cx || PATH[PATH.length - 1].y !== cy) {
-                            PATH.push({x: cx, y: cy});
+                        if (PATH.length === 0 || PATH[PATH.length-1].x !== cx || PATH[PATH.length-1].y !== cy) {
+                            PATH.push({x:cx, y:cy});
                         }
                     }
                     cx += cx < to.x ? 1 : -1;
@@ -376,21 +538,18 @@
                 while (cy !== to.y) {
                     if (cx >= 0 && cx < COLS && cy >= 0 && cy < ROWS) {
                         MAP[cy][cx] = 1;
-                        if (PATH.length === 0 || PATH[PATH.length - 1].x !== cx || PATH[PATH.length - 1].y !== cy) {
-                            PATH.push({x: cx, y: cy});
+                        if (PATH.length === 0 || PATH[PATH.length-1].x !== cx || PATH[PATH.length-1].y !== cy) {
+                            PATH.push({x:cx, y:cy});
                         }
                     }
                     cy += cy < to.y ? 1 : -1;
                 }
             }
-            // Add last waypoint
             const last = waypoints[waypoints.length - 1];
             if (last.x < COLS && last.y < ROWS) {
                 MAP[last.y][last.x] = 1;
-                PATH.push({x: last.x, y: last.y});
+                PATH.push({x:last.x, y:last.y});
             }
-
-            // Mark start and end
             if (PATH.length > 0) {
                 MAP[PATH[0].y][PATH[0].x] = 2;
                 const lp = PATH[PATH.length - 1];
@@ -407,6 +566,7 @@
         let spawnQueue = [];
         let spawnTimer = 0;
         let mapIndex = -1;
+        let upgradeTarget = null;
 
         function init() {
             document.getElementById('startWaveBtn').addEventListener('click', startWave);
@@ -418,6 +578,7 @@
             document.querySelectorAll('.tower-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     selectedPlacedTower = null;
+                    closeUpgradePanel();
                     if (btn.classList.contains('selected')) {
                         btn.classList.remove('selected');
                         selectedTower = null;
@@ -455,6 +616,7 @@
             damageNumbers = [];
             selectedTower = null;
             selectedPlacedTower = null;
+            upgradeTarget = null;
             waveInProgress = false;
             gameRunning = true;
             paused = false;
@@ -470,6 +632,7 @@
             document.getElementById('pauseBtn').classList.remove('active');
             document.getElementById('speedBtn').textContent = '1x';
             document.getElementById('speedBtn').classList.remove('active');
+            closeUpgradePanel();
             updateDisplay();
             updateWavePreview();
             document.getElementById('message').textContent = 'Select a tower and click on grass to place it!';
@@ -488,40 +651,14 @@
 
             if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
 
-            // Check if clicking an existing tower (for upgrade)
+            // Check if clicking an existing tower (open upgrade panel)
             const existingTower = towers.find(t => t.x === x && t.y === y);
             if (existingTower) {
-                // Upgrade the tower
-                const baseData = TOWER_DATA[existingTower.type];
-                if (existingTower.level < baseData.upgrades.length) {
-                    const upgrade = baseData.upgrades[existingTower.level];
-                    if (gold >= upgrade.cost) {
-                        gold -= upgrade.cost;
-                        existingTower.totalCost += upgrade.cost;
-                        existingTower.level++;
-                        existingTower.damage = upgrade.damage;
-                        existingTower.range = upgrade.range;
-                        existingTower.rate = upgrade.rate;
-                        if (upgrade.splash !== undefined) existingTower.splash = upgrade.splash;
-                        if (upgrade.slow !== undefined) existingTower.slow = upgrade.slow;
-                        if (upgrade.slowDuration !== undefined) existingTower.slowDuration = upgrade.slowDuration;
-                        if (upgrade.burn !== undefined) existingTower.burn = upgrade.burn;
-                        if (upgrade.burnDuration !== undefined) existingTower.burnDuration = upgrade.burnDuration;
-                        if (upgrade.chain !== undefined) existingTower.chain = upgrade.chain;
-
-                        // Particle effect
-                        spawnParticles(existingTower.x * TILE + TILE/2, existingTower.y * TILE + TILE/2, '#ffd700', 8);
-
-                        document.getElementById('message').textContent = `Upgraded ${existingTower.type} tower to level ${existingTower.level + 1}!`;
-                        updateDisplay();
-                    } else {
-                        document.getElementById('message').textContent = `Need ${upgrade.cost}g to upgrade!`;
-                    }
-                } else {
-                    document.getElementById('message').textContent = 'Tower already at max level!';
-                }
+                openUpgradePanel(existingTower, e);
                 return;
             }
+
+            closeUpgradePanel();
 
             // Place new tower
             if (!selectedTower) {
@@ -550,12 +687,19 @@
                 rate: data.rate,
                 level: 0,
                 totalCost: data.cost,
-                lastFire: 0
+                lastFire: 0,
+                powerLevel: 0,
+                rangeLevel: 0,
+                upgrades: []
             };
+            // Copy special properties
             if (data.splash) tower.splash = data.splash;
             if (data.slow) { tower.slow = data.slow; tower.slowDuration = data.slowDuration; }
             if (data.burn) { tower.burn = data.burn; tower.burnDuration = data.burnDuration; }
             if (data.chain) tower.chain = data.chain;
+            if (data.poisonAOE) { tower.poisonAOE = data.poisonAOE; tower.poisonDmg = data.poisonDmg; tower.poisonDuration = data.poisonDuration; }
+            if (data.crit) { tower.crit = data.crit; tower.critMult = data.critMult; }
+            if (data.hitsAll) tower.hitsAll = data.hitsAll;
 
             towers.push(tower);
             spawnParticles(x * TILE + TILE/2, y * TILE + TILE/2, data.color, 6);
@@ -564,9 +708,130 @@
             document.getElementById('message').textContent = `Placed ${selectedTower} tower!`;
         }
 
+        function openUpgradePanel(tower, e) {
+            upgradeTarget = tower;
+            const panel = document.getElementById('upgradePanel');
+            const baseData = TOWER_DATA[tower.type];
+            const paths = baseData.upgradePaths;
+
+            let html = `<div class="title">${tower.type.charAt(0).toUpperCase() + tower.type.slice(1)} Tower (Lv ${tower.level + 1})</div>`;
+            html += `<div style="color:#ccc;font-size:0.7rem;margin-bottom:6px;">Dmg: ${tower.damage} | Range: ${tower.range}px | Rate: ${tower.rate}ms</div>`;
+
+            // Power path
+            const pLvl = tower.powerLevel;
+            html += `<div style="color:#ff6b6b;font-weight:bold;font-size:0.75rem;margin-top:4px;">&#x2694; Power Path (${pLvl}/3)</div>`;
+            if (pLvl < paths.power.length) {
+                const upg = paths.power[pLvl];
+                const canAfford = gold >= upg.cost;
+                html += `<div class="upgrade-option ${canAfford ? '' : 'locked'}" data-path="power" data-level="${pLvl}">`;
+                html += `<div class="opt-name">${upg.label}</div>`;
+                html += `<div class="opt-desc">${upg.desc}</div>`;
+                html += `<div class="opt-cost">${upg.cost}g${canAfford ? '' : ' (need more gold)'}</div>`;
+                html += `</div>`;
+            } else {
+                html += `<div style="color:#888;font-size:0.7rem;padding:4px;">MAX</div>`;
+            }
+
+            // Range path
+            const rLvl = tower.rangeLevel;
+            html += `<div style="color:#00ccff;font-weight:bold;font-size:0.75rem;margin-top:4px;">&#x1F3AF; Range/Utility Path (${rLvl}/3)</div>`;
+            if (rLvl < paths.range.length) {
+                const upg = paths.range[rLvl];
+                const canAfford = gold >= upg.cost;
+                html += `<div class="upgrade-option ${canAfford ? '' : 'locked'}" data-path="range" data-level="${rLvl}">`;
+                html += `<div class="opt-name">${upg.label}</div>`;
+                html += `<div class="opt-desc">${upg.desc}</div>`;
+                html += `<div class="opt-cost">${upg.cost}g${canAfford ? '' : ' (need more gold)'}</div>`;
+                html += `</div>`;
+            } else {
+                html += `<div style="color:#888;font-size:0.7rem;padding:4px;">MAX</div>`;
+            }
+
+            html += `<div style="color:#ff6b6b;font-size:0.7rem;margin-top:6px;">Sell: ${Math.floor(tower.totalCost * 0.6)}g (right-click)</div>`;
+            html += `<button class="upgrade-close">Close</button>`;
+
+            panel.innerHTML = html;
+            panel.style.display = 'block';
+
+            // Position panel
+            const canvasRect = canvas.parentElement.getBoundingClientRect();
+            let px = e.clientX - canvasRect.left + 15;
+            let py = e.clientY - canvasRect.top - 10;
+            if (px + 240 > canvasRect.width) px = px - 260;
+            if (py + 250 > canvasRect.height) py = Math.max(5, canvasRect.height - 260);
+            panel.style.left = px + 'px';
+            panel.style.top = py + 'px';
+
+            // Attach events
+            panel.querySelectorAll('.upgrade-option:not(.locked)').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    const path = opt.dataset.path;
+                    const level = parseInt(opt.dataset.level);
+                    applyUpgrade(tower, path, level);
+                });
+            });
+            panel.querySelector('.upgrade-close').addEventListener('click', closeUpgradePanel);
+        }
+
+        function applyUpgrade(tower, path, level) {
+            const baseData = TOWER_DATA[tower.type];
+            const upg = baseData.upgradePaths[path][level];
+
+            if (gold < upg.cost) return;
+
+            gold -= upg.cost;
+            tower.totalCost += upg.cost;
+            tower.level++;
+            if (path === 'power') tower.powerLevel++;
+            else tower.rangeLevel++;
+
+            tower.upgrades.push({ path, level, label: upg.label });
+
+            // Apply upgrade stats
+            if (upg.damage !== undefined) tower.damage = upg.damage;
+            if (upg.range !== undefined) tower.range = upg.range;
+            if (upg.rate !== undefined) tower.rate = upg.rate;
+            if (upg.splash !== undefined) tower.splash = upg.splash;
+            if (upg.slow !== undefined) tower.slow = upg.slow;
+            if (upg.slowDuration !== undefined) tower.slowDuration = upg.slowDuration;
+            if (upg.burn !== undefined) tower.burn = upg.burn;
+            if (upg.burnDuration !== undefined) tower.burnDuration = upg.burnDuration;
+            if (upg.chain !== undefined) tower.chain = upg.chain;
+            if (upg.stun !== undefined) tower.stun = upg.stun;
+            if (upg.detectStealth) tower.detectStealth = true;
+            if (upg.crit !== undefined) tower.crit = upg.crit;
+            if (upg.critMult !== undefined) tower.critMult = upg.critMult;
+            if (upg.pierce) tower.pierce = true;
+            if (upg.multishot) tower.multishot = upg.multishot;
+            if (upg.armorPierce) tower.armorPierce = true;
+            if (upg.armorShred !== undefined) tower.armorShred = upg.armorShred;
+            if (upg.poisonAOE !== undefined) tower.poisonAOE = upg.poisonAOE;
+            if (upg.poisonDmg !== undefined) tower.poisonDmg = upg.poisonDmg;
+            if (upg.poisonDuration !== undefined) tower.poisonDuration = upg.poisonDuration;
+            if (upg.burnSpread) tower.burnSpread = true;
+            if (upg.freezeAOE !== undefined) tower.freezeAOE = upg.freezeAOE;
+            if (upg.slowAOE !== undefined) tower.slowAOE = upg.slowAOE;
+            if (upg.fireAOE !== undefined) tower.fireAOE = upg.fireAOE;
+            if (upg.hitsAll !== undefined) tower.hitsAll = upg.hitsAll;
+            if (upg.pull) tower.pull = true;
+            if (upg.boostNearby !== undefined) tower.boostNearby = upg.boostNearby;
+
+            spawnParticles(tower.x * TILE + TILE/2, tower.y * TILE + TILE/2, '#ffd700', 10);
+            document.getElementById('message').textContent = `Upgraded: ${upg.label}!`;
+
+            closeUpgradePanel();
+            updateDisplay();
+        }
+
+        function closeUpgradePanel() {
+            document.getElementById('upgradePanel').style.display = 'none';
+            upgradeTarget = null;
+        }
+
         function handleRightClick(e) {
             e.preventDefault();
             if (!gameRunning) return;
+            closeUpgradePanel();
 
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -603,39 +868,43 @@
                 hoverTile = null;
             }
 
-            // Show info panel for towers
-            const tower = towers.find(t => t.x === x && t.y === y);
-            const panel = document.getElementById('infoPanel');
-            if (tower) {
-                const baseData = TOWER_DATA[tower.type];
-                let html = `<div class="title">${tower.type.charAt(0).toUpperCase() + tower.type.slice(1)} Tower (Lv ${tower.level + 1})</div>`;
-                html += `<div class="stat">Damage: <span>${tower.damage}</span></div>`;
-                html += `<div class="stat">Range: <span>${tower.range}px</span></div>`;
-                html += `<div class="stat">Fire Rate: <span>${tower.rate}ms</span></div>`;
-                if (tower.splash) html += `<div class="stat">Splash: <span>${tower.splash}px</span></div>`;
-                if (tower.slow) html += `<div class="stat">Slow: <span>${Math.round((1 - tower.slow) * 100)}%</span></div>`;
-                if (tower.burn) html += `<div class="stat">Burn: <span>${tower.burn} DPS</span></div>`;
-                if (tower.chain) html += `<div class="stat">Chains: <span>${tower.chain} targets</span></div>`;
+            // Info panel for hovered towers (only when upgrade panel is closed)
+            if (!upgradeTarget) {
+                const tower = towers.find(t => t.x === x && t.y === y);
+                const panel = document.getElementById('infoPanel');
+                if (tower) {
+                    let html = `<div class="title">${tower.type.charAt(0).toUpperCase() + tower.type.slice(1)} Tower (Lv ${tower.level + 1})</div>`;
+                    html += `<div class="stat">Damage: <span>${tower.damage}</span></div>`;
+                    html += `<div class="stat">Range: <span>${tower.range}px</span></div>`;
+                    html += `<div class="stat">Fire Rate: <span>${tower.rate}ms</span></div>`;
+                    if (tower.splash) html += `<div class="stat">Splash: <span>${tower.splash}px</span></div>`;
+                    if (tower.slow) html += `<div class="stat">Slow: <span>${Math.round((1-tower.slow)*100)}%</span></div>`;
+                    if (tower.burn) html += `<div class="stat">Burn: <span>${tower.burn} DPS</span></div>`;
+                    if (tower.chain) html += `<div class="stat">Chains: <span>${tower.chain}</span></div>`;
+                    if (tower.poisonDmg) html += `<div class="stat">Poison: <span>${tower.poisonDmg} DPS</span></div>`;
+                    if (tower.crit) html += `<div class="stat">Crit: <span>${Math.round(tower.crit*100)}% (x${tower.critMult})</span></div>`;
+                    if (tower.hitsAll) html += `<div class="stat">Hits: <span>All in range</span></div>`;
+                    if (tower.detectStealth) html += `<div class="stat" style="color:#44ffcc">Detects stealth</div>`;
+                    if (tower.stun) html += `<div class="stat">Stun: <span>${tower.stun}ms</span></div>`;
+                    if (tower.armorShred) html += `<div class="stat">Armor shred: <span>${Math.round(tower.armorShred*100)}%</span></div>`;
 
-                if (tower.level < baseData.upgrades.length) {
-                    const upg = baseData.upgrades[tower.level];
-                    html += `<div class="upgrade">Upgrade: ${upg.cost}g</div>`;
+                    if (tower.upgrades.length > 0) {
+                        html += `<div class="upgrade-path">Upgrades: ${tower.upgrades.map(u => u.label).join(', ')}</div>`;
+                    }
+                    html += `<div class="upgrade">Click to upgrade</div>`;
+                    html += `<div class="sell">Sell: ${Math.floor(tower.totalCost * 0.6)}g (right-click)</div>`;
+
+                    panel.innerHTML = html;
+                    panel.style.display = 'block';
+                    const canvasRect = canvas.parentElement.getBoundingClientRect();
+                    let px = e.clientX - canvasRect.left + 15;
+                    let py = e.clientY - canvasRect.top - 10;
+                    if (px + 170 > canvasRect.width) px = px - 185;
+                    panel.style.left = px + 'px';
+                    panel.style.top = py + 'px';
                 } else {
-                    html += `<div class="upgrade">MAX LEVEL</div>`;
+                    panel.style.display = 'none';
                 }
-                html += `<div class="sell">Sell: ${Math.floor(tower.totalCost * 0.6)}g (right-click)</div>`;
-
-                panel.innerHTML = html;
-                panel.style.display = 'block';
-                // Position panel near cursor
-                const canvasRect = canvas.parentElement.getBoundingClientRect();
-                let px = e.clientX - canvasRect.left + 15;
-                let py = e.clientY - canvasRect.top - 10;
-                if (px + 170 > canvasRect.width) px = px - 185;
-                panel.style.left = px + 'px';
-                panel.style.top = py + 'px';
-            } else {
-                panel.style.display = 'none';
             }
         }
 
@@ -656,26 +925,22 @@
         }
 
         function getWaveComposition(w) {
-            const enemies = [];
+            const result = [];
             const baseCount = 6 + w * 2;
 
-            // Always have normal enemies
-            enemies.push({ type: 'normal', count: baseCount });
+            result.push({ type: 'normal', count: baseCount });
 
-            // Fast enemies from wave 3
-            if (w >= 3) {
-                enemies.push({ type: 'fast', count: Math.floor(w / 2) });
-            }
-            // Armored from wave 5
-            if (w >= 5) {
-                enemies.push({ type: 'armored', count: Math.floor(w / 3) });
-            }
-            // Boss every 5 waves
-            if (w > 0 && w % 5 === 0) {
-                enemies.push({ type: 'boss', count: 1 });
-            }
+            if (w >= 3) result.push({ type: 'fast', count: Math.floor(w / 2) });
+            if (w >= 5) result.push({ type: 'armored', count: Math.floor(w / 3) });
+            if (w > 0 && w % 5 === 0) result.push({ type: 'boss', count: Math.max(1, Math.floor(w / 10)) });
 
-            return enemies;
+            // New enemy types
+            if (w >= 4) result.push({ type: 'swarm', count: Math.floor(w / 2) + 2 });
+            if (w >= 6) result.push({ type: 'healer', count: Math.max(1, Math.floor(w / 5)) });
+            if (w >= 8) result.push({ type: 'stealth', count: Math.max(1, Math.floor(w / 4)) });
+            if (w >= 10) result.push({ type: 'shield', count: Math.max(1, Math.floor(w / 5)) });
+
+            return result;
         }
 
         function startWave() {
@@ -693,7 +958,7 @@
                 }
             }
 
-            // Shuffle the queue a bit (keep bosses near end)
+            // Shuffle (keep bosses near end)
             for (let i = spawnQueue.length - 1; i > 0; i--) {
                 if (spawnQueue[i] === 'boss') continue;
                 const j = Math.floor(Math.random() * i);
@@ -722,17 +987,22 @@
             requestAnimationFrame(gameLoop);
         }
 
+        function canTowerSee(tower, enemy) {
+            if (enemy.stealthed && !tower.detectStealth) return false;
+            return true;
+        }
+
         function update() {
             if (!gameRunning) return;
 
             const TICK = 16;
             gameTime += TICK;
 
-            // Spawn enemies from queue
+            // Spawn enemies
             if (spawnQueue.length > 0) {
                 spawnTimer += TICK;
                 const nextType = spawnQueue[0];
-                const spawnDelay = nextType === 'boss' ? 800 : 450;
+                const spawnDelay = nextType === 'boss' ? 800 : nextType === 'swarm' ? 200 : 450;
                 if (spawnTimer >= spawnDelay) {
                     spawnTimer -= spawnDelay;
                     const type = spawnQueue.shift();
@@ -740,7 +1010,7 @@
                     const baseHealth = 30 + wave * 12;
                     const baseSpeed = 1.0 + wave * 0.03;
                     const health = Math.round(baseHealth * eData.healthMult);
-                    enemies.push({
+                    const enemy = {
                         pathIndex: 0,
                         x: PATH[0].x * TILE + TILE / 2,
                         y: PATH[0].y * TILE + TILE / 2,
@@ -751,8 +1021,17 @@
                         type: type,
                         reward: Math.round((5 + wave) * eData.reward),
                         slowTimer: 0, slowAmount: 1,
-                        burnTimer: 0, burnDamage: 0, lastBurnTick: 0
-                    });
+                        burnTimer: 0, burnDamage: 0, lastBurnTick: 0,
+                        poisonTimer: 0, poisonDamage: 0, lastPoisonTick: 0,
+                        stunTimer: 0,
+                        stealthed: eData.stealthy || false,
+                        heals: eData.heals || false,
+                        lastHealTick: 0,
+                        shield: eData.hasShield ? Math.round(health * 0.5) : 0,
+                        maxShield: eData.hasShield ? Math.round(health * 0.5) : 0,
+                        armorMult: 1.0
+                    };
+                    enemies.push(enemy);
                     enemiesSpawned++;
                 }
             }
@@ -761,24 +1040,43 @@
             enemies = enemies.filter(enemy => {
                 if (enemy.dead) return false;
 
-                // Burn damage over time
+                // Stun check
+                if (enemy.stunTimer > gameTime) return true;
+
+                // Burn DOT
                 if (enemy.burnTimer > gameTime && gameTime - enemy.lastBurnTick >= 500) {
-                    enemy.health -= enemy.burnDamage;
+                    dealDamageToEnemy(enemy, enemy.burnDamage, '#ff4500');
                     enemy.lastBurnTick = gameTime;
                     spawnParticles(enemy.x, enemy.y, '#ff4500', 2);
-                    if (enemy.health <= 0) {
-                        onEnemyKilled(enemy);
-                        return false;
+                    if (enemy.health <= 0) { onEnemyKilled(enemy); return false; }
+                }
+
+                // Poison DOT
+                if (enemy.poisonTimer > gameTime && gameTime - enemy.lastPoisonTick >= 500) {
+                    dealDamageToEnemy(enemy, enemy.poisonDamage, '#00cc44');
+                    enemy.lastPoisonTick = gameTime;
+                    spawnParticles(enemy.x, enemy.y, '#00cc44', 2);
+                    if (enemy.health <= 0) { onEnemyKilled(enemy); return false; }
+                }
+
+                // Healer: heal nearby enemies
+                if (enemy.heals && gameTime - enemy.lastHealTick >= 1000) {
+                    enemy.lastHealTick = gameTime;
+                    for (const other of enemies) {
+                        if (other === enemy || other.dead) continue;
+                        const dx = other.x - enemy.x;
+                        const dy = other.y - enemy.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < 80) {
+                            other.health = Math.min(other.maxHealth, other.health + Math.round(other.maxHealth * 0.03));
+                            spawnParticles(other.x, other.y, '#44ffcc', 2);
+                        }
                     }
                 }
 
-                // Calculate actual speed with slow effect
+                // Movement
                 let speed = enemy.speed;
-                if (enemy.slowTimer > gameTime) {
-                    speed *= enemy.slowAmount;
-                }
+                if (enemy.slowTimer > gameTime) speed *= enemy.slowAmount;
 
-                // Move toward next waypoint
                 const target = PATH[enemy.pathIndex];
                 if (!target) {
                     lives--;
@@ -808,18 +1106,65 @@
             towers.forEach(tower => {
                 if (gameTime - tower.lastFire < tower.rate) return;
 
-                // Find closest enemy in range
-                let target = null;
-                let minDist = tower.range;
                 const tcx = tower.x * TILE + TILE / 2;
                 const tcy = tower.y * TILE + TILE / 2;
 
+                // Boost nearby towers
+                if (tower.boostNearby) {
+                    towers.forEach(other => {
+                        if (other === tower) return;
+                        const dx = (other.x - tower.x) * TILE;
+                        const dy = (other.y - tower.y) * TILE;
+                        if (Math.sqrt(dx*dx + dy*dy) < 120) {
+                            other.boosted = gameTime + 1000;
+                            other.boostAmount = tower.boostNearby;
+                        }
+                    });
+                }
+
+                // Tesla: hits all enemies in range
+                if (tower.hitsAll) {
+                    let hit = false;
+                    for (const enemy of enemies) {
+                        if (enemy.dead || !canTowerSee(tower, enemy)) continue;
+                        const dx = enemy.x - tcx;
+                        const dy = enemy.y - tcy;
+                        if (Math.sqrt(dx*dx + dy*dy) < tower.range) {
+                            hit = true;
+                            let dmg = tower.damage;
+                            if (tower.boosted > gameTime) dmg = Math.round(dmg * (1 + tower.boostAmount));
+                            dealDamageToEnemy(enemy, dmg, tower.color);
+                            spawnDamageNumber(enemy.x, enemy.y, dmg, tower.color);
+                            if (tower.stun) enemy.stunTimer = Math.max(enemy.stunTimer, gameTime + tower.stun);
+                            // Pull effect
+                            if (tower.pull) {
+                                const pdx = tcx - enemy.x;
+                                const pdy = tcy - enemy.y;
+                                const pd = Math.sqrt(pdx*pdx + pdy*pdy);
+                                if (pd > 5) {
+                                    enemy.x += (pdx / pd) * 5;
+                                    enemy.y += (pdy / pd) * 5;
+                                }
+                            }
+                            drawLightningBolt(tcx, tcy, enemy.x, enemy.y);
+                            if (enemy.health <= 0 && !enemy.dead) {
+                                enemy.dead = true;
+                                onEnemyKilled(enemy);
+                            }
+                        }
+                    }
+                    if (hit) tower.lastFire = gameTime;
+                    return;
+                }
+
+                // Find target
+                let target = null;
+                let minDist = tower.range;
                 for (const enemy of enemies) {
-                    if (enemy.dead) continue;
+                    if (enemy.dead || !canTowerSee(tower, enemy)) continue;
                     const dx = enemy.x - tcx;
                     const dy = enemy.y - tcy;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
+                    const dist = Math.sqrt(dx*dx + dy*dy);
                     if (dist < minDist) {
                         minDist = dist;
                         target = enemy;
@@ -831,27 +1176,58 @@
 
                     if (tower.chain) {
                         handleChainLightning(tower, target, tcx, tcy);
+                    } else if (tower.poisonAOE) {
+                        handlePoisonAttack(tower, target, tcx, tcy);
                     } else {
-                        projectiles.push({
-                            x: tcx, y: tcy, target,
-                            damage: tower.damage,
-                            slow: tower.slow || 0,
-                            slowDuration: tower.slowDuration || 0,
-                            burn: tower.burn || 0,
-                            burnDuration: tower.burnDuration || 0,
-                            splash: tower.splash || 0,
-                            color: tower.color,
-                            type: tower.type
-                        });
+                        const shotCount = tower.multishot || 1;
+                        const targets = [target];
+                        if (shotCount > 1) {
+                            // Find additional targets
+                            const sorted = enemies.filter(e => !e.dead && e !== target && canTowerSee(tower, e))
+                                .map(e => ({ e, d: Math.sqrt((e.x-tcx)**2 + (e.y-tcy)**2) }))
+                                .filter(o => o.d < tower.range)
+                                .sort((a,b) => a.d - b.d);
+                            for (let i = 0; i < shotCount - 1 && i < sorted.length; i++) {
+                                targets.push(sorted[i].e);
+                            }
+                        }
+
+                        for (const t of targets) {
+                            let dmg = tower.damage;
+                            if (tower.boosted > gameTime) dmg = Math.round(dmg * (1 + tower.boostAmount));
+                            let isCrit = false;
+                            if (tower.crit && Math.random() < tower.crit) {
+                                dmg = Math.round(dmg * tower.critMult);
+                                isCrit = true;
+                            }
+
+                            projectiles.push({
+                                x: tcx, y: tcy, target: t,
+                                damage: dmg,
+                                slow: tower.slow || 0,
+                                slowDuration: tower.slowDuration || 0,
+                                burn: tower.burn || 0,
+                                burnDuration: tower.burnDuration || 0,
+                                splash: tower.splash || 0,
+                                stun: tower.stun || 0,
+                                color: tower.color,
+                                type: tower.type,
+                                armorPierce: tower.armorPierce || false,
+                                armorShred: tower.armorShred || 0,
+                                burnSpread: tower.burnSpread || false,
+                                slowAOE: tower.slowAOE || 0,
+                                fireAOE: tower.fireAOE || 0,
+                                freezeAOE: tower.freezeAOE || 0,
+                                isCrit
+                            });
+                        }
                     }
                 }
             });
 
             // Update projectiles
             projectiles = projectiles.filter(proj => {
-                if (!enemies.includes(proj.target) || proj.target.dead) {
-                    return false;
-                }
+                if (!enemies.includes(proj.target) || proj.target.dead) return false;
 
                 const dx = proj.target.x - proj.x;
                 const dy = proj.target.y - proj.y;
@@ -862,7 +1238,7 @@
                     return false;
                 }
 
-                const speed = proj.type === 'cannon' ? 6 : 10;
+                const speed = proj.type === 'cannon' ? 6 : proj.type === 'sniper' ? 14 : 10;
                 proj.x += (dx / dist) * speed;
                 proj.y += (dy / dist) * speed;
                 return true;
@@ -873,18 +1249,21 @@
                 p.x += p.vx;
                 p.y += p.vy;
                 p.life -= 0.03;
-                p.vy += 0.05; // gravity
+                p.vy += 0.05;
                 return p.life > 0;
             });
 
-            // Update damage numbers
+            // Damage numbers
             damageNumbers = damageNumbers.filter(d => {
                 d.y -= 0.8;
                 d.life -= 0.02;
                 return d.life > 0;
             });
 
-            // Check wave end
+            // Remove dead enemies
+            enemies = enemies.filter(e => !e.dead);
+
+            // Wave end check
             if (waveInProgress && enemies.length === 0 && spawnQueue.length === 0 && enemiesSpawned >= totalEnemiesThisWave) {
                 waveInProgress = false;
                 const bonus = wave * 15;
@@ -896,53 +1275,203 @@
             }
         }
 
-        function applyProjectileDamage(proj, target) {
-            // Direct damage
-            target.health -= proj.damage;
-            spawnDamageNumber(target.x, target.y, proj.damage, proj.color);
+        function dealDamageToEnemy(enemy, damage, color) {
+            // Armor shred reduces damage taken multiplier
+            let dmg = Math.round(damage * enemy.armorMult);
 
-            // Splash damage
+            // Shield absorbs damage first
+            if (enemy.shield > 0) {
+                if (dmg <= enemy.shield) {
+                    enemy.shield -= dmg;
+                    spawnDamageNumber(enemy.x, enemy.y, dmg, '#ff8844');
+                    return;
+                } else {
+                    dmg -= enemy.shield;
+                    enemy.shield = 0;
+                }
+            }
+
+            enemy.health -= dmg;
+        }
+
+        function applyProjectileDamage(proj, target) {
+            let dmg = proj.damage;
+            if (proj.armorPierce) {
+                // Ignore armor multiplier
+            } else {
+                dmg = Math.round(dmg * target.armorMult);
+            }
+
+            // Armor shred debuff
+            if (proj.armorShred > 0) {
+                target.armorMult = Math.max(0.5, target.armorMult - proj.armorShred);
+            }
+
+            // Shield absorb
+            if (target.shield > 0) {
+                if (dmg <= target.shield) {
+                    target.shield -= dmg;
+                    spawnDamageNumber(target.x, target.y, dmg, '#ff8844');
+                    dmg = 0;
+                } else {
+                    dmg -= target.shield;
+                    target.shield = 0;
+                }
+            }
+
+            if (dmg > 0) {
+                target.health -= dmg;
+                const color = proj.isCrit ? '#ffff00' : proj.color;
+                const text = proj.isCrit ? dmg + '!' : '' + dmg;
+                spawnDamageNumber(target.x, target.y, text, color);
+            }
+
+            // Splash
             if (proj.splash > 0) {
                 spawnParticles(target.x, target.y, '#ff8800', 8);
                 for (const enemy of enemies) {
                     if (enemy === target || enemy.dead) continue;
                     const dx = enemy.x - target.x;
                     const dy = enemy.y - target.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const dist = Math.sqrt(dx*dx + dy*dy);
                     if (dist < proj.splash) {
                         const splashDmg = Math.round(proj.damage * (1 - dist / proj.splash) * 0.6);
                         if (splashDmg > 0) {
-                            enemy.health -= splashDmg;
+                            dealDamageToEnemy(enemy, splashDmg, '#ff8800');
                             spawnDamageNumber(enemy.x, enemy.y, splashDmg, '#ff8800');
-                            if (enemy.health <= 0 && !enemy.dead) {
-                                enemy.dead = true;
-                                onEnemyKilled(enemy);
-                            }
+                            if (proj.stun) enemy.stunTimer = Math.max(enemy.stunTimer, gameTime + proj.stun);
+                            if (enemy.health <= 0 && !enemy.dead) { enemy.dead = true; onEnemyKilled(enemy); }
                         }
                     }
                 }
             }
 
-            // Slow effect
+            // Slow
             if (proj.slow > 0) {
                 target.slowTimer = gameTime + proj.slowDuration;
                 target.slowAmount = proj.slow;
                 spawnParticles(target.x, target.y, '#00bfff', 3);
             }
 
-            // Burn DOT
+            // Slow AOE (ice blizzard)
+            if (proj.slowAOE > 0) {
+                for (const enemy of enemies) {
+                    if (enemy.dead) continue;
+                    const dx = enemy.x - target.x;
+                    const dy = enemy.y - target.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < proj.slowAOE) {
+                        enemy.slowTimer = gameTime + (proj.slowDuration || 1500);
+                        enemy.slowAmount = proj.slow || 0.5;
+                    }
+                }
+            }
+
+            // Freeze AOE
+            if (proj.freezeAOE > 0) {
+                for (const enemy of enemies) {
+                    if (enemy.dead) continue;
+                    const dx = enemy.x - target.x;
+                    const dy = enemy.y - target.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < proj.freezeAOE) {
+                        enemy.stunTimer = Math.max(enemy.stunTimer, gameTime + 1000);
+                        spawnParticles(enemy.x, enemy.y, '#00bfff', 3);
+                    }
+                }
+            }
+
+            // Burn
             if (proj.burn > 0) {
                 target.burnTimer = gameTime + proj.burnDuration;
                 target.burnDamage = proj.burn;
                 target.lastBurnTick = gameTime;
+
+                // Burn spread
+                if (proj.burnSpread) {
+                    for (const enemy of enemies) {
+                        if (enemy === target || enemy.dead) continue;
+                        const dx = enemy.x - target.x;
+                        const dy = enemy.y - target.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < 60) {
+                            enemy.burnTimer = gameTime + proj.burnDuration * 0.5;
+                            enemy.burnDamage = Math.round(proj.burn * 0.5);
+                            enemy.lastBurnTick = gameTime;
+                        }
+                    }
+                }
             }
 
-            // Check kill
+            // Fire AOE
+            if (proj.fireAOE > 0) {
+                spawnParticles(target.x, target.y, '#ff4500', 10);
+                for (const enemy of enemies) {
+                    if (enemy === target || enemy.dead) continue;
+                    const dx = enemy.x - target.x;
+                    const dy = enemy.y - target.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < proj.fireAOE) {
+                        const fireDmg = Math.round(proj.damage * 0.4);
+                        dealDamageToEnemy(enemy, fireDmg, '#ff4500');
+                        spawnDamageNumber(enemy.x, enemy.y, fireDmg, '#ff4500');
+                        enemy.burnTimer = gameTime + proj.burnDuration;
+                        enemy.burnDamage = proj.burn;
+                        enemy.lastBurnTick = gameTime;
+                        if (enemy.health <= 0 && !enemy.dead) { enemy.dead = true; onEnemyKilled(enemy); }
+                    }
+                }
+            }
+
+            // Stun
+            if (proj.stun > 0) {
+                target.stunTimer = Math.max(target.stunTimer, gameTime + proj.stun);
+            }
+
+            // Reveal stealth
+            if (target.stealthed) {
+                target.revealTimer = gameTime + 2000;
+            }
+
+            // Kill check
             if (target.health <= 0 && !target.dead) {
                 target.dead = true;
                 onEnemyKilled(target);
-                enemies = enemies.filter(e => e !== target);
             }
+        }
+
+        function handlePoisonAttack(tower, target, tcx, tcy) {
+            // Poison hits all enemies in AOE around target
+            spawnParticles(target.x, target.y, '#00cc44', 6);
+            let dmg = tower.damage;
+            if (tower.boosted > gameTime) dmg = Math.round(dmg * (1 + tower.boostAmount));
+
+            for (const enemy of enemies) {
+                if (enemy.dead) continue;
+                const dx = enemy.x - target.x;
+                const dy = enemy.y - target.y;
+                if (Math.sqrt(dx*dx + dy*dy) < tower.poisonAOE) {
+                    dealDamageToEnemy(enemy, dmg, '#00cc44');
+                    spawnDamageNumber(enemy.x, enemy.y, dmg, '#00cc44');
+                    enemy.poisonTimer = gameTime + tower.poisonDuration;
+                    enemy.poisonDamage = tower.poisonDmg;
+                    enemy.lastPoisonTick = gameTime;
+                    if (tower.armorShred) {
+                        enemy.armorMult = Math.max(0.5, enemy.armorMult - tower.armorShred);
+                    }
+                    if (tower.slow) {
+                        enemy.slowTimer = gameTime + tower.slowDuration;
+                        enemy.slowAmount = tower.slow;
+                    }
+                    if (enemy.health <= 0 && !enemy.dead) { enemy.dead = true; onEnemyKilled(enemy); }
+                }
+            }
+
+            // Visual: poison cloud effect
+            projectiles.push({
+                x: target.x, y: target.y, target: target,
+                damage: 0, color: '#00cc44', type: 'poison_visual',
+                splash: 0, slow: 0, slowDuration: 0, burn: 0, burnDuration: 0,
+                stun: 0, armorPierce: false, armorShred: 0, burnSpread: false,
+                slowAOE: 0, fireAOE: 0, freezeAOE: 0, isCrit: false,
+                life: 0.5, isVisual: true
+            });
         }
 
         function handleChainLightning(tower, firstTarget, tcx, tcy) {
@@ -951,28 +1480,29 @@
             const hit = [firstTarget];
             let prevX = tcx, prevY = tcy;
 
-            // Draw bolt to first target
             drawLightningBolt(prevX, prevY, firstTarget.x, firstTarget.y);
-            firstTarget.health -= tower.damage;
-            spawnDamageNumber(firstTarget.x, firstTarget.y, tower.damage, '#ffff00');
+            let dmg = tower.damage;
+            if (tower.boosted > gameTime) dmg = Math.round(dmg * (1 + tower.boostAmount));
+            dealDamageToEnemy(firstTarget, dmg, '#ffff00');
+            spawnDamageNumber(firstTarget.x, firstTarget.y, dmg, '#ffff00');
+            if (tower.stun) firstTarget.stunTimer = Math.max(firstTarget.stunTimer, gameTime + tower.stun);
             if (firstTarget.health <= 0 && !firstTarget.dead) {
                 firstTarget.dead = true;
                 onEnemyKilled(firstTarget);
-                enemies = enemies.filter(e => e !== firstTarget);
             }
 
             prevX = firstTarget.x;
             prevY = firstTarget.y;
 
-            // Chain to nearby enemies
             for (let c = 1; c < chainCount; c++) {
                 let nearest = null;
                 let nearDist = chainRange;
                 for (const enemy of enemies) {
-                    if (hit.includes(enemy)) continue;
+                    if (hit.includes(enemy) || enemy.dead) continue;
+                    if (!canTowerSee(tower, enemy)) continue;
                     const dx = enemy.x - prevX;
                     const dy = enemy.y - prevY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const dist = Math.sqrt(dx*dx + dy*dy);
                     if (dist < nearDist) {
                         nearDist = dist;
                         nearest = enemy;
@@ -982,20 +1512,19 @@
 
                 hit.push(nearest);
                 drawLightningBolt(prevX, prevY, nearest.x, nearest.y);
-                const chainDmg = Math.round(tower.damage * 0.7);
-                nearest.health -= chainDmg;
+                const chainDmg = Math.round(dmg * 0.7);
+                dealDamageToEnemy(nearest, chainDmg, '#ffff00');
                 spawnDamageNumber(nearest.x, nearest.y, chainDmg, '#ffff00');
+                if (tower.stun) nearest.stunTimer = Math.max(nearest.stunTimer, gameTime + tower.stun);
                 if (nearest.health <= 0 && !nearest.dead) {
                     nearest.dead = true;
                     onEnemyKilled(nearest);
-                    enemies = enemies.filter(e => e !== nearest);
                 }
                 prevX = nearest.x;
                 prevY = nearest.y;
             }
         }
 
-        // Store lightning bolts for rendering
         let lightningBolts = [];
         function drawLightningBolt(x1, y1, x2, y2) {
             lightningBolts.push({ x1, y1, x2, y2, life: 1.0 });
@@ -1026,7 +1555,7 @@
             damageNumbers.push({
                 x: x + (Math.random() - 0.5) * 10,
                 y: y - 15,
-                text: '-' + damage,
+                text: typeof damage === 'string' ? '-' + damage : '-' + damage,
                 color,
                 life: 1.0
             });
@@ -1040,7 +1569,6 @@
                 for (let x = 0; x < COLS; x++) {
                     const cell = MAP[y][x];
                     if (cell === 0) {
-                        // Grass with subtle variation
                         ctx.fillStyle = ((x + y) % 2 === 0) ? '#3a5f0b' : '#3e6410';
                     } else if (cell === 1) {
                         ctx.fillStyle = '#8b7355';
@@ -1055,14 +1583,14 @@
                 }
             }
 
-            // Draw path direction arrows (subtle)
+            // Path arrows
             ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
             for (let i = 0; i < PATH.length - 1; i += 3) {
                 const p = PATH[i];
                 const n = PATH[Math.min(i + 1, PATH.length - 1)];
                 const cx = p.x * TILE + TILE / 2;
                 const cy = p.y * TILE + TILE / 2;
-                const angle = Math.atan2((n.y - p.y), (n.x - p.x));
+                const angle = Math.atan2(n.y - p.y, n.x - p.x);
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(angle);
@@ -1075,26 +1603,22 @@
                 ctx.restore();
             }
 
-            // Draw hover preview
+            // Hover preview
             if (hoverTile && selectedTower && gameRunning) {
                 const hx = hoverTile.x, hy = hoverTile.y;
                 if (hx >= 0 && hx < COLS && hy >= 0 && hy < ROWS && MAP[hy][hx] === 0 && !towers.some(t => t.x === hx && t.y === hy)) {
                     const data = TOWER_DATA[selectedTower];
-                    // Preview range
                     ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
                     ctx.lineWidth = 1;
                     ctx.setLineDash([4, 4]);
                     ctx.beginPath();
-                    ctx.arc(hx * TILE + TILE / 2, hy * TILE + TILE / 2, data.range, 0, Math.PI * 2);
+                    ctx.arc(hx * TILE + TILE/2, hy * TILE + TILE/2, data.range, 0, Math.PI * 2);
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    ctx.lineWidth = 1;
-
-                    // Preview tower
                     ctx.globalAlpha = 0.5;
                     ctx.fillStyle = data.color;
                     ctx.beginPath();
-                    ctx.arc(hx * TILE + TILE / 2, hy * TILE + TILE / 2, TILE / 3, 0, Math.PI * 2);
+                    ctx.arc(hx * TILE + TILE/2, hy * TILE + TILE/2, TILE / 3, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.globalAlpha = 1.0;
                 }
@@ -1109,14 +1633,23 @@
                 ctx.fillStyle = 'rgba(0,0,0,0.3)';
                 ctx.fillRect(tower.x * TILE + 4, tower.y * TILE + 4, TILE - 8, TILE - 8);
 
+                // Boosted glow
+                if (tower.boosted > gameTime) {
+                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, TILE / 2 + 3, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.lineWidth = 1;
+                }
+
                 // Tower body
-                const radius = TILE / 3 + tower.level * 2;
+                const radius = TILE / 3 + tower.level * 1.5;
                 ctx.fillStyle = tower.color;
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Level indicator
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
@@ -1124,17 +1657,25 @@
                 ctx.stroke();
                 ctx.lineWidth = 1;
 
-                // Level dots
-                if (tower.level > 0) {
-                    for (let i = 0; i < tower.level; i++) {
-                        ctx.fillStyle = '#ffd700';
+                // Upgrade path indicators (power = red dots left, range = blue dots right)
+                if (tower.powerLevel > 0) {
+                    for (let i = 0; i < tower.powerLevel; i++) {
+                        ctx.fillStyle = '#ff6b6b';
                         ctx.beginPath();
-                        ctx.arc(cx - (tower.level - 1) * 4 + i * 8, cy + radius + 6, 2.5, 0, Math.PI * 2);
+                        ctx.arc(cx - 6 - i * 5, cy + radius + 5, 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                if (tower.rangeLevel > 0) {
+                    for (let i = 0; i < tower.rangeLevel; i++) {
+                        ctx.fillStyle = '#00ccff';
+                        ctx.beginPath();
+                        ctx.arc(cx + 6 + i * 5, cy + radius + 5, 2, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
 
-                // Range circle when hovering this tower
+                // Range circle on hover
                 if (hoverTile && hoverTile.x === tower.x && hoverTile.y === tower.y) {
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
                     ctx.setLineDash([4, 4]);
@@ -1143,14 +1684,38 @@
                     ctx.stroke();
                     ctx.setLineDash([]);
                 }
+
+                // Detect stealth indicator
+                if (tower.detectStealth) {
+                    ctx.fillStyle = '#44ffcc';
+                    ctx.font = 'bold 8px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('EYE', cx, cy - radius - 3);
+                    ctx.textAlign = 'left';
+                }
             });
 
             // Draw enemies
             enemies.forEach(enemy => {
-                const now = Date.now();
+                // Stealth: mostly invisible unless revealed
+                if (enemy.stealthed && (!enemy.revealTimer || enemy.revealTimer < gameTime)) {
+                    ctx.globalAlpha = 0.15;
+                } else if (enemy.stealthed) {
+                    ctx.globalAlpha = 0.6;
+                }
 
-                // Slow visual indicator
-                if (enemy.slowTimer > now) {
+                // Stun visual
+                if (enemy.stunTimer > gameTime) {
+                    ctx.strokeStyle = 'rgba(255, 255, 100, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.lineWidth = 1;
+                }
+
+                // Slow visual
+                if (enemy.slowTimer > gameTime) {
                     ctx.strokeStyle = 'rgba(0, 191, 255, 0.4)';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
@@ -1159,12 +1724,22 @@
                     ctx.lineWidth = 1;
                 }
 
-                // Burn visual indicator
-                if (enemy.burnTimer > now) {
+                // Burn visual
+                if (enemy.burnTimer > gameTime) {
                     ctx.strokeStyle = 'rgba(255, 69, 0, 0.5)';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
                     ctx.arc(enemy.x, enemy.y, enemy.radius + 2, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.lineWidth = 1;
+                }
+
+                // Poison visual
+                if (enemy.poisonTimer > gameTime) {
+                    ctx.strokeStyle = 'rgba(0, 204, 68, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(enemy.x, enemy.y, enemy.radius + 3, 0, Math.PI * 2);
                     ctx.stroke();
                     ctx.lineWidth = 1;
                 }
@@ -1174,14 +1749,12 @@
                 ctx.beginPath();
                 ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
                 ctx.fill();
-
-                // Border
                 ctx.strokeStyle = 'rgba(0,0,0,0.5)';
                 ctx.beginPath();
                 ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
                 ctx.stroke();
 
-                // Armored: extra ring
+                // Armored ring
                 if (enemy.type === 'armored') {
                     ctx.strokeStyle = 'rgba(200,200,255,0.6)';
                     ctx.lineWidth = 2;
@@ -1191,7 +1764,7 @@
                     ctx.lineWidth = 1;
                 }
 
-                // Boss: crown indicator
+                // Boss crown
                 if (enemy.type === 'boss') {
                     ctx.fillStyle = '#ffd700';
                     ctx.beginPath();
@@ -1204,48 +1777,75 @@
                     ctx.fill();
                 }
 
+                // Healer cross
+                if (enemy.heals) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(enemy.x - 4, enemy.y - 1, 8, 2);
+                    ctx.fillRect(enemy.x - 1, enemy.y - 4, 2, 8);
+                }
+
+                // Shield bar
+                if (enemy.maxShield > 0) {
+                    const barWidth = enemy.radius * 2 + 4;
+                    const shieldPct = enemy.shield / enemy.maxShield;
+                    const barY = enemy.y - enemy.radius - (enemy.type === 'boss' ? 18 : 10);
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(enemy.x - barWidth/2, barY, barWidth, 3);
+                    ctx.fillStyle = '#ff8844';
+                    ctx.fillRect(enemy.x - barWidth/2, barY, barWidth * shieldPct, 3);
+                }
+
                 // Health bar
                 const barWidth = enemy.radius * 2 + 4;
                 const healthPct = enemy.health / enemy.maxHealth;
                 const barY = enemy.y - enemy.radius - (enemy.type === 'boss' ? 14 : 6);
                 ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                ctx.fillRect(enemy.x - barWidth / 2, barY, barWidth, 4);
-
-                // Health bar color based on percentage
-                let hpColor;
-                if (healthPct > 0.6) hpColor = '#00ff00';
-                else if (healthPct > 0.3) hpColor = '#ffff00';
-                else hpColor = '#ff4444';
-
+                ctx.fillRect(enemy.x - barWidth/2, barY, barWidth, 4);
+                let hpColor = healthPct > 0.6 ? '#00ff00' : healthPct > 0.3 ? '#ffff00' : '#ff4444';
                 ctx.fillStyle = hpColor;
-                ctx.fillRect(enemy.x - barWidth / 2, barY, barWidth * healthPct, 4);
+                ctx.fillRect(enemy.x - barWidth/2, barY, barWidth * healthPct, 4);
+
+                ctx.globalAlpha = 1.0;
             });
 
             // Draw projectiles
             projectiles.forEach(proj => {
+                if (proj.isVisual) {
+                    // Poison cloud visual
+                    ctx.globalAlpha = proj.life || 0.3;
+                    ctx.fillStyle = 'rgba(0, 204, 68, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(proj.x, proj.y, 30, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    proj.life -= 0.05;
+                    return;
+                }
+
                 ctx.fillStyle = proj.color || '#fff';
                 ctx.beginPath();
                 if (proj.type === 'cannon') {
                     ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2);
                 } else if (proj.type === 'fire') {
                     ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
-                    // Fire trail
-                    ctx.fillStyle = 'rgba(255, 100, 0, 0.5)';
-                    ctx.beginPath();
-                    ctx.arc(proj.x - (proj.target.x - proj.x) * 0.1, proj.y - (proj.target.y - proj.y) * 0.1, 3, 0, Math.PI * 2);
+                } else if (proj.type === 'sniper') {
+                    // Sniper trail
+                    ctx.fillStyle = proj.isCrit ? '#ffff00' : '#aa4400';
+                    ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
                 } else {
                     ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
                 }
                 ctx.fill();
             });
 
-            // Draw lightning bolts
+            // Filter out done visual projectiles
+            projectiles = projectiles.filter(p => !p.isVisual || (p.life && p.life > 0));
+
+            // Lightning bolts
             lightningBolts = lightningBolts.filter(bolt => {
                 ctx.strokeStyle = `rgba(255, 255, 100, ${bolt.life})`;
                 ctx.lineWidth = 2 * bolt.life;
                 ctx.beginPath();
-
-                // Jagged line
                 const dx = bolt.x2 - bolt.x1;
                 const dy = bolt.y2 - bolt.y1;
                 const segments = 6;
@@ -1261,12 +1861,11 @@
                 ctx.lineTo(bolt.x2, bolt.y2);
                 ctx.stroke();
                 ctx.lineWidth = 1;
-
                 bolt.life -= 0.08;
                 return bolt.life > 0;
             });
 
-            // Draw particles
+            // Particles
             particles.forEach(p => {
                 ctx.globalAlpha = p.life;
                 ctx.fillStyle = p.color;
@@ -1276,7 +1875,7 @@
             });
             ctx.globalAlpha = 1.0;
 
-            // Draw damage numbers
+            // Damage numbers
             damageNumbers.forEach(d => {
                 ctx.globalAlpha = d.life;
                 ctx.fillStyle = d.color;
@@ -1285,14 +1884,14 @@
             });
             ctx.globalAlpha = 1.0;
 
-            // Draw "START" and "END" labels
+            // Start/End labels
             if (PATH.length > 0) {
                 ctx.font = 'bold 11px monospace';
                 ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
-                ctx.fillText('START', PATH[0].x * TILE + TILE / 2, PATH[0].y * TILE + TILE / 2 + 4);
+                ctx.fillText('START', PATH[0].x * TILE + TILE/2, PATH[0].y * TILE + TILE/2 + 4);
                 const lp = PATH[PATH.length - 1];
-                ctx.fillText('END', lp.x * TILE + TILE / 2, lp.y * TILE + TILE / 2 + 4);
+                ctx.fillText('END', lp.x * TILE + TILE/2, lp.y * TILE + TILE/2 + 4);
                 ctx.textAlign = 'left';
             }
 
@@ -1303,22 +1902,22 @@
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 36px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('PAUSED', canvas.width/2, canvas.height/2);
                 ctx.textAlign = 'left';
             }
 
-            // Game over overlay
+            // Game over
             if (!gameRunning) {
                 ctx.fillStyle = 'rgba(0,0,0,0.7)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = '#ff4444';
                 ctx.font = 'bold 40px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 20);
                 ctx.fillStyle = '#fff';
                 ctx.font = '20px sans-serif';
-                ctx.fillText(`Wave: ${wave}  |  Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
-                ctx.fillText('Click "New Game" to try again', canvas.width / 2, canvas.height / 2 + 50);
+                ctx.fillText(`Wave: ${wave}  |  Score: ${score}`, canvas.width/2, canvas.height/2 + 20);
+                ctx.fillText('Click "New Game" to try again', canvas.width/2, canvas.height/2 + 50);
                 ctx.textAlign = 'left';
             }
         }
@@ -1334,7 +1933,6 @@
             document.getElementById('wave').textContent = wave;
             document.getElementById('score').textContent = score;
 
-            // Update tower button states
             document.querySelectorAll('.tower-btn').forEach(btn => {
                 const data = TOWER_DATA[btn.dataset.tower];
                 btn.disabled = gold < data.cost;
