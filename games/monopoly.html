@@ -1591,8 +1591,48 @@
 
         // ==================== AI ====================
         function aiDecideBuy(player, space, idx) {
-            // AI buys if it can afford and has at least $200 remaining
-            if (player.money >= space.price + 100) {
+            // Prioritize completing color groups
+            const group = space.group;
+            if (group) {
+                const groupIndices = BOARD_SPACES.reduce((acc, s, i) => {
+                    if (s.type === 'property' && s.group === group) acc.push(i);
+                    return acc;
+                }, []);
+                const ownedInGroup = groupIndices.filter(i => BOARD_SPACES[i].owner === player.id).length;
+                const totalInGroup = groupIndices.length;
+
+                // Always buy if it completes a set (as long as affordable)
+                if (ownedInGroup === totalInGroup - 1 && player.money >= space.price + 50) {
+                    buyProperty(player, idx);
+                    return;
+                }
+                // Buy if we already own one in the group (working toward a set)
+                if (ownedInGroup > 0 && player.money >= space.price + 100) {
+                    buyProperty(player, idx);
+                    return;
+                }
+            }
+
+            // Buy railroads aggressively (they scale well)
+            if (space.type === 'railroad') {
+                const rrOwned = player.properties.filter(i => BOARD_SPACES[i].type === 'railroad').length;
+                if (player.money >= space.price + (rrOwned > 0 ? 50 : 100)) {
+                    buyProperty(player, idx);
+                    return;
+                }
+            }
+
+            // Buy utilities if we own the other one
+            if (space.type === 'utility') {
+                const utilOwned = player.properties.filter(i => BOARD_SPACES[i].type === 'utility').length;
+                if (utilOwned > 0 && player.money >= space.price + 50) {
+                    buyProperty(player, idx);
+                    return;
+                }
+            }
+
+            // General buy: afford with comfortable reserve
+            if (player.money >= space.price + 200) {
                 buyProperty(player, idx);
             } else {
                 addLog(`${player.name} passes on ${space.name}.`);
@@ -1611,13 +1651,18 @@
                     p.inJail = false;
                     p.jailTurns = 0;
                     addLog(`${p.name} used a Get Out of Jail Free card!`, true);
-                } else if (p.money >= 200 && p.jailTurns >= 1) {
+                } else if (p.jailTurns >= 2 || p.money >= 200) {
+                    // Pay to leave on 3rd turn or if we have money and want to play
                     p.money -= 50;
                     p.inJail = false;
                     p.jailTurns = 0;
                     addLog(`${p.name} paid $50 to get out of Jail.`);
+                    updateUI();
                 }
             }
+
+            // AI unmortgage properties if flush with cash
+            aiUnmortgage(p);
 
             // AI build houses
             aiBuild(p);
@@ -1632,20 +1677,35 @@
             while (built) {
                 built = false;
                 const buildable = getBuildableProperties(player);
-                if (buildable.length > 0 && player.money >= buildable[0].space.houseCost + 150) {
-                    const bp = buildable[0];
-                    player.money -= bp.space.houseCost;
-                    bp.space.houses++;
-                    const hType = bp.space.houses === 5 ? 'a hotel' : `house #${bp.space.houses}`;
-                    addLog(`${player.name} built ${hType} on ${bp.space.name}.`);
-                    built = true;
+                if (buildable.length > 0) {
+                    // Pick the best property to build on (highest rent increase per cost)
+                    let bestBp = null;
+                    let bestValue = 0;
+                    for (const bp of buildable) {
+                        const currentRent = bp.space.rent[bp.space.houses];
+                        const nextRent = bp.space.rent[bp.space.houses + 1];
+                        const value = (nextRent - currentRent) / bp.space.houseCost;
+                        if (value > bestValue && player.money >= bp.space.houseCost + 150) {
+                            bestValue = value;
+                            bestBp = bp;
+                        }
+                    }
+                    if (bestBp) {
+                        player.money -= bestBp.space.houseCost;
+                        bestBp.space.houses++;
+                        const hType = bestBp.space.houses === 5 ? 'a hotel' : `house #${bestBp.space.houses}`;
+                        addLog(`${player.name} built ${hType} on ${bestBp.space.name}.`);
+                        built = true;
+                    }
                 }
             }
             // AI mortgage if low on cash
             if (player.money < 50) {
                 const mortgageable = getMortgageableProperties(player);
                 if (mortgageable.length > 0) {
-                    const mp = mortgageable[mortgageable.length - 1]; // Mortgage cheapest
+                    // Mortgage least valuable property first
+                    mortgageable.sort((a, b) => a.space.price - b.space.price);
+                    const mp = mortgageable[0];
                     mp.space.mortgaged = true;
                     player.money += Math.floor(mp.space.price / 2);
                     addLog(`${player.name} mortgaged ${mp.space.name}.`);
@@ -1653,6 +1713,18 @@
             }
             updateUI();
             drawBoard();
+        }
+
+        function aiUnmortgage(player) {
+            const mortgaged = getUnmortgageableProperties(player);
+            for (const mp of mortgaged) {
+                const cost = Math.floor(mp.space.price * 0.55);
+                if (player.money >= cost + 200) {
+                    mp.space.mortgaged = false;
+                    player.money -= cost;
+                    addLog(`${player.name} unmortgaged ${mp.space.name}.`);
+                }
+            }
         }
 
         // ==================== TURN MANAGEMENT ====================
@@ -1682,8 +1754,13 @@
                 buildBtn.disabled = true;
                 mortgageBtn.disabled = true;
                 endTurnBtn.disabled = true;
-                // AI plays after delay
-                setTimeout(aiTurn, 800);
+                if (hasRolled) {
+                    // AI finished rolling, end its turn
+                    setTimeout(endTurn, 600);
+                } else {
+                    // AI needs to roll
+                    setTimeout(aiTurn, 800);
+                }
             }
 
             updateUI();

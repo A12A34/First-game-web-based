@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Flood - Game Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        .game-stats {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin: 15px 0;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            min-width: 90px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #a0a0a0;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #00d9ff;
+        }
+
+        .stat-value.best {
+            color: #ffc107;
+        }
+
+        .stat-value.danger {
+            color: #ff6b6b;
+        }
+
+        .stat-value.success {
+            color: #00ff88;
+        }
+
+        .board-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .flood-board {
+            display: grid;
+            gap: 2px;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+            touch-action: none;
+        }
+
+        .flood-cell {
+            border-radius: 3px;
+            transition: background-color 0.15s ease;
+        }
+
+        .flood-cell.flooded {
+            box-shadow: inset 0 0 4px rgba(255, 255, 255, 0.15);
+        }
+
+        .color-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 10px 0;
+        }
+
+        .color-btn {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.15);
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .color-btn:active {
+            transform: scale(0.95);
+        }
+
+        .color-btn.active-color {
+            border-color: #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .color-btn.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .size-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .size-btn {
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .size-btn.active {
+            background: linear-gradient(45deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            border-color: transparent;
+            font-weight: 600;
+        }
+
+        .size-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+            max-width: 400px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            background: linear-gradient(90deg, #00ff88, #00d9ff);
+        }
+
+        .progress-bar-fill.warning {
+            background: linear-gradient(90deg, #ffc107, #ff6b6b);
+        }
+
+        .progress-bar-fill.critical {
+            background: linear-gradient(90deg, #ff6b6b, #ff4444);
+        }
+
+        .win-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
+            pointer-events: none;
+            animation: winPop 1.2s ease-out forwards;
+            z-index: 500;
+        }
+
+        @keyframes winPop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+            40% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            70% { transform: translate(-50%, -50%) scale(0.95); }
+            100% { opacity: 0; transform: translate(-50%, -55%) scale(1); }
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: background 0.3s;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .game-over-content .final-moves {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #00d9ff;
+            margin: 10px 0;
+        }
+
+        .game-over-content .new-best {
+            color: #00ff88;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .game-over-content .result-label {
+            font-size: 1rem;
+            color: #a0a0a0;
+            margin-bottom: 5px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 500px) {
+            .flood-board {
+                gap: 1px;
+                padding: 4px;
+            }
+
+            .color-btn {
+                width: 42px;
+                height: 42px;
+                gap: 8px;
+            }
+
+            .game-stats {
+                gap: 10px;
+            }
+
+            .stat-box {
+                padding: 8px 12px;
+                min-width: 70px;
+            }
+
+            .stat-value {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">&#x26F6;</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">&larr; Back to Games</a>
+
+        <div class="game-container">
+            <h1 class="game-title">&#127912; Color Flood</h1>
+
+            <div class="size-selector">
+                <button class="size-btn" data-size="10">Small 10x10</button>
+                <button class="size-btn active" data-size="14">Medium 14x14</button>
+                <button class="size-btn" data-size="18">Large 18x18</button>
+            </div>
+
+            <div class="game-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Moves</div>
+                    <div class="stat-value" id="moves">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Max</div>
+                    <div class="stat-value" id="maxMoves">25</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Filled</div>
+                    <div class="stat-value" id="filled">0%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Best</div>
+                    <div class="stat-value best" id="bestMoves">-</div>
+                </div>
+            </div>
+
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="progressBar" style="width: 0%;"></div>
+            </div>
+
+            <div class="board-wrapper">
+                <div class="flood-board" id="board"></div>
+            </div>
+
+            <div class="color-buttons" id="colorButtons"></div>
+
+            <div class="btn-row">
+                <button id="newGameBtn" class="btn btn-primary">New Game</button>
+            </div>
+
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <p>
+                    Starting from the top-left corner, pick a color below.<br>
+                    All connected cells of the same color will change.<br>
+                    Goal: fill the entire board with one color<br>
+                    within the move limit. Fewer moves = better score!
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameOverOverlay" class="game-over-overlay hidden">
+        <div class="game-over-content">
+            <h2 id="endTitle">Game Over!</h2>
+            <p class="result-label" id="resultLabel">Moves used</p>
+            <div class="final-moves" id="finalMoves">0</div>
+            <p class="new-best hidden" id="newBestMsg">New Best Score!</p>
+            <div class="btn-row">
+                <button id="playAgainBtn" class="btn btn-primary">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // Game colors
+        var COLORS = ['#ff6b6b', '#00ff88', '#00d9ff', '#ffc107', '#ff69b4', '#9b59b6'];
+        var COLOR_NAMES = ['Red', 'Green', 'Cyan', 'Yellow', 'Pink', 'Purple'];
+
+        // Board size configs
+        var SIZE_CONFIG = {
+            10: { size: 10, maxMoves: 20, cellSize: 32 },
+            14: { size: 14, maxMoves: 25, cellSize: 26 },
+            18: { size: 18, maxMoves: 32, cellSize: 21 }
+        };
+
+        // DOM references
+        var boardEl = document.getElementById('board');
+        var colorBtnsEl = document.getElementById('colorButtons');
+        var movesEl = document.getElementById('moves');
+        var maxMovesEl = document.getElementById('maxMoves');
+        var filledEl = document.getElementById('filled');
+        var bestMovesEl = document.getElementById('bestMoves');
+        var progressBar = document.getElementById('progressBar');
+        var overlay = document.getElementById('gameOverOverlay');
+        var endTitle = document.getElementById('endTitle');
+        var resultLabel = document.getElementById('resultLabel');
+        var finalMovesEl = document.getElementById('finalMoves');
+        var newBestMsg = document.getElementById('newBestMsg');
+        var newGameBtn = document.getElementById('newGameBtn');
+        var playAgainBtn = document.getElementById('playAgainBtn');
+
+        // Game state
+        var grid = [];
+        var boardSize = 14;
+        var maxMoves = 25;
+        var cellSize = 26;
+        var moves = 0;
+        var totalCells = 0;
+        var floodedCount = 0;
+        var gameActive = false;
+        var bestMoves = {};
+
+        // Load best moves for all sizes
+        try {
+            var saved = JSON.parse(localStorage.getItem('colorFloodBestMoves'));
+            if (saved && typeof saved === 'object') {
+                bestMoves = saved;
+            }
+        } catch (e) {
+            bestMoves = {};
+        }
+
+        function saveBestMoves() {
+            localStorage.setItem('colorFloodBestMoves', JSON.stringify(bestMoves));
+        }
+
+        function updateBestDisplay() {
+            var key = boardSize.toString();
+            if (bestMoves[key] !== undefined) {
+                bestMovesEl.textContent = bestMoves[key];
+            } else {
+                bestMovesEl.textContent = '-';
+            }
+        }
+
+        function initBoard() {
+            grid = [];
+            for (var r = 0; r < boardSize; r++) {
+                grid[r] = [];
+                for (var c = 0; c < boardSize; c++) {
+                    grid[r][c] = Math.floor(Math.random() * COLORS.length);
+                }
+            }
+            totalCells = boardSize * boardSize;
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            boardEl.style.gridTemplateColumns = 'repeat(' + boardSize + ', ' + cellSize + 'px)';
+
+            for (var r = 0; r < boardSize; r++) {
+                for (var c = 0; c < boardSize; c++) {
+                    var cell = document.createElement('div');
+                    cell.className = 'flood-cell';
+                    cell.style.width = cellSize + 'px';
+                    cell.style.height = cellSize + 'px';
+                    cell.style.backgroundColor = COLORS[grid[r][c]];
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    boardEl.appendChild(cell);
+                }
+            }
+
+            highlightFlooded();
+        }
+
+        function updateCellColors() {
+            var cells = boardEl.querySelectorAll('.flood-cell');
+            var idx = 0;
+            for (var r = 0; r < boardSize; r++) {
+                for (var c = 0; c < boardSize; c++) {
+                    cells[idx].style.backgroundColor = COLORS[grid[r][c]];
+                    idx++;
+                }
+            }
+            highlightFlooded();
+        }
+
+        function highlightFlooded() {
+            var flooded = getFloodedSet();
+            var cells = boardEl.querySelectorAll('.flood-cell');
+            var idx = 0;
+            for (var r = 0; r < boardSize; r++) {
+                for (var c = 0; c < boardSize; c++) {
+                    if (flooded[r * boardSize + c]) {
+                        cells[idx].classList.add('flooded');
+                    } else {
+                        cells[idx].classList.remove('flooded');
+                    }
+                    idx++;
+                }
+            }
+        }
+
+        function getFloodedSet() {
+            var targetColor = grid[0][0];
+            var visited = {};
+            var queue = [[0, 0]];
+            visited[0] = true;
+
+            while (queue.length > 0) {
+                var pos = queue.shift();
+                var r = pos[0];
+                var c = pos[1];
+                var neighbors = [
+                    [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]
+                ];
+                for (var i = 0; i < neighbors.length; i++) {
+                    var nr = neighbors[i][0];
+                    var nc = neighbors[i][1];
+                    var key = nr * boardSize + nc;
+                    if (nr >= 0 && nr < boardSize && nc >= 0 && nc < boardSize &&
+                        !visited[key] && grid[nr][nc] === targetColor) {
+                        visited[key] = true;
+                        queue.push([nr, nc]);
+                    }
+                }
+            }
+
+            return visited;
+        }
+
+        function flood(newColorIndex) {
+            var oldColor = grid[0][0];
+            if (newColorIndex === oldColor) return false;
+
+            var flooded = getFloodedSet();
+
+            // Change all flooded cells to the new color
+            for (var key in flooded) {
+                var r = Math.floor(key / boardSize);
+                var c = key % boardSize;
+                grid[r][c] = newColorIndex;
+            }
+
+            return true;
+        }
+
+        function countFlooded() {
+            var flooded = getFloodedSet();
+            var count = 0;
+            for (var key in flooded) {
+                count++;
+            }
+            return count;
+        }
+
+        function updateStats() {
+            floodedCount = countFlooded();
+            var pct = Math.round((floodedCount / totalCells) * 100);
+
+            movesEl.textContent = moves;
+            filledEl.textContent = pct + '%';
+
+            // Color the moves counter based on remaining
+            var remaining = maxMoves - moves;
+            if (remaining <= 3 && remaining > 0) {
+                movesEl.classList.add('danger');
+                movesEl.classList.remove('success');
+            } else if (floodedCount === totalCells) {
+                movesEl.classList.add('success');
+                movesEl.classList.remove('danger');
+            } else {
+                movesEl.classList.remove('danger', 'success');
+            }
+
+            // Progress bar
+            progressBar.style.width = pct + '%';
+            if (remaining <= 3 && pct < 100) {
+                progressBar.classList.add('critical');
+                progressBar.classList.remove('warning');
+            } else if (remaining <= Math.ceil(maxMoves * 0.3) && pct < 100) {
+                progressBar.classList.add('warning');
+                progressBar.classList.remove('critical');
+            } else {
+                progressBar.classList.remove('warning', 'critical');
+            }
+
+            // Update active color button highlight
+            updateActiveColorBtn();
+        }
+
+        function updateActiveColorBtn() {
+            var current = grid[0][0];
+            var btns = colorBtnsEl.querySelectorAll('.color-btn');
+            for (var i = 0; i < btns.length; i++) {
+                if (i === current) {
+                    btns[i].classList.add('active-color');
+                    btns[i].classList.add('disabled');
+                } else {
+                    btns[i].classList.remove('active-color');
+                    btns[i].classList.remove('disabled');
+                }
+            }
+        }
+
+        function renderColorButtons() {
+            colorBtnsEl.innerHTML = '';
+            for (var i = 0; i < COLORS.length; i++) {
+                var btn = document.createElement('button');
+                btn.className = 'color-btn';
+                btn.style.backgroundColor = COLORS[i];
+                btn.title = COLOR_NAMES[i];
+                btn.dataset.color = i;
+                btn.addEventListener('click', (function(idx) {
+                    return function() {
+                        onColorPick(idx);
+                    };
+                })(i));
+                colorBtnsEl.appendChild(btn);
+            }
+        }
+
+        function onColorPick(colorIndex) {
+            if (!gameActive) return;
+            if (colorIndex === grid[0][0]) return;
+
+            var changed = flood(colorIndex);
+            if (!changed) return;
+
+            moves++;
+            updateCellColors();
+            updateStats();
+
+            // Check win
+            if (floodedCount === totalCells) {
+                gameActive = false;
+                showWin();
+                return;
+            }
+
+            // Check loss
+            if (moves >= maxMoves) {
+                gameActive = false;
+                showLoss();
+                return;
+            }
+        }
+
+        function showWin() {
+            // Show banner
+            var banner = document.createElement('div');
+            banner.className = 'win-banner';
+            banner.textContent = 'FLOODED!';
+            document.body.appendChild(banner);
+            setTimeout(function() { banner.remove(); }, 1200);
+
+            // Check best score
+            var key = boardSize.toString();
+            var isNewBest = false;
+            if (bestMoves[key] === undefined || moves < bestMoves[key]) {
+                bestMoves[key] = moves;
+                saveBestMoves();
+                isNewBest = true;
+            }
+
+            setTimeout(function() {
+                endTitle.textContent = 'You Win!';
+                endTitle.style.color = '#00ff88';
+                resultLabel.textContent = 'Completed in';
+                finalMovesEl.textContent = moves + ' moves';
+                finalMovesEl.style.color = '#00ff88';
+
+                if (isNewBest) {
+                    newBestMsg.classList.remove('hidden');
+                } else {
+                    newBestMsg.classList.add('hidden');
+                }
+
+                overlay.classList.remove('hidden');
+                updateBestDisplay();
+            }, 600);
+        }
+
+        function showLoss() {
+            var pct = Math.round((floodedCount / totalCells) * 100);
+
+            endTitle.textContent = 'Out of Moves!';
+            endTitle.style.color = '#ff6b6b';
+            resultLabel.textContent = 'Board filled';
+            finalMovesEl.textContent = pct + '%';
+            finalMovesEl.style.color = '#ff6b6b';
+            newBestMsg.classList.add('hidden');
+
+            overlay.classList.remove('hidden');
+        }
+
+        function newGame() {
+            var config = SIZE_CONFIG[boardSize];
+            maxMoves = config.maxMoves;
+            cellSize = config.cellSize;
+
+            maxMovesEl.textContent = maxMoves;
+            moves = 0;
+            gameActive = true;
+
+            overlay.classList.add('hidden');
+            newBestMsg.classList.add('hidden');
+
+            initBoard();
+            renderBoard();
+            renderColorButtons();
+            updateStats();
+            updateBestDisplay();
+        }
+
+        // Keyboard support: number keys 1-6 to pick colors
+        document.addEventListener('keydown', function(e) {
+            var num = parseInt(e.key);
+            if (num >= 1 && num <= 6) {
+                onColorPick(num - 1);
+            }
+            // Also support QWERTY row for color picking
+            var qwertyMap = { 'q': 0, 'w': 1, 'e': 2, 'r': 3, 't': 4, 'y': 5 };
+            if (qwertyMap[e.key.toLowerCase()] !== undefined) {
+                onColorPick(qwertyMap[e.key.toLowerCase()]);
+            }
+        });
+
+        // Size selector
+        document.querySelectorAll('.size-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.size-btn').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+                boardSize = parseInt(btn.dataset.size);
+                newGame();
+            });
+        });
+
+        newGameBtn.addEventListener('click', newGame);
+        playAgainBtn.addEventListener('click', function() {
+            overlay.classList.add('hidden');
+            newGame();
+        });
+
+        document.getElementById('fullscreenBtn').addEventListener('click', function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Start first game
+        newGame();
+    })();
+    </script>
+    <script src="../js/game-utils.js"></script>
+    <script src="../js/accounts.js"></script>
+</body>
+</html>
