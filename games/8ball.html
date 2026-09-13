@@ -247,7 +247,7 @@
                 <span>💥 Shot Power: <span id="shotPower">0</span>%</span>
             </div>
             
-            <div class="game-message" id="message">Click and drag from cue ball to shoot!</div>
+            <div class="game-message" id="message">Break shot: click and drag from the cue ball to shoot!</div>
             
             <div class="spin-control">
                 <span class="spin-label">Spin:</span>
@@ -359,6 +359,9 @@
         let ballsMoving = false;
         let foul = false;
         let firstHit = null;
+        let shotPocketed = [];
+        let isBreakShot = true;
+        let ballInHand = false;
         
         function createBall(x, y, number) {
             return {
@@ -379,6 +382,9 @@
             gameActive = true;
             foul = false;
             firstHit = null;
+            shotPocketed = [];
+            isBreakShot = true;
+            ballInHand = false;
             
             // Cue ball
             cueBall = createBall(200, H / 2, 0);
@@ -399,7 +405,7 @@
             }
             
             updatePlayerDisplay();
-            message.textContent = "Player 1's turn - Click and drag from cue ball!";
+            message.textContent = "Break shot: Player 1, click and drag from the cue ball!";
         }
         
         function updatePlayerDisplay() {
@@ -583,22 +589,23 @@
             
             if (ball === cueBall) {
                 foul = true;
-                message.textContent = '⚠️ Scratch! Cue ball pocketed!';
-                setTimeout(() => {
-                    ball.pocketed = false;
-                    ball.x = 200;
-                    ball.y = H / 2;
-                }, 500);
+                message.textContent = 'Scratch! The incoming player gets ball in hand.';
                 return;
             }
+
+            shotPocketed.push(ball.number);
             
             if (ball.number === 8) {
+                if (isBreakShot) {
+                    endGame(currentPlayer, '8 ball on the break!');
+                    return;
+                }
                 // Check if player can pocket 8 ball
                 const playerType = playerTypes[currentPlayer];
                 const remaining = balls.filter(b => !b.pocketed && b.number !== 0 && b.number !== 8 &&
-                    (playerType === 'solid' ? b.number <= 7 : b.number > 8));
+                    playerType && (playerType === 'solid' ? b.number <= 7 : b.number > 8));
                 
-                if (remaining.length > 0 || foul) {
+                if (!playerType || remaining.length > 0 || foul) {
                     endGame(currentPlayer === 1 ? 2 : 1, 'Pocketed 8 ball early!');
                 } else {
                     endGame(currentPlayer, 'All balls pocketed!');
@@ -606,61 +613,69 @@
                 return;
             }
             
-            // Assign type if not assigned
-            if (!playerTypes[1]) {
-                if (ball.number <= 7) {
-                    playerTypes[currentPlayer] = 'solid';
-                    playerTypes[currentPlayer === 1 ? 2 : 1] = 'stripe';
-                } else {
-                    playerTypes[currentPlayer] = 'stripe';
-                    playerTypes[currentPlayer === 1 ? 2 : 1] = 'solid';
-                }
+            // Groups are assigned by the first legally pocketed object ball.
+            if (!playerTypes[1] && !isBreakShot) {
+                playerTypes[currentPlayer] = ball.number <= 7 ? 'solid' : 'stripe';
+                playerTypes[currentPlayer === 1 ? 2 : 1] = playerTypes[currentPlayer] === 'solid' ? 'stripe' : 'solid';
             }
-            
+
             pocketed[currentPlayer].push(ball.number);
             updatePlayerDisplay();
         }
         
         function endTurn() {
             const playerType = playerTypes[currentPlayer];
-            let pocketedOwn = false;
+            const opponent = currentPlayer === 1 ? 2 : 1;
+            const ownBall = number => playerType === 'solid' ? number <= 7 : number > 8;
+            const pocketedOwn = shotPocketed.some(number => playerType ? ownBall(number) : number !== 8);
+            const wrongFirstHit = firstHit && firstHit.number !== 8 && playerType && !ownBall(firstHit.number);
 
-            if (playerType && pocketed[currentPlayer].length > 0) {
-                pocketedOwn = pocketed[currentPlayer].some(num =>
-                    (playerType === 'solid' && num >= 1 && num <= 7) ||
-                    (playerType === 'stripe' && num >= 9 && num <= 15)
-                );
-            } else if (!playerType && pocketed[currentPlayer].length > 0) {
-                pocketedOwn = true;
-            }
+            // On the break the table remains open; any object-ball contact is legal.
+            if (isBreakShot) isBreakShot = false;
+            if (!firstHit || wrongFirstHit) foul = true;
 
-            let wrongFirstHit = false;
-            if (firstHit && playerType) {
-                if (playerType === 'solid' && firstHit.number > 7 && firstHit.number !== 8) wrongFirstHit = true;
-                if (playerType === 'stripe' && firstHit.number <= 7) wrongFirstHit = true;
-            }
-            if (!firstHit && !foul && playerType) {
-                foul = true;
-            }
-
-            if (foul || wrongFirstHit) {
-                message.textContent = `Foul! Player ${currentPlayer === 1 ? 2 : 1}'s turn`;
-                currentPlayer = currentPlayer === 1 ? 2 : 1;
+            if (foul) {
+                ballInHand = true;
+                currentPlayer = opponent;
+                message.textContent = `Foul. Player ${currentPlayer} has ball in hand.`;
             } else if (!pocketedOwn) {
-                currentPlayer = currentPlayer === 1 ? 2 : 1;
+                currentPlayer = opponent;
                 message.textContent = `Player ${currentPlayer}'s turn`;
             } else {
-                message.textContent = `Player ${currentPlayer} continues!`;
+                message.textContent = `Player ${currentPlayer} continues.`;
+            }
+
+            if (cueBall.pocketed) {
+                cueBall.pocketed = false;
+                cueBall.x = W * 0.25;
+                cueBall.y = H / 2;
             }
 
             foul = false;
             firstHit = null;
+            shotPocketed = [];
             pocketed = { 1: [], 2: [] };
             updatePlayerDisplay();
 
             if (gameMode === 'ai' && currentPlayer === 2 && gameActive) {
                 setTimeout(aiShoot, 1000);
             }
+        }
+
+        function canPlaceCueBall(x, y) {
+            if (x < BALL_RADIUS || x > W - BALL_RADIUS || y < BALL_RADIUS || y > H - BALL_RADIUS) return false;
+            return balls.every(ball => ball === cueBall || ball.pocketed ||
+                Math.hypot(ball.x - x, ball.y - y) >= BALL_RADIUS * 2 + 2);
+        }
+
+        function placeCueBall(x, y) {
+            if (!ballInHand || ballsMoving || !canPlaceCueBall(x, y)) return false;
+            cueBall.x = x;
+            cueBall.y = y;
+            cueBall.pocketed = false;
+            ballInHand = false;
+            message.textContent = `Player ${currentPlayer}: choose your shot.`;
+            return true;
         }
         
         function endGame(winner, reason) {
@@ -673,6 +688,7 @@
         
         function aiShoot() {
             if (!gameActive || ballsMoving) return;
+            ballInHand = false;
 
             const myType = playerTypes[2];
             const myBallsLeft = balls.filter(b => !b.pocketed && b.number !== 0 && b.number !== 8 &&
@@ -967,6 +983,11 @@
             if (gameMode === 'ai' && currentPlayer === 2) return;
 
             const { x, y } = getCanvasCoords(e);
+
+            if (ballInHand) {
+                placeCueBall(x, y);
+                return;
+            }
             
             const dx = x - cueBall.x;
             const dy = y - cueBall.y;
@@ -1071,6 +1092,11 @@
 
             if (ballsMoving || !gameActive) return;
             if (gameMode === 'ai' && currentPlayer === 2) return;
+
+            if (ballInHand) {
+                placeCueBall(x, y);
+                return;
+            }
             
             const dx = x - cueBall.x;
             const dy = y - cueBall.y;
