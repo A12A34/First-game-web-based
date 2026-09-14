@@ -84,6 +84,32 @@
             font-size: 0.8rem;
             color: #a0a0a0;
         }
+
+        .direction-control {
+            width: min(360px, 90vw);
+            text-align: center;
+            margin: 4px auto 0;
+        }
+
+        .direction-control label {
+            display: block;
+            margin-bottom: 6px;
+            color: #a0a0a0;
+            font-size: 0.8rem;
+        }
+
+        .direction-bar {
+            width: 100%;
+            accent-color: #00d9ff;
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        .direction-value {
+            color: #00d9ff;
+            font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
+        }
         
         .pool-table {
             position: relative;
@@ -308,6 +334,11 @@
                 </div>
                 <span class="spin-label" id="spinInfo">Center</span>
             </div>
+
+            <div class="direction-control">
+                <label for="directionBar">Aim direction <span class="direction-value" id="directionValue">0°</span></label>
+                <input class="direction-bar" id="directionBar" type="range" min="0" max="359" value="0" step="1" aria-label="Aim direction">
+            </div>
             
             <div class="power-bar">
                 <div class="power-fill" id="powerFill"></div>
@@ -415,6 +446,7 @@
         let isBreakShot = true;
         let ballInHand = false;
         let placementPreview = null;
+        let aimAngle = 0;
         
         function createBall(x, y, number) {
             return {
@@ -439,6 +471,8 @@
             isBreakShot = true;
             ballInHand = false;
             placementPreview = null;
+            aimAngle = 0;
+            updateDirectionControl();
             
             // Cue ball
             cueBall = createBall(200, H / 2, 0);
@@ -817,8 +851,10 @@
             if (difficulty === 'easy') power *= 0.7 + Math.random() * 0.3;
             else if (difficulty === 'medium') power *= 0.85 + Math.random() * 0.15;
 
-            cueBall.vx = Math.cos(angle) * power;
-            cueBall.vy = Math.sin(angle) * power;
+            aimAngle = angle;
+            updateDirectionControl();
+            cueBall.vx = Math.cos(aimAngle) * power;
+            cueBall.vy = Math.sin(aimAngle) * power;
 
             message.textContent = 'AI is shooting...';
         }
@@ -876,13 +912,13 @@
             
             // Draw trajectory prediction when aiming
             if (isDragging && !ballsMoving) {
-                const dx = dragStart.x - dragEnd.x;
-                const dy = dragStart.y - dragEnd.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+                const dx = Math.cos(aimAngle);
+                const dy = Math.sin(aimAngle);
+                const dist = Math.hypot(dragEnd.x - dragStart.x, dragEnd.y - dragStart.y);
                 
                 if (dist > 5) {
-                    const nx = dx / dist;
-                    const ny = dy / dist;
+                    const nx = dx;
+                    const ny = dy;
                     
                     // Find first ball in trajectory
                     let closestDist = Infinity;
@@ -1011,7 +1047,7 @@
             if (isDragging && !ballsMoving) {
                 ctx.beginPath();
                 ctx.moveTo(cueBall.x, cueBall.y);
-                ctx.lineTo(cueBall.x - (dragEnd.x - dragStart.x), cueBall.y - (dragEnd.y - dragStart.y));
+                ctx.lineTo(cueBall.x + Math.cos(aimAngle) * 500, cueBall.y + Math.sin(aimAngle) * 500);
                 ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
@@ -1019,9 +1055,7 @@
                 ctx.setLineDash([]);
                 
                 // Draw cue stick
-                const dx = dragStart.x - dragEnd.x;
-                const dy = dragStart.y - dragEnd.y;
-                const angle = Math.atan2(dy, dx);
+                const angle = aimAngle;
                 const dist = Math.min(100, Math.sqrt(dx * dx + dy * dy));
                 
                 ctx.save();
@@ -1050,6 +1084,8 @@
         const spinPad = document.getElementById('spinPad');
         const spinDot = document.getElementById('spinDot');
         const spinInfo = document.getElementById('spinInfo');
+        const directionBar = document.getElementById('directionBar');
+        const directionValue = document.getElementById('directionValue');
         
         function updateSpinDot() {
             const padSize = 80;
@@ -1106,6 +1142,11 @@
             spin = { x: 0, y: 0 };
             updateSpinDot();
         });
+
+        directionBar.addEventListener('input', () => {
+            aimAngle = Number(directionBar.value) * Math.PI / 180;
+            updateDirectionControl();
+        });
         
         // Pointer input keeps desktop and touch shots on the same path.
         let shotPointerId = null;
@@ -1115,6 +1156,21 @@
             const power = Math.min(100, distance / 2);
             powerFill.style.width = power + '%';
             document.getElementById('shotPower').textContent = Math.round(power);
+        }
+
+        function updateDirectionControl() {
+            const degrees = (aimAngle * 180 / Math.PI + 360) % 360;
+            directionBar.value = Math.round(degrees);
+            directionValue.textContent = `${Math.round(degrees)}°`;
+        }
+
+        function updateAimFromDrag() {
+            const dx = dragStart.x - dragEnd.x;
+            const dy = dragStart.y - dragEnd.y;
+            if (Math.hypot(dx, dy) > 0) {
+                aimAngle = Math.atan2(dy, dx);
+                updateDirectionControl();
+            }
         }
 
         function updatePlacementPreview(x, y) {
@@ -1134,15 +1190,13 @@
         }
 
         function shootFromDrag() {
-            const dx = dragStart.x - dragEnd.x;
-            const dy = dragStart.y - dragEnd.y;
-            const distance = Math.hypot(dx, dy);
+            const distance = Math.hypot(dragEnd.x - dragStart.x, dragEnd.y - dragStart.y);
             const power = Math.min(20, distance / 10);
 
             if (power <= 0.5 || distance === 0) return;
 
-            cueBall.vx = (dx / distance) * power;
-            cueBall.vy = (dy / distance) * power;
+            cueBall.vx = Math.cos(aimAngle) * power;
+            cueBall.vy = Math.sin(aimAngle) * power;
             cueBall.spinX = spin.x * 0.3;
             cueBall.spinY = spin.y * 0.3;
         }
@@ -1163,6 +1217,7 @@
                 shotPointerId = e.pointerId;
                 dragStart = { x, y };
                 dragEnd = { x, y };
+                updateAimFromDrag();
                 canvas.setPointerCapture(e.pointerId);
                 e.preventDefault();
             }
@@ -1177,6 +1232,7 @@
             }
             if (!isDragging || e.pointerId !== shotPointerId) return;
             dragEnd = getCanvasCoords(e);
+            updateAimFromDrag();
             updateShotPower();
             e.preventDefault();
         });

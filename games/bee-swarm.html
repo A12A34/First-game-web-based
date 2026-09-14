@@ -154,6 +154,14 @@
             overflow: hidden;
             width: 100%;
         }
+
+        .collection-status {
+            min-height: 22px;
+            margin-top: 6px;
+            color: #ffeb3b;
+            font-size: 0.8rem;
+            text-align: center;
+        }
         #fieldCanvas {
             display: block;
             width: 100%;
@@ -378,6 +386,7 @@
                     <div class="canvas-wrapper">
                         <canvas id="fieldCanvas" width="700" height="400"></canvas>
                     </div>
+                    <div class="collection-status" id="collectionStatus" aria-live="polite"></div>
                     <div class="field-tabs" id="fieldTabs"></div>
                 </div>
 
@@ -394,7 +403,7 @@
 
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Click the flower field to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then spend honey on eggs to hatch new bees, upgrades, and unlocking new fields. Earn <strong style="color:#e040fb">Tickets</strong> by hatching rare bees! Spend tickets on powerful special eggs. Keyboard: 1-8 switch fields, C to convert, S to save.</p>
+                <p>Tap a flower to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then spend honey on eggs to hatch new bees, upgrades, and unlocking new fields. Earn <strong style="color:#e040fb">Tickets</strong> by hatching rare bees! Spend tickets on powerful special eggs. Keyboard: 1-8 switch fields, C to convert, S to save.</p>
             </div>
         </div>
     </div>
@@ -568,6 +577,7 @@
         var hiveGrid = document.getElementById('hiveGrid');
         var convertBtn = document.getElementById('convertBtn');
         var convertInfo = document.getElementById('convertInfo');
+        var collectionStatus = document.getElementById('collectionStatus');
         var shopContent = document.getElementById('shopContent');
         var fieldTabs = document.getElementById('fieldTabs');
         var hatchModal = document.getElementById('hatchModal');
@@ -1104,6 +1114,7 @@
             if (getUpgradeLevel('auto1') > 0 && gs.pollen >= bagCap) {
                 convertPollen();
             }
+            return added;
         }
 
         function convertPollen() {
@@ -1201,22 +1212,40 @@
             var rect = canvas.getBoundingClientRect();
             var scaleX = canvas.width / rect.width;
             var scaleY = canvas.height / rect.height;
-            var x, y;
-            if (e.touches && e.touches.length > 0) {
-                x = (e.touches[0].clientX - rect.left) * scaleX;
-                y = (e.touches[0].clientY - rect.top) * scaleY;
-            } else {
-                x = (e.clientX - rect.left) * scaleX;
-                y = (e.clientY - rect.top) * scaleY;
-            }
+            var x = (e.clientX - rect.left) * scaleX;
+            var y = (e.clientY - rect.top) * scaleY;
             var field = FIELDS[gs.currentField];
-            var amount = getClickPollen() * field.pollenBase * getPollenMultiplier();
-            collectPollen(amount);
+            var target = null;
+            var targetDistance = Infinity;
+            flowers.forEach(function(flower) {
+                var distance = Math.hypot(flower.x - x, flower.y - y);
+                if (distance < targetDistance && distance < 42) {
+                    target = flower;
+                    targetDistance = distance;
+                }
+            });
+
+            if (!target) {
+                collectionStatus.textContent = 'Aim for a flower to collect pollen.';
+                return;
+            }
+            if (target.pollen <= 0) {
+                collectionStatus.textContent = 'This flower is empty. Try another one.';
+                return;
+            }
+
+            var amount = getClickPollen() * field.pollenBase * getPollenMultiplier() * target.pollen;
+            var added = collectPollen(amount);
+            target.pollen = 0;
+            target.regenTimer = 0;
             gs.totalClicks++;
 
             var dispX = (x / scaleX) + rect.left;
             var dispY = (y / scaleY) + rect.top;
-            showFloatText(dispX, dispY, '+' + formatNumber(amount), '#FFD700');
+            collectionStatus.textContent = added > 0
+                ? '+' + formatNumber(added) + ' pollen collected'
+                : 'Your pollen bag is full. Convert pollen to keep collecting.';
+            showFloatText(dispX, dispY, '+' + formatNumber(added), '#FFD700');
 
             for (var i = 0; i < 6; i++) {
                 particles.push({
@@ -1228,7 +1257,7 @@
                     size: 2 + Math.random() * 3
                 });
             }
-            playSound(400 + Math.random() * 200, 0.08, 'sine');
+            if (added > 0) playSound(400 + Math.random() * 200, 0.08, 'sine');
         }
 
         function showFloatText(x, y, text, color) {
@@ -1564,10 +1593,8 @@
 
         // ===================== EVENTS =====================
 
-        // Prevent default touch behaviors on canvas
-        canvas.addEventListener('touchstart', handleFieldClick, { passive: false });
-        canvas.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
-        canvas.addEventListener('click', handleFieldClick);
+        // Pointer input prevents duplicate touch and click collection events.
+        canvas.addEventListener('pointerdown', handleFieldClick);
 
         convertBtn.addEventListener('click', function() { convertPollen(); });
 
