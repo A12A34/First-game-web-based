@@ -1056,7 +1056,8 @@
                 
                 // Draw cue stick
                 const angle = aimAngle;
-                const dist = Math.min(100, Math.sqrt(dx * dx + dy * dy));
+                const dragDistance = Math.hypot(dragEnd.x - dragStart.x, dragEnd.y - dragStart.y);
+                const dist = Math.min(100, dragDistance);
                 
                 ctx.save();
                 ctx.translate(cueBall.x, cueBall.y);

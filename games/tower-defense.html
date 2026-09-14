@@ -20,6 +20,8 @@
             border-radius: 10px;
             background: #2d4a1c;
             cursor: crosshair;
+            touch-action: none;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(129, 238, 220, 0.18), inset 0 0 40px rgba(73, 206, 190, 0.08);
         }
         .stats-bar {
             display: flex;
@@ -291,6 +293,16 @@
                         <div class="tower-name">Tesla</div>
                         <div class="tower-cost">250g</div>
                     </button>
+                    <button class="tower-btn" data-tower="mine">
+                        <div class="tower-icon">&#x1F4A3;</div>
+                        <div class="tower-name">Mine</div>
+                        <div class="tower-cost">90g</div>
+                    </button>
+                    <button class="tower-btn" data-tower="airbase">
+                        <div class="tower-icon">&#x2708;&#xFE0F;</div>
+                        <div class="tower-name">Airbase</div>
+                        <div class="tower-cost">300g</div>
+                    </button>
                 </div>
 
                 <div class="canvas-wrapper">
@@ -327,8 +339,10 @@
                     <tr><td>Poison</td><td>125g</td><td>8</td><td>95px</td><td>Medium</td><td>Poison AOE</td></tr>
                     <tr><td>Sniper</td><td>175g</td><td>60</td><td>200px</td><td>Very Slow</td><td>Crit chance</td></tr>
                     <tr><td>Tesla</td><td>250g</td><td>25</td><td>100px</td><td>Medium</td><td>Hits all in range</td></tr>
+                    <tr><td>Mine</td><td>90g</td><td>75</td><td>Path tile</td><td>Cooldown</td><td>Trap and stun</td></tr>
+                    <tr><td>Airbase</td><td>300g</td><td>115</td><td>Global</td><td>Airstrike</td><td>Plane splash attack</td></tr>
                 </table>
-                <p style="font-size:0.78rem;color:#aaa;">Each tower has two upgrade paths: one focused on <span style="color:#ff6b6b;">Power</span> and one on <span style="color:#00ccff;">Range/Utility</span>. Choose wisely - you can mix paths!</p>
+                <p style="font-size:0.78rem;color:#aaa;">Build on grass, or place Mine towers on safe path tiles. Each standard tower has two upgrade paths: <span style="color:#ff6b6b;">Power</span> and <span style="color:#00ccff;">Range/Utility</span>.</p>
 
                 <h4>Enemies</h4>
                 <div class="enemy-legend">
@@ -352,6 +366,36 @@
         const TILE = 40;
         const COLS = Math.floor(canvas.width / TILE);
         const ROWS = Math.floor(canvas.height / TILE);
+        const ISO = { originX: 450, originY: 34, tileWidth: 27, tileHeight: 12, islandHeight: 16 };
+
+        function projectWorld(worldX, worldY, height = 0) {
+            const gridX = worldX / TILE;
+            const gridY = worldY / TILE;
+            return {
+                x: ISO.originX + (gridX - gridY) * ISO.tileWidth,
+                y: ISO.originY + (gridX + gridY) * ISO.tileHeight - height
+            };
+        }
+
+        function projectCell(x, y, height = 0) {
+            return projectWorld(x * TILE + TILE / 2, y * TILE + TILE / 2, height);
+        }
+
+        function screenToWorld(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = (clientX - rect.left) * canvas.width / rect.width;
+            const screenY = (clientY - rect.top) * canvas.height / rect.height;
+            const a = (screenX - ISO.originX) / ISO.tileWidth;
+            const b = (screenY - ISO.originY) / ISO.tileHeight;
+            return {
+                x: Math.floor((a + b) / 2),
+                y: Math.floor((b - a) / 2)
+            };
+        }
+
+        function pointerTile(e) {
+            return screenToWorld(e.clientX, e.clientY);
+        }
 
         // Tower definitions with dual upgrade paths
         const TOWER_DATA = {
@@ -474,6 +518,14 @@
                         { cost: 420, label: 'Reactor', desc: 'Range 155→185, boosts nearby', range: 185, damage: 50, rate: 650, detectStealth: true, boostNearby: 0.2 }
                     ]
                 }
+            },
+            mine: {
+                cost: 90, damage: 75, range: 34, rate: 2600, color: '#f08a4b', trap: true,
+                upgradePaths: { power: [], range: [] }
+            },
+            airbase: {
+                cost: 300, damage: 115, range: 260, rate: 5200, color: '#62d9ff', airstrike: true,
+                upgradePaths: { power: [], range: [] }
             }
         };
 
@@ -567,6 +619,7 @@
         let spawnTimer = 0;
         let mapIndex = -1;
         let upgradeTarget = null;
+        let aircraft = [];
 
         function init() {
             document.getElementById('startWaveBtn').addEventListener('click', startWave);
@@ -593,7 +646,12 @@
             canvas.addEventListener('click', handleClick);
             canvas.addEventListener('contextmenu', handleRightClick);
             canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('pointermove', handleMouseMove);
             canvas.addEventListener('mouseleave', () => {
+                hoverTile = null;
+                document.getElementById('infoPanel').style.display = 'none';
+            });
+            canvas.addEventListener('pointerleave', () => {
                 hoverTile = null;
                 document.getElementById('infoPanel').style.display = 'none';
             });
@@ -614,6 +672,7 @@
             projectiles = [];
             particles = [];
             damageNumbers = [];
+            aircraft = [];
             selectedTower = null;
             selectedPlacedTower = null;
             upgradeTarget = null;
@@ -641,13 +700,7 @@
         function handleClick(e) {
             if (!gameRunning) return;
 
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const mx = (e.clientX - rect.left) * scaleX;
-            const my = (e.clientY - rect.top) * scaleY;
-            const x = Math.floor(mx / TILE);
-            const y = Math.floor(my / TILE);
+            const { x, y } = pointerTile(e);
 
             if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
 
@@ -666,7 +719,9 @@
                 return;
             }
 
-            if (MAP[y][x] !== 0) {
+            const isTrapSpot = selectedTower === 'mine' && MAP[y][x] === 1 &&
+                !((x === PATH[0]?.x && y === PATH[0]?.y) || (x === PATH[PATH.length - 1]?.x && y === PATH[PATH.length - 1]?.y));
+            if (MAP[y][x] !== 0 && !isTrapSpot) {
                 document.getElementById('message').textContent = 'Cannot place tower on the path!';
                 return;
             }
@@ -688,6 +743,7 @@
                 level: 0,
                 totalCost: data.cost,
                 lastFire: 0,
+                armed: data.trap || false,
                 powerLevel: 0,
                 rangeLevel: 0,
                 upgrades: []
@@ -700,6 +756,8 @@
             if (data.poisonAOE) { tower.poisonAOE = data.poisonAOE; tower.poisonDmg = data.poisonDmg; tower.poisonDuration = data.poisonDuration; }
             if (data.crit) { tower.crit = data.crit; tower.critMult = data.critMult; }
             if (data.hitsAll) tower.hitsAll = data.hitsAll;
+            if (data.trap) tower.trap = true;
+            if (data.airstrike) tower.airstrike = true;
 
             towers.push(tower);
             spawnParticles(x * TILE + TILE/2, y * TILE + TILE/2, data.color, 6);
@@ -833,13 +891,7 @@
             if (!gameRunning) return;
             closeUpgradePanel();
 
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const mx = (e.clientX - rect.left) * scaleX;
-            const my = (e.clientY - rect.top) * scaleY;
-            const x = Math.floor(mx / TILE);
-            const y = Math.floor(my / TILE);
+            const { x, y } = pointerTile(e);
 
             const towerIndex = towers.findIndex(t => t.x === x && t.y === y);
             if (towerIndex !== -1) {
@@ -854,13 +906,7 @@
         }
 
         function handleMouseMove(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const mx = (e.clientX - rect.left) * scaleX;
-            const my = (e.clientY - rect.top) * scaleY;
-            const x = Math.floor(mx / TILE);
-            const y = Math.floor(my / TILE);
+            const { x, y } = pointerTile(e);
 
             if (x >= 0 && x < COLS && y >= 0 && y < ROWS) {
                 hoverTile = {x, y};
@@ -916,7 +962,7 @@
         }
 
         function toggleSpeed() {
-            const speeds = [1, 2, 3];
+            const speeds = [1, 2, 3, 5];
             const btn = document.getElementById('speedBtn');
             const idx = speeds.indexOf(gameSpeed);
             gameSpeed = speeds[(idx + 1) % speeds.length];
@@ -990,6 +1036,80 @@
         function canTowerSee(tower, enemy) {
             if (enemy.stealthed && !tower.detectStealth) return false;
             return true;
+        }
+
+        function updateSpecialTowers() {
+            towers.forEach(tower => {
+                const centerX = tower.x * TILE + TILE / 2;
+                const centerY = tower.y * TILE + TILE / 2;
+
+                if (tower.trap) {
+                    if (gameTime - tower.lastFire >= tower.rate) tower.armed = true;
+                    if (!tower.armed) return;
+                    const target = enemies.find(enemy => !enemy.dead && Math.hypot(enemy.x - centerX, enemy.y - centerY) < tower.range);
+                    if (target) {
+                        tower.armed = false;
+                        tower.lastFire = gameTime;
+                        dealDamageToEnemy(target, tower.damage, tower.color);
+                        spawnDamageNumber(target.x, target.y, tower.damage, tower.color);
+                        spawnParticles(target.x, target.y, tower.color, 14);
+                        target.stunTimer = Math.max(target.stunTimer, gameTime + 260);
+                        if (target.health <= 0 && !target.dead) {
+                            target.dead = true;
+                            onEnemyKilled(target);
+                        }
+                    }
+                }
+
+                if (tower.airstrike) {
+                    if (tower.plane) return;
+                    if (gameTime - tower.lastFire < tower.rate) return;
+                    const target = enemies.filter(enemy => !enemy.dead && canTowerSee(tower, enemy))
+                        .sort((a, b) => b.pathIndex - a.pathIndex)[0];
+                    if (!target) return;
+                    tower.lastFire = gameTime;
+                    tower.plane = {
+                        phase: 'inbound',
+                        x: -100,
+                        y: target.y - 170,
+                        targetX: target.x,
+                        targetY: target.y,
+                        dropX: target.x,
+                        dropY: target.y
+                    };
+                    aircraft.push(tower.plane);
+                }
+            });
+
+            aircraft = aircraft.filter(plane => {
+                const tower = towers.find(item => item.plane === plane);
+                if (!tower) return false;
+                if (plane.phase === 'inbound') {
+                    plane.x += Math.min(18, plane.targetX - plane.x);
+                    plane.y += (plane.targetY - 170 - plane.y) * 0.12;
+                    if (Math.abs(plane.x - plane.targetX) < 20) {
+                        plane.phase = 'outbound';
+                        for (const enemy of enemies) {
+                            if (enemy.dead || Math.hypot(enemy.x - plane.dropX, enemy.y - plane.dropY) > 72) continue;
+                            dealDamageToEnemy(enemy, tower.damage, tower.color);
+                            spawnDamageNumber(enemy.x, enemy.y, tower.damage, tower.color);
+                            if (enemy.health <= 0 && !enemy.dead) {
+                                enemy.dead = true;
+                                onEnemyKilled(enemy);
+                            }
+                        }
+                        spawnParticles(plane.dropX, plane.dropY, '#ffd166', 28);
+                    }
+                } else {
+                    plane.x += 18;
+                    plane.y += (plane.targetY - 170 - plane.y) * 0.12;
+                    if (plane.x > canvas.width + 140) {
+                        tower.plane = null;
+                        return false;
+                    }
+                }
+                return true;
+            });
         }
 
         function update() {
@@ -1102,8 +1222,11 @@
                 return true;
             });
 
+            updateSpecialTowers();
+
             // Towers fire
             towers.forEach(tower => {
+                if (tower.trap || tower.airstrike) return;
                 if (gameTime - tower.lastFire < tower.rate) return;
 
                 const tcx = tower.x * TILE + TILE / 2;
@@ -1563,361 +1686,342 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            sky.addColorStop(0, '#09142d');
+            sky.addColorStop(0.55, '#102b46');
+            sky.addColorStop(1, '#07111f');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw map
+            // Quiet depth cues keep the island suspended in space without obscuring play.
+            for (let i = 0; i < 54; i++) {
+                const starX = (i * 173 + 37) % canvas.width;
+                const starY = (i * 83 + 19) % 250;
+                const twinkle = 0.35 + 0.25 * Math.sin(gameTime * 0.002 + i);
+                ctx.fillStyle = `rgba(194, 247, 255, ${twinkle})`;
+                ctx.fillRect(starX, starY, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+            }
+            const haze = ctx.createRadialGradient(450, 260, 30, 450, 260, 440);
+            haze.addColorStop(0, 'rgba(76, 218, 190, 0.12)');
+            haze.addColorStop(1, 'rgba(76, 218, 190, 0)');
+            ctx.fillStyle = haze;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const diamond = (x, y, height = 0) => {
+                const top = projectCell(x, y, height);
+                const right = projectWorld((x + 1) * TILE, y * TILE + TILE / 2, height);
+                const bottom = projectCell(x, y + 1, height);
+                const left = projectWorld(x * TILE, y * TILE + TILE / 2, height);
+                ctx.beginPath();
+                ctx.moveTo(top.x, top.y - ISO.tileHeight / 2);
+                ctx.lineTo(right.x, right.y);
+                ctx.lineTo(bottom.x, bottom.y + ISO.tileHeight / 2);
+                ctx.lineTo(left.x, left.y);
+                ctx.closePath();
+            };
+            const drawRange = (point, range, color) => {
+                ctx.save();
+                ctx.strokeStyle = color;
+                ctx.fillStyle = color.includes('255, 215, 0') ? 'rgba(255, 215, 0, 0.08)' : 'rgba(70, 220, 255, 0.08)';
+                ctx.setLineDash([6, 5]);
+                ctx.beginPath();
+                ctx.ellipse(point.x, point.y, range / TILE * ISO.tileWidth, range / TILE * ISO.tileHeight, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            };
+
+            // Floating island and raised tiles.
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+            ctx.shadowBlur = 28;
+            ctx.shadowOffsetY = 22;
             for (let y = 0; y < ROWS; y++) {
                 for (let x = 0; x < COLS; x++) {
                     const cell = MAP[y][x];
-                    if (cell === 0) {
-                        ctx.fillStyle = ((x + y) % 2 === 0) ? '#3a5f0b' : '#3e6410';
-                    } else if (cell === 1) {
-                        ctx.fillStyle = '#8b7355';
-                    } else if (cell === 2) {
-                        ctx.fillStyle = '#4a9b4a';
-                    } else {
-                        ctx.fillStyle = '#ff6b6b';
-                    }
-                    ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-                    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-                    ctx.strokeRect(x * TILE, y * TILE, TILE, TILE);
+                    diamond(x, y, 0);
+                    ctx.fillStyle = '#102b37';
+                    ctx.fill();
+                    diamond(x, y, ISO.islandHeight);
+                    ctx.fillStyle = cell === 0 ? ((x + y) % 2 ? '#245947' : '#2d674d') : cell === 1 ? '#5d6872' : cell === 2 ? '#277a61' : '#86434e';
+                    ctx.fill();
+                    ctx.shadowColor = 'transparent';
+                    ctx.strokeStyle = cell === 1 ? 'rgba(164, 217, 207, 0.34)' : 'rgba(8, 25, 35, 0.45)';
+                    ctx.stroke();
                 }
             }
+            ctx.restore();
 
-            // Path arrows
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-            for (let i = 0; i < PATH.length - 1; i += 3) {
+            // Glowing path markers and direction arrows.
+            for (let i = 0; i < PATH.length - 1; i += 2) {
                 const p = PATH[i];
                 const n = PATH[Math.min(i + 1, PATH.length - 1)];
-                const cx = p.x * TILE + TILE / 2;
-                const cy = p.y * TILE + TILE / 2;
-                const angle = Math.atan2(n.y - p.y, n.x - p.x);
-                ctx.save();
-                ctx.translate(cx, cy);
-                ctx.rotate(angle);
+                const point = projectCell(p.x, p.y, ISO.islandHeight + 2);
+                const next = projectCell(n.x, n.y, ISO.islandHeight + 2);
+                ctx.strokeStyle = 'rgba(255, 220, 120, 0.34)';
+                ctx.lineWidth = 4;
                 ctx.beginPath();
-                ctx.moveTo(8, 0);
-                ctx.lineTo(-4, -5);
-                ctx.lineTo(-4, 5);
+                ctx.moveTo(point.x, point.y);
+                ctx.lineTo(next.x, next.y);
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(255, 247, 196, 0.55)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 8]);
+                ctx.lineDashOffset = -gameTime * 0.03;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(255, 232, 151, 0.85)';
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (PATH.length > 0) {
+                const coreCell = PATH[PATH.length - 1];
+                const core = projectCell(coreCell.x, coreCell.y, ISO.islandHeight + 8);
+                const pulse = 1 + Math.sin(gameTime * 0.004) * 0.12;
+                ctx.save();
+                ctx.shadowColor = '#61ffe0';
+                ctx.shadowBlur = 24;
+                ctx.fillStyle = 'rgba(97, 255, 224, 0.18)';
+                ctx.beginPath();
+                ctx.ellipse(core.x, core.y - 8, 25 * pulse, 11 * pulse, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#173d4a';
+                ctx.beginPath();
+                ctx.moveTo(core.x - 13, core.y);
+                ctx.lineTo(core.x, core.y - 24);
+                ctx.lineTo(core.x + 13, core.y);
+                ctx.lineTo(core.x, core.y + 7);
                 ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#8cfff0';
+                ctx.stroke();
+                ctx.fillStyle = '#c7fff7';
+                ctx.beginPath();
+                ctx.arc(core.x, core.y - 10, 5 * pulse, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             }
 
-            // Hover preview
-            if (hoverTile && selectedTower && gameRunning) {
-                const hx = hoverTile.x, hy = hoverTile.y;
-                if (hx >= 0 && hx < COLS && hy >= 0 && hy < ROWS && MAP[hy][hx] === 0 && !towers.some(t => t.x === hx && t.y === hy)) {
-                    const data = TOWER_DATA[selectedTower];
-                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
-                    ctx.lineWidth = 1;
-                    ctx.setLineDash([4, 4]);
-                    ctx.beginPath();
-                    ctx.arc(hx * TILE + TILE/2, hy * TILE + TILE/2, data.range, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                    ctx.globalAlpha = 0.5;
-                    ctx.fillStyle = data.color;
-                    ctx.beginPath();
-                    ctx.arc(hx * TILE + TILE/2, hy * TILE + TILE/2, TILE / 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                }
+            const hoverIsTrapSpot = hoverTile && selectedTower === 'mine' && MAP[hoverTile.y]?.[hoverTile.x] === 1 &&
+                !((hoverTile.x === PATH[0]?.x && hoverTile.y === PATH[0]?.y) || (hoverTile.x === PATH[PATH.length - 1]?.x && hoverTile.y === PATH[PATH.length - 1]?.y));
+            const hoverIsGrassSpot = hoverTile && MAP[hoverTile.y]?.[hoverTile.x] === 0;
+            if (hoverTile && selectedTower && gameRunning && (hoverIsGrassSpot || hoverIsTrapSpot) && !towers.some(t => t.x === hoverTile.x && t.y === hoverTile.y)) {
+                const point = projectCell(hoverTile.x, hoverTile.y, ISO.islandHeight + 3);
+                drawRange(point, TOWER_DATA[selectedTower].range, 'rgba(255, 215, 0, 0.7)');
+                ctx.globalAlpha = 0.55;
+                diamond(hoverTile.x, hoverTile.y, ISO.islandHeight + 3);
+                ctx.fillStyle = TOWER_DATA[selectedTower].color;
+                ctx.fill();
+                ctx.globalAlpha = 1;
             }
 
-            // Draw towers
-            towers.forEach(tower => {
-                const cx = tower.x * TILE + TILE / 2;
-                const cy = tower.y * TILE + TILE / 2;
-
-                // Base
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.fillRect(tower.x * TILE + 4, tower.y * TILE + 4, TILE - 8, TILE - 8);
-
-                // Boosted glow
-                if (tower.boosted > gameTime) {
-                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, TILE / 2 + 3, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.lineWidth = 1;
-                }
-
-                // Tower body
-                const radius = TILE / 3 + tower.level * 1.5;
-                ctx.fillStyle = tower.color;
+            // Draw towers with raised bases and type-specific silhouettes.
+            towers.slice().sort((a, b) => a.x + a.y - b.x - b.y).forEach(tower => {
+                const point = projectCell(tower.x, tower.y, ISO.islandHeight + 4);
+                const towerHeight = 14 + tower.level * 3;
+                ctx.save();
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
                 ctx.beginPath();
-                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.ellipse(point.x, point.y + 4, 17, 7, 0, 0, Math.PI * 2);
                 ctx.fill();
-
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1.5;
+                if (tower.boosted > gameTime || (hoverTile && hoverTile.x === tower.x && hoverTile.y === tower.y)) {
+                    drawRange(point, tower.range, tower.boosted > gameTime ? 'rgba(255, 215, 0, 0.8)' : 'rgba(255, 255, 255, 0.55)');
+                }
+                ctx.fillStyle = '#182a38';
                 ctx.beginPath();
-                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.lineWidth = 1;
-
-                // Upgrade path indicators (power = red dots left, range = blue dots right)
-                if (tower.powerLevel > 0) {
-                    for (let i = 0; i < tower.powerLevel; i++) {
-                        ctx.fillStyle = '#ff6b6b';
-                        ctx.beginPath();
-                        ctx.arc(cx - 6 - i * 5, cy + radius + 5, 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-                if (tower.rangeLevel > 0) {
-                    for (let i = 0; i < tower.rangeLevel; i++) {
-                        ctx.fillStyle = '#00ccff';
-                        ctx.beginPath();
-                        ctx.arc(cx + 6 + i * 5, cy + radius + 5, 2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-
-                // Range circle on hover
-                if (hoverTile && hoverTile.x === tower.x && hoverTile.y === tower.y) {
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-                    ctx.setLineDash([4, 4]);
+                ctx.ellipse(point.x, point.y, 17, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (tower.type === 'mine') {
+                    ctx.fillStyle = tower.armed ? '#f08a4b' : '#666b75';
                     ctx.beginPath();
-                    ctx.arc(cx, cy, tower.range, 0, Math.PI * 2);
+                    ctx.arc(point.x, point.y - 6, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.beginPath();
+                    ctx.moveTo(point.x - 8, point.y - 12);
+                    ctx.lineTo(point.x - 13, point.y - 19);
+                    ctx.moveTo(point.x + 8, point.y - 12);
+                    ctx.lineTo(point.x + 13, point.y - 19);
                     ctx.stroke();
-                    ctx.setLineDash([]);
+                } else if (tower.type === 'airbase') {
+                    ctx.fillStyle = tower.color;
+                    ctx.fillRect(point.x - 13, point.y - 8, 26, 8);
+                    ctx.fillStyle = '#d9f7ff';
+                    ctx.beginPath();
+                    ctx.moveTo(point.x, point.y - 29);
+                    ctx.lineTo(point.x + 13, point.y - 12);
+                    ctx.lineTo(point.x, point.y - 17);
+                    ctx.lineTo(point.x - 13, point.y - 12);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = tower.color;
+                    ctx.beginPath();
+                    ctx.moveTo(point.x - 11, point.y - 2);
+                    ctx.lineTo(point.x - 8, point.y - towerHeight);
+                    ctx.lineTo(point.x + 8, point.y - towerHeight);
+                    ctx.lineTo(point.x + 11, point.y - 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+                    ctx.stroke();
+                    ctx.fillStyle = '#d9f7ff';
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y - towerHeight, tower.type === 'cannon' ? 7 : 5, 0, Math.PI * 2);
+                    ctx.fill();
                 }
-
-                // Detect stealth indicator
-                if (tower.detectStealth) {
-                    ctx.fillStyle = '#44ffcc';
-                    ctx.font = 'bold 8px monospace';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('EYE', cx, cy - radius - 3);
-                    ctx.textAlign = 'left';
+                if (tower.type === 'sniper' || tower.type === 'arrow') {
+                    ctx.strokeStyle = '#eef9ff';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(point.x, point.y - towerHeight);
+                    ctx.lineTo(point.x + 12, point.y - towerHeight - 5);
+                    ctx.stroke();
                 }
+                ctx.fillStyle = '#ff6b6b';
+                for (let i = 0; i < tower.powerLevel; i++) ctx.fillRect(point.x - 12 + i * 5, point.y + 7, 3, 3);
+                ctx.fillStyle = '#00ccff';
+                for (let i = 0; i < tower.rangeLevel; i++) ctx.fillRect(point.x + 3 + i * 5, point.y + 7, 3, 3);
+                ctx.restore();
             });
 
-            // Draw enemies
-            enemies.forEach(enemy => {
-                // Stealth: mostly invisible unless revealed
-                if (enemy.stealthed && (!enemy.revealTimer || enemy.revealTimer < gameTime)) {
-                    ctx.globalAlpha = 0.15;
-                } else if (enemy.stealthed) {
-                    ctx.globalAlpha = 0.6;
-                }
-
-                // Stun visual
-                if (enemy.stunTimer > gameTime) {
-                    ctx.strokeStyle = 'rgba(255, 255, 100, 0.6)';
+            // Depth-sort enemies so the nearest path units sit in front.
+            enemies.slice().sort((a, b) => a.x + a.y - b.x - b.y).forEach(enemy => {
+                const point = projectWorld(enemy.x, enemy.y, ISO.islandHeight + enemy.radius * 0.8);
+                const radius = enemy.radius * 0.95;
+                ctx.save();
+                if (enemy.stealthed && (!enemy.revealTimer || enemy.revealTimer < gameTime)) ctx.globalAlpha = 0.18;
+                ctx.fillStyle = 'rgba(0,0,0,0.42)';
+                ctx.beginPath();
+                ctx.ellipse(point.x, point.y + radius * 0.75, radius * 1.1, radius * 0.45, 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (enemy.stunTimer > gameTime || enemy.slowTimer > gameTime || enemy.burnTimer > gameTime || enemy.poisonTimer > gameTime) {
+                    ctx.strokeStyle = enemy.stunTimer > gameTime ? '#ffff64' : enemy.slowTimer > gameTime ? '#00bfff' : enemy.burnTimer > gameTime ? '#ff4500' : '#00cc44';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
+                    ctx.arc(point.x, point.y, radius + 5, 0, Math.PI * 2);
                     ctx.stroke();
-                    ctx.lineWidth = 1;
                 }
-
-                // Slow visual
-                if (enemy.slowTimer > gameTime) {
-                    ctx.strokeStyle = 'rgba(0, 191, 255, 0.4)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius + 4, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.lineWidth = 1;
-                }
-
-                // Burn visual
-                if (enemy.burnTimer > gameTime) {
-                    ctx.strokeStyle = 'rgba(255, 69, 0, 0.5)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius + 2, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.lineWidth = 1;
-                }
-
-                // Poison visual
-                if (enemy.poisonTimer > gameTime) {
-                    ctx.strokeStyle = 'rgba(0, 204, 68, 0.5)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius + 3, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.lineWidth = 1;
-                }
-
-                // Enemy body
                 ctx.fillStyle = enemy.color;
                 ctx.beginPath();
-                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                ctx.arc(point.x, point.y - radius * 0.35, radius, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-                ctx.beginPath();
-                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.55)';
                 ctx.stroke();
-
-                // Armored ring
-                if (enemy.type === 'armored') {
-                    ctx.strokeStyle = 'rgba(200,200,255,0.6)';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(enemy.x, enemy.y, enemy.radius - 3, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.lineWidth = 1;
-                }
-
-                // Boss crown
                 if (enemy.type === 'boss') {
                     ctx.fillStyle = '#ffd700';
                     ctx.beginPath();
-                    ctx.moveTo(enemy.x - 6, enemy.y - enemy.radius - 2);
-                    ctx.lineTo(enemy.x - 4, enemy.y - enemy.radius - 8);
-                    ctx.lineTo(enemy.x, enemy.y - enemy.radius - 4);
-                    ctx.lineTo(enemy.x + 4, enemy.y - enemy.radius - 8);
-                    ctx.lineTo(enemy.x + 6, enemy.y - enemy.radius - 2);
+                    ctx.moveTo(point.x - 8, point.y - radius - 5);
+                    ctx.lineTo(point.x - 4, point.y - radius - 13);
+                    ctx.lineTo(point.x, point.y - radius - 7);
+                    ctx.lineTo(point.x + 4, point.y - radius - 13);
+                    ctx.lineTo(point.x + 8, point.y - radius - 5);
                     ctx.closePath();
                     ctx.fill();
                 }
-
-                // Healer cross
-                if (enemy.heals) {
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(enemy.x - 4, enemy.y - 1, 8, 2);
-                    ctx.fillRect(enemy.x - 1, enemy.y - 4, 2, 8);
-                }
-
-                // Shield bar
+                const barWidth = radius * 2.4;
+                const barY = point.y - radius - 9;
+                ctx.fillStyle = 'rgba(0,0,0,0.65)';
+                ctx.fillRect(point.x - barWidth / 2, barY, barWidth, 4);
+                ctx.fillStyle = enemy.health / enemy.maxHealth > 0.6 ? '#5dff8a' : enemy.health / enemy.maxHealth > 0.3 ? '#ffe45c' : '#ff5d67';
+                ctx.fillRect(point.x - barWidth / 2, barY, barWidth * Math.max(0, enemy.health / enemy.maxHealth), 4);
                 if (enemy.maxShield > 0) {
-                    const barWidth = enemy.radius * 2 + 4;
-                    const shieldPct = enemy.shield / enemy.maxShield;
-                    const barY = enemy.y - enemy.radius - (enemy.type === 'boss' ? 18 : 10);
-                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                    ctx.fillRect(enemy.x - barWidth/2, barY, barWidth, 3);
                     ctx.fillStyle = '#ff8844';
-                    ctx.fillRect(enemy.x - barWidth/2, barY, barWidth * shieldPct, 3);
+                    ctx.fillRect(point.x - barWidth / 2, barY - 5, barWidth * Math.max(0, enemy.shield / enemy.maxShield), 3);
                 }
-
-                // Health bar
-                const barWidth = enemy.radius * 2 + 4;
-                const healthPct = enemy.health / enemy.maxHealth;
-                const barY = enemy.y - enemy.radius - (enemy.type === 'boss' ? 14 : 6);
-                ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                ctx.fillRect(enemy.x - barWidth/2, barY, barWidth, 4);
-                let hpColor = healthPct > 0.6 ? '#00ff00' : healthPct > 0.3 ? '#ffff00' : '#ff4444';
-                ctx.fillStyle = hpColor;
-                ctx.fillRect(enemy.x - barWidth/2, barY, barWidth * healthPct, 4);
-
-                ctx.globalAlpha = 1.0;
+                ctx.restore();
             });
 
-            // Draw projectiles
             projectiles.forEach(proj => {
-                if (proj.isVisual) {
-                    // Poison cloud visual
-                    ctx.globalAlpha = proj.life || 0.3;
-                    ctx.fillStyle = 'rgba(0, 204, 68, 0.3)';
-                    ctx.beginPath();
-                    ctx.arc(proj.x, proj.y, 30, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                    proj.life -= 0.05;
-                    return;
-                }
-
+                const point = projectWorld(proj.x, proj.y, ISO.islandHeight + 18);
                 ctx.fillStyle = proj.color || '#fff';
+                ctx.shadowColor = proj.color || '#fff';
+                ctx.shadowBlur = 10;
                 ctx.beginPath();
-                if (proj.type === 'cannon') {
-                    ctx.arc(proj.x, proj.y, 5, 0, Math.PI * 2);
-                } else if (proj.type === 'fire') {
-                    ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
-                } else if (proj.type === 'sniper') {
-                    // Sniper trail
-                    ctx.fillStyle = proj.isCrit ? '#ffff00' : '#aa4400';
-                    ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
-                } else {
-                    ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
-                }
+                ctx.arc(point.x, point.y, proj.isVisual ? 10 : proj.type === 'cannon' ? 5 : 3, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.shadowBlur = 0;
+                if (proj.isVisual) proj.life -= 0.05;
             });
-
-            // Filter out done visual projectiles
             projectiles = projectiles.filter(p => !p.isVisual || (p.life && p.life > 0));
 
-            // Lightning bolts
+            aircraft.forEach(plane => {
+                const point = projectWorld(plane.x, plane.y, ISO.islandHeight + 70);
+                ctx.save();
+                ctx.translate(point.x, point.y);
+                ctx.rotate(-0.08);
+                ctx.shadowColor = '#62d9ff';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = '#e8fbff';
+                ctx.beginPath();
+                ctx.moveTo(18, 0);
+                ctx.lineTo(-10, -6);
+                ctx.lineTo(-5, 0);
+                ctx.lineTo(-10, 6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#62d9ff';
+                ctx.fillRect(-8, -2, 16, 4);
+                ctx.restore();
+            });
+
             lightningBolts = lightningBolts.filter(bolt => {
+                const start = projectWorld(bolt.x1, bolt.y1, ISO.islandHeight + 22);
+                const end = projectWorld(bolt.x2, bolt.y2, ISO.islandHeight + 22);
                 ctx.strokeStyle = `rgba(255, 255, 100, ${bolt.life})`;
                 ctx.lineWidth = 2 * bolt.life;
                 ctx.beginPath();
-                const dx = bolt.x2 - bolt.x1;
-                const dy = bolt.y2 - bolt.y1;
-                const segments = 6;
-                ctx.moveTo(bolt.x1, bolt.y1);
-                for (let s = 1; s < segments; s++) {
-                    const t = s / segments;
-                    const jitter = (1 - t) * 8;
-                    ctx.lineTo(
-                        bolt.x1 + dx * t + (Math.random() - 0.5) * jitter,
-                        bolt.y1 + dy * t + (Math.random() - 0.5) * jitter
-                    );
-                }
-                ctx.lineTo(bolt.x2, bolt.y2);
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
                 ctx.stroke();
-                ctx.lineWidth = 1;
                 bolt.life -= 0.08;
                 return bolt.life > 0;
             });
 
-            // Particles
             particles.forEach(p => {
+                const point = projectWorld(p.x, p.y, ISO.islandHeight + 12);
                 ctx.globalAlpha = p.life;
                 ctx.fillStyle = p.color;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, 2 * p.life, 0, Math.PI * 2);
+                ctx.arc(point.x, point.y, 2 * p.life, 0, Math.PI * 2);
                 ctx.fill();
             });
-            ctx.globalAlpha = 1.0;
-
-            // Damage numbers
             damageNumbers.forEach(d => {
+                const point = projectWorld(d.x, d.y, ISO.islandHeight + 28);
                 ctx.globalAlpha = d.life;
                 ctx.fillStyle = d.color;
                 ctx.font = 'bold 12px monospace';
-                ctx.fillText(d.text, d.x, d.y);
+                ctx.textAlign = 'center';
+                ctx.fillText(d.text, point.x, point.y);
             });
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = 1;
+            ctx.textAlign = 'left';
 
-            // Start/End labels
             if (PATH.length > 0) {
                 ctx.font = 'bold 11px monospace';
-                ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
-                ctx.fillText('START', PATH[0].x * TILE + TILE/2, PATH[0].y * TILE + TILE/2 + 4);
-                const lp = PATH[PATH.length - 1];
-                ctx.fillText('END', lp.x * TILE + TILE/2, lp.y * TILE + TILE/2 + 4);
+                ctx.fillStyle = '#d6fff0';
+                const start = projectCell(PATH[0].x, PATH[0].y, ISO.islandHeight + 12);
+                const end = projectCell(PATH[PATH.length - 1].x, PATH[PATH.length - 1].y, ISO.islandHeight + 12);
+                ctx.fillText('ENTRY', start.x, start.y - 16);
+                ctx.fillText('CORE', end.x, end.y - 16);
                 ctx.textAlign = 'left';
             }
 
-            // Paused overlay
-            if (paused) {
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            if (paused || !gameRunning) {
+                ctx.fillStyle = 'rgba(3, 10, 24, 0.7)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = paused ? '#fff' : '#ff6672';
                 ctx.font = 'bold 36px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('PAUSED', canvas.width/2, canvas.height/2);
-                ctx.textAlign = 'left';
-            }
-
-            // Game over
-            if (!gameRunning) {
-                ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#ff4444';
-                ctx.font = 'bold 40px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 20);
+                ctx.fillText(paused ? 'PAUSED' : 'GAME OVER', canvas.width / 2, canvas.height / 2 - 20);
                 ctx.fillStyle = '#fff';
                 ctx.font = '20px sans-serif';
-                ctx.fillText(`Wave: ${wave}  |  Score: ${score}`, canvas.width/2, canvas.height/2 + 20);
-                ctx.fillText('Click "New Game" to try again', canvas.width/2, canvas.height/2 + 50);
+                ctx.fillText(`Wave: ${wave}  |  Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+                if (!gameRunning) ctx.fillText('Click "New Game" to try again', canvas.width / 2, canvas.height / 2 + 50);
                 ctx.textAlign = 'left';
             }
         }
