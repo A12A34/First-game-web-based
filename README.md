@@ -1,6 +1,6 @@
 # 🎮 Game Hub - Web-Based Gaming Collection
 
-A collection of **16 classic and modern games** built with pure HTML5, CSS3, and JavaScript. No frameworks, no dependencies - just fun!
+A collection of **76 classic and modern games** built with pure HTML5, CSS3, and JavaScript. No frameworks, no dependencies - just fun!
 
 ## 🕹️ Games Included
 
@@ -22,6 +22,8 @@ A collection of **16 classic and modern games** built with pure HTML5, CSS3, and
 | 📝 **Word Guess** | Wordle-style game | 5-letter words, keyboard input, statistics |
 | 🔢 **Sudoku** | Number puzzle | 4 difficulty levels, notes, hints, save/load |
 | ☠️ **Killer Sudoku** | Cage-sum Sudoku variant | Unique cage puzzles, hints, save/load |
+| 🎭 **Liar's Bar 3D** | Bluff card game | Textured 3D table, 2-6 seats, local or AI play, six-shot cylinder |
+| 🃏 **Liar's Bar 2D** | Bluff card game | Lightweight 2D table, 2-6 seats, local or AI play, 3 rule modes |
 
 ## ✨ Features
 
@@ -71,6 +73,8 @@ Then visit `http://localhost:8080`
 │   ├── pong.html       # Pong
 │   ├── 8ball.html      # 8 Ball Pool
 │   ├── minesweeper.html# Minesweeper
+│   ├── liars-bar.html   # Liar's Bar 3D bluff card game
+│   ├── liars-bar-2d.html# Liar's Bar 2D bluff card game
 │   ├── catch.html      # Catch!
 │   ├── tetris.html     # Tetris
 │   ├── breakout.html   # Breakout

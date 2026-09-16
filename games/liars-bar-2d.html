@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liar's Bar 2D - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        :root { --red:#f26b5e; --gold:#ffc857; --felt:#16443f; --ink:#f5f0df; --muted:#aab9ae; }
+        .liars-2d { width:min(100%,900px); }
+        .setup, .table, .rules { width:100%; padding:18px; border:1px solid rgba(255,200,87,.22); border-radius:14px; background:rgba(5,22,25,.72); }
+        .setup { display:grid; gap:13px; }
+        .setup-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+        .setup-row label { color:var(--muted); font-weight:700; }
+        .choices, .controls, .version-links { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; }
+        .choice, .action { padding:9px 13px; border:1px solid rgba(255,255,255,.18); border-radius:8px; background:rgba(255,255,255,.08); color:var(--ink); cursor:pointer; font:inherit; }
+        .choice.active { background:var(--gold); color:#24322e; border-color:var(--gold); font-weight:800; }
+        .action { min-height:44px; font-weight:800; }
+        .action.primary { background:var(--red); border-color:var(--red); color:#fff; }
+        .action.challenge { background:#8d3d55; border-color:#d76d7c; }
+        .version-bar { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:.88rem; }
+        .version-bar a { color:var(--gold); }
+        .table { background:radial-gradient(circle at 50% 45%, #23645a, var(--felt)); box-shadow:inset 0 0 50px rgba(0,0,0,.3); }
+        .table-head { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+        .target { color:var(--gold); font-size:1.25rem; font-weight:800; }
+        .round { color:var(--muted); }
+        .players { display:grid; grid-template-columns:repeat(auto-fit,minmax(125px,1fr)); gap:10px; margin-bottom:16px; }
+        .seat { padding:11px; min-height:88px; border:1px solid rgba(255,255,255,.14); border-radius:10px; background:rgba(0,0,0,.18); }
+        .seat.active { border-color:var(--gold); box-shadow:0 0 18px rgba(255,200,87,.2); }
+        .seat.out { opacity:.38; filter:grayscale(1); }
+        .seat-name { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .seat-type, .seat-lives { color:var(--muted); font-size:.78rem; margin-top:5px; }
+        .lives { color:var(--red); letter-spacing:2px; }
+        .claim { min-height:112px; display:grid; place-items:center; text-align:center; margin-bottom:15px; padding:14px; border:1px dashed rgba(255,255,255,.3); border-radius:10px; }
+        .claim-main { color:var(--gold); font-size:1.4rem; font-weight:800; }
+        .claim-detail, .status { color:var(--muted); font-size:.92rem; }
+        .status { min-height:24px; text-align:center; }
+        .hand-area { padding:13px; border-radius:10px; background:rgba(0,0,0,.2); }
+        .hand-head { display:flex; justify-content:space-between; color:var(--muted); margin-bottom:11px; }
+        .hand { display:flex; flex-wrap:wrap; justify-content:center; gap:9px; min-height:86px; }
+        .card { position:relative; width:58px; height:80px; padding:5px; border:2px solid #e6dcc0; border-radius:7px; background:linear-gradient(145deg,#fffdf3,#d8ccb0); color:#263a35; cursor:pointer; font:900 1.3rem Georgia,serif; box-shadow:0 4px 0 rgba(0,0,0,.25); transition:.16s ease; }
+        .card::after { content:attr(data-suit); display:block; font-size:1.7rem; margin-top:4px; }
+        .card.red { color:#b43d48; }
+        .card.selected { transform:translateY(-9px); border-color:var(--gold); box-shadow:0 0 0 2px var(--gold),0 7px 0 rgba(0,0,0,.25); }
+        .card.wild { color:#8d3d55; }
+        .hidden-card { background:repeating-linear-gradient(135deg,#613c4d 0 8px,#432e3d 8px 16px); border-color:#d76d7c; color:transparent; }
+        .shots { display:flex; align-items:center; justify-content:center; gap:7px; margin:15px 0 4px; color:var(--muted); }
+        .shot { width:14px; height:14px; border:1px solid #d8b76c; border-radius:50%; background:#202c30; box-shadow:inset 0 0 0 2px #0b1214; }
+        .shot.used { background:var(--red); box-shadow:0 0 9px rgba(242,107,94,.7); }
+        .rules { color:var(--muted); font-size:.88rem; line-height:1.55; }
+        .rules strong { color:var(--ink); }
+        @media(max-width:600px) { .game-container{padding:10px;} .setup,.table,.rules{padding:12px;} .setup-row{align-items:flex-start;flex-direction:column;} .choices{justify-content:flex-start;} .card{width:50px;height:70px;} }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen">⛶</button>
+    <div class="container"><a href="../index.html" class="back-btn">← Back to Games</a>
+        <div class="game-container liars-2d">
+            <h1 class="game-title">🎭 Liar's Bar 2D</h1>
+            <div class="version-bar"><span>Choose your table:</span><a href="liars-bar.html">3D Table</a><strong>2D Table</strong></div>
+            <div class="setup" aria-label="2D game setup">
+                <div class="setup-row"><label>Seats</label><div class="choices" id="seatChoices"></div></div>
+                <div class="setup-row"><label>Players</label><div class="choices"><button class="choice active" data-mode="ai">You + AI</button><button class="choice" data-mode="local">Local players</button></div></div>
+                <div class="setup-row" id="difficultyRow"><label>AI difficulty</label><div class="choices"><button class="choice" data-difficulty="easy">Easy</button><button class="choice active" data-difficulty="medium">Medium</button><button class="choice" data-difficulty="hard">Hard</button></div></div>
+                <div class="setup-row"><label>Mode / modifier</label><div class="choices"><button class="choice active" data-variant="classic">Classic</button><button class="choice" data-variant="quick">Quick Round</button><button class="choice" data-variant="chaos">Chaos</button></div></div>
+                <button class="action primary" id="newGameBtn">Deal the cards</button>
+            </div>
+            <div class="table">
+                <div class="table-head"><span class="target" id="target">Target rank: Aces</span><span class="round" id="round">Round 1 · Classic</span></div>
+                <div class="players" id="players"></div>
+                <div class="claim"><div><div class="claim-main" id="claimMain">No claim yet</div><div class="claim-detail" id="claimDetail">Deal the cards to begin.</div></div></div>
+                <div class="status" id="status">Choose your settings, then deal.</div>
+                <div class="shots"><span>Shots</span><div id="shots"></div><strong id="shotCount">0 / 6</strong></div>
+                <div class="hand-area"><div class="hand-head"><span id="handTitle">Your hand</span><span id="selectionCount">0 selected</span></div><div class="hand" id="hand"></div></div>
+                <div class="controls" id="controls"></div>
+            </div>
+            <div class="rules"><strong>How to play:</strong> Select 1–3 cards and claim they match the target rank. The next player can play or call Liar. The claim is revealed and the liar or challenger loses a life. Challenges advance the six-shot counter and reload after chamber six.</div>
+        </div>
+    </div>
+    <div id="gameOver" class="game-over-overlay hidden"><div class="game-over-content"><h2 id="winnerTitle">Table winner</h2><p id="winnerText"></p><button class="btn btn-primary" id="playAgain">Play Again</button></div></div>
+    <script>
+        const RANKS=['Aces','Kings','Queens','Jacks'], SHORT=['A','K','Q','J'], SUITS=['♠','♥','♦','♣'];
+        const config={seats:4,mode:'ai',difficulty:'medium',variant:'classic'}; let players=[],current=0,target=0,round=1,lastClaim=null,selected=[],started=false,busy=false,shots=0;
+        const $=id=>document.getElementById(id);
+        function shuffle(items){for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]];}return items;}
+        function deck(){const cards=[];RANKS.forEach((rank,ri)=>{for(let copy=0;copy<8;copy++)cards.push({rank:ri,label:SHORT[ri],suit:SUITS[copy%4]});});if(config.variant==='chaos')cards.push({rank:-1,label:'★',wild:true},{rank:-1,label:'★',wild:true});return shuffle(cards);}
+        function active(){return players.filter(player=>player.lives>0);}
+        function next(index){for(let step=1;step<=players.length;step++){const value=(index+step)%players.length;if(players[value].lives>0)return value;}return index;}
+        function setupPlayers(){players=Array.from({length:config.seats},(_,index)=>({name:config.mode==='ai'&&index>0?`AI ${index}`:`Player ${index+1}`,isHuman:config.mode==='local'||index===0,lives:3,hand:[]}));}
+        function deal(){const cards=deck(),size=config.variant==='quick'?3:5;players.forEach(player=>{player.hand=[];player.lives=3;});for(let index=0;index<size;index++)players.forEach(player=>player.hand.push(cards.pop()));}
+        function button(text,cls,handler){const element=document.createElement('button');element.textContent=text;element.className=cls;element.addEventListener('click',handler);return element;}
+        function setupUI(){const choices=$('seatChoices');choices.innerHTML='';for(let count=2;count<=6;count++)choices.appendChild(button(String(count),`choice${config.seats===count?' active':''}`,()=>{config.seats=count;setupUI();}));document.querySelectorAll('[data-mode]').forEach(el=>el.classList.toggle('active',el.dataset.mode===config.mode));document.querySelectorAll('[data-difficulty]').forEach(el=>el.classList.toggle('active',el.dataset.difficulty===config.difficulty));document.querySelectorAll('[data-variant]').forEach(el=>el.classList.toggle('active',el.dataset.variant===config.variant));$('difficultyRow').classList.toggle('hidden',config.mode!=='ai');}
+        function renderPlayers(){$('players').innerHTML=players.map((player,index)=>`<div class="seat${index===current&&player.lives>0?' active':''}${player.lives<=0?' out':''}"><div class="seat-name">${player.name}</div><div class="seat-type">${player.isHuman?'Human':'AI'}</div><div class="seat-lives lives">${'●'.repeat(Math.max(0,player.lives))}${'○'.repeat(3-Math.max(0,player.lives))}</div></div>`).join('');}
+        function renderHand(){const player=players[current];$('handTitle').textContent=player&&player.isHuman?`${player.name}'s hand`:'Hidden hand';$('selectionCount').textContent=player&&player.isHuman?`${selected.length} selected`:'AI thinking';if(!player||!player.isHuman){$('hand').innerHTML=Array.from({length:player?player.hand.length:0},()=>'<div class="card hidden-card">?</div>').join('');return;}$('hand').innerHTML=player.hand.map((card,index)=>`<button class="card${card.suit==='♥'||card.suit==='♦'?' red':''}${card.wild?' wild':''}${selected.includes(index)?' selected':''}" data-suit="${card.wild?'★':card.suit}" data-index="${index}">${card.label}</button>`).join('');document.querySelectorAll('[data-index]').forEach(el=>el.addEventListener('click',()=>toggle(Number(el.dataset.index))));}
+        function renderShots(){$('shotCount').textContent=`${shots} / 6`;$('shots').innerHTML=Array.from({length:6},(_,index)=>`<span class="shot${index<shots?' used':''}"></span>`).join('');}
+        function render(){ $('target').textContent=`Target rank: ${RANKS[target]}`;$('round').textContent=`Round ${round} · ${config.variant[0].toUpperCase()+config.variant.slice(1)}`;if(lastClaim){$('claimMain').textContent=`${lastClaim.name} claims ${lastClaim.count} × ${RANKS[lastClaim.rank]}`;$('claimDetail').textContent=lastClaim.revealed?lastClaim.reveal:'The table is deciding whether to call Liar.';}else{$('claimMain').textContent='No claim yet';$('claimDetail').textContent='The first player sets the pace.';}renderPlayers();renderHand();renderShots();}
+        function status(text){$('status').textContent=text;}
+        function toggle(index){if(busy||!started||!players[current].isHuman)return;if(selected.includes(index))selected=selected.filter(value=>value!==index);else if(selected.length<3)selected.push(index);renderHand();controls();}
+        function controls(){const area=$('controls');area.innerHTML='';if(!started||busy||!players[current].isHuman)return;if(lastClaim)area.appendChild(button('Call Liar','action challenge',challenge));const play=button(lastClaim?'Play a counter-claim':'Play claim', 'action primary',playClaim);play.disabled=!selected.length;area.appendChild(play);}
+        function chooseAI(player){const truthful=player.hand.map((card,index)=>card.rank===target||card.wild?index:-1).filter(index=>index>=0);const honest=config.difficulty==='easy'?Math.random()>.35:config.difficulty==='hard'?Math.random()>.2:Math.random()>.27;const pool=honest&&truthful.length?truthful:player.hand.map((_,index)=>index);return shuffle(pool.slice()).slice(0,Math.min(pool.length,1+Math.floor(Math.random()*Math.min(3,pool.length)))).sort((a,b)=>b-a);}
+        function shouldChallenge(){if(!lastClaim)return false;const bias=config.difficulty==='easy'?.25:config.difficulty==='hard'?-.18:0;return Math.random()<Math.max(.1,.38-lastClaim.count/3*.18-bias);}
+        function playClaim(){if(busy||!started||!players[current].isHuman||!selected.length)return;commit(current,selected.slice().sort((a,b)=>b-a));}
+        function commit(index,indices){const player=players[index],cards=indices.map(value=>player.hand[value]);indices.forEach(value=>player.hand.splice(value,1));if(!player.hand.length)player.hand=deck().slice(0,config.variant==='quick'?3:5);lastClaim={name:player.name,playerIndex:index,rank:target,count:cards.length,cards,revealed:false};selected=[];current=next(index);render();status(`${player.name} made a claim. ${players[current].name}, play or call Liar.`);if(!players[current].isHuman)scheduleAI();}
+        function challenge(){if(busy||!started||!lastClaim||!players[current].isHuman)return;busy=true;shots=(shots+1)%7;if(shots===6){shots=0;status('The six-shot counter reloads.');}const truthful=lastClaim.cards.every(card=>card.rank===lastClaim.rank||card.wild),loser=truthful?current:lastClaim.playerIndex;players[loser].lives--;lastClaim.revealed=true;lastClaim.reveal=truthful?`Truth! ${players[loser].name} loses a life.`:`Bluff! ${players[loser].name} loses a life.`;render();status(lastClaim.reveal);setTimeout(()=>{busy=false;if(active().length<=1){finish();return;}round++;lastClaim=null;current=next(loser);if(config.variant==='chaos')target=(target+1+Math.floor(Math.random()*3))%RANKS.length;render();status(`${players[current].name}'s turn. Make the next claim.`);controls();if(!players[current].isHuman)scheduleAI();},900);}
+        function scheduleAI(){busy=true;status(`${players[current].name} is thinking...`);setTimeout(()=>{busy=false;if(lastClaim&&shouldChallenge())challenge();else commit(current,chooseAI(players[current]));},config.difficulty==='hard'?700:450);}
+        function playAgain(){ $('gameOver').classList.add('hidden');setupPlayers();deal();current=0;target=Math.floor(Math.random()*RANKS.length);round=1;lastClaim=null;selected=[];shots=0;started=true;busy=false;render();status(`${players[current].name}'s turn. Select cards and make a claim.`);controls();}
+        function finish(){started=false;busy=false;const winner=active()[0];$('winnerTitle').textContent=`${winner.name} wins the table!`;$('winnerText').textContent='Everyone else ran out of lives.';$('gameOver').classList.remove('hidden');controls();}
+        document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>{config.mode=el.dataset.mode;setupUI();}));document.querySelectorAll('[data-difficulty]').forEach(el=>el.addEventListener('click',()=>{config.difficulty=el.dataset.difficulty;setupUI();}));document.querySelectorAll('[data-variant]').forEach(el=>el.addEventListener('click',()=>{config.variant=el.dataset.variant;setupUI();}));$('newGameBtn').addEventListener('click',playAgain);$('playAgain').addEventListener('click',playAgain);$('fullscreenBtn').addEventListener('click',()=>document.documentElement.requestFullscreen?.());setupUI();setupPlayers();render();
+    </script>
+</body>
+</html>

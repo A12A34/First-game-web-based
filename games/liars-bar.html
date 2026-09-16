@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liar's Bar - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+    <style>
+        :root {
+            --bar-red: #f26b5e;
+            --bar-gold: #ffc857;
+            --felt: #153d3b;
+            --felt-light: #1c5750;
+            --ink: #f5f0df;
+            --muted: #aab9ae;
+        }
+        .liars-game { width: min(100%, 900px); }
+        .setup-panel, .table-panel, .rules-panel {
+            width: 100%;
+            background: rgba(5, 22, 25, 0.7);
+            border: 1px solid rgba(255, 200, 87, 0.22);
+            border-radius: 14px;
+            padding: 18px;
+        }
+        .setup-panel { display: grid; gap: 14px; }
+        .setup-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+        .setup-row label { color: var(--muted); font-weight: 600; }
+        .choice-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+        .choice-btn, .action-btn {
+            border: 1px solid rgba(255,255,255,.18);
+            background: rgba(255,255,255,.08);
+            color: var(--ink);
+            border-radius: 8px;
+            padding: 9px 13px;
+            cursor: pointer;
+            font: inherit;
+            transition: .18s ease;
+        }
+        .choice-btn:hover, .action-btn:hover { border-color: var(--bar-gold); transform: translateY(-1px); }
+        .choice-btn.active { background: var(--bar-gold); color: #23302b; border-color: var(--bar-gold); font-weight: 700; }
+        .action-btn { min-height: 46px; font-weight: 700; }
+        .action-btn.primary { background: var(--bar-red); border-color: var(--bar-red); color: white; }
+        .action-btn.challenge { background: #8d3d55; border-color: #d76d7c; }
+        .table-panel { background: radial-gradient(circle at 50% 45%, var(--felt-light), var(--felt)); box-shadow: inset 0 0 50px rgba(0,0,0,.28); }
+        .scene-shell { width: 100%; position: relative; overflow: hidden; border: 1px solid rgba(255,200,87,.3); border-radius: 14px; background: #091b20; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+        #table3d { display: block; width: 100%; height: clamp(260px, 42vw, 430px); touch-action: none; }
+        .scene-hud { position: absolute; inset: 12px 14px auto; display: flex; justify-content: space-between; gap: 10px; pointer-events: none; font-size: .82rem; }
+        .scene-badge { padding: 7px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; background: rgba(4,15,18,.72); color: var(--ink); }
+        .shot-count { color: var(--bar-gold); font-weight: 800; }
+        .shot-rack { display: flex; gap: 5px; align-items: center; }
+        .shot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #d8b76c; background: #202c30; box-shadow: inset 0 0 0 2px #0b1214; }
+        .shot.live { background: var(--bar-red); box-shadow: 0 0 9px rgba(242,107,94,.75); }
+        .three-note { margin: 8px 0 0; color: var(--muted); font-size: .75rem; text-align: center; }
+        .table-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
+        .target-rank { color: var(--bar-gold); font-size: 1.25rem; font-weight: 800; }
+        .round-label { color: var(--muted); }
+        .players-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 10px; margin-bottom: 18px; }
+        .player-seat { min-height: 90px; padding: 11px; border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.18); border-radius: 10px; position: relative; }
+        .player-seat.active { border-color: var(--bar-gold); box-shadow: 0 0 18px rgba(255,200,87,.2); }
+        .player-seat.out { opacity: .4; filter: grayscale(1); }
+        .seat-name { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .seat-type, .seat-lives { color: var(--muted); font-size: .78rem; margin-top: 5px; }
+        .lives { color: var(--bar-red); letter-spacing: 2px; }
+        .claim-box { min-height: 112px; border: 1px dashed rgba(255,255,255,.25); border-radius: 10px; padding: 14px; display: grid; place-items: center; text-align: center; margin-bottom: 15px; }
+        .claim-main { font-size: 1.45rem; color: var(--bar-gold); font-weight: 800; }
+        .claim-detail, .status { color: var(--muted); font-size: .92rem; }
+        .status { min-height: 24px; text-align: center; margin-bottom: 12px; }
+        .hand-area { background: rgba(0,0,0,.2); border-radius: 10px; padding: 13px; }
+        .hand-title { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); margin-bottom: 10px; }
+        .hand { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; min-height: 72px; }
+        .card {
+            width: 54px; height: 72px; border-radius: 7px; border: 2px solid #e6dcc0; background: #fbf5e5;
+            color: #263a35; font-weight: 900; font-size: 1.1rem; cursor: pointer; display: grid; place-items: center; user-select: none;
+            box-shadow: 0 4px 0 rgba(0,0,0,.22); transition: transform .16s ease, border-color .16s ease;
+        }
+        .card:hover { transform: translateY(-4px); }
+        .card.selected { transform: translateY(-9px); border-color: var(--bar-gold); box-shadow: 0 0 0 2px var(--bar-gold), 0 7px 0 rgba(0,0,0,.22); }
+        .card.wild { color: #8d3d55; }
+        .card.hidden-card { background: repeating-linear-gradient(135deg, #613c4d 0 7px, #432e3d 7px 14px); color: transparent; border-color: #d76d7c; cursor: default; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+        .rules-panel { color: var(--muted); font-size: .88rem; line-height: 1.55; }
+        .rules-panel strong { color: var(--ink); }
+        .reveal { color: var(--bar-gold); font-weight: 700; }
+        @media (max-width: 600px) {
+            .game-container { padding: 10px; }
+            .setup-panel, .table-panel, .rules-panel { padding: 12px; }
+            .setup-row { align-items: flex-start; flex-direction: column; }
+            .choice-row { justify-content: flex-start; }
+            .card { width: 48px; height: 64px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        <div class="game-container liars-game">
+            <h1 class="game-title">🎭 Liar's Bar</h1>
+            <div class="setup-panel" aria-label="Game setup">
+                <div class="setup-row"><label>Seats</label><div class="choice-row" id="seatChoices"></div></div>
+                <div class="setup-row"><label>Players</label><div class="choice-row" id="modeChoices">
+                    <button class="choice-btn active" data-mode="ai">You + AI</button>
+                    <button class="choice-btn" data-mode="local">Local players</button>
+                </div></div>
+                <div class="setup-row" id="difficultyRow"><label>AI difficulty</label><div class="choice-row" id="difficultyChoices">
+                    <button class="choice-btn" data-difficulty="easy">Easy</button>
+                    <button class="choice-btn active" data-difficulty="medium">Medium</button>
+                    <button class="choice-btn" data-difficulty="hard">Hard</button>
+                </div></div>
+                <div class="setup-row"><label>Mode / modifier</label><div class="choice-row" id="variantChoices">
+                    <button class="choice-btn active" data-variant="classic">Classic</button>
+                    <button class="choice-btn" data-variant="quick">Quick Round</button>
+                    <button class="choice-btn" data-variant="chaos">Chaos</button>
+                </div></div>
+                <button class="action-btn primary" id="newGameBtn">Deal the cards</button>
+            </div>
+
+            <div class="scene-shell" aria-label="Three-dimensional poker table">
+                <canvas id="table3d"></canvas>
+                <div class="scene-hud"><span class="scene-badge">3D TABLE · STANDARD DECK</span><span class="scene-badge">Shots <span class="shot-count" id="shotCount">0 / 6</span><span class="shot-rack" id="shotRack"></span></span></div>
+            </div>
+            <p class="three-note">Challenge a claim to advance the six-shot cylinder. The cylinder reloads after chamber six.</p>
+
+            <div class="table-panel">
+                <div class="table-head"><span class="target-rank" id="targetRank">Target rank: Aces</span><span class="round-label" id="roundLabel">Round 1</span></div>
+                <div class="players-grid" id="playersGrid"></div>
+                <div class="claim-box"><div><div class="claim-main" id="claimMain">No claim yet</div><div class="claim-detail" id="claimDetail">Deal the cards to begin.</div></div></div>
+                <div class="status" id="status" role="status">Choose your table settings, then deal.</div>
+                <div class="hand-area"><div class="hand-title"><span id="handTitle">Your hand</span><span id="selectionCount">0 selected</span></div><div class="hand" id="hand"></div></div>
+                <div class="controls" id="controls"></div>
+            </div>
+
+            <div class="rules-panel"><strong>How to play:</strong> On your turn, select 1–3 cards and claim they match the target rank. Cards can be truthful or bluffs. When the next player sees a claim, they may call <strong>Liar</strong> or play their own cards. A challenge reveals the last play; the liar or the challenger loses a life. Last player standing wins. In Chaos mode, wild cards count as the target rank and the target changes after each challenge.</div>
+        </div>
+    </div>
+
+    <div id="gameOverOverlay" class="game-over-overlay hidden"><div class="game-over-content"><h2 id="winnerTitle">Table winner</h2><p id="winnerText"></p><button class="btn btn-primary" id="playAgainBtn">Play Again</button></div></div>
+
+    <script>
+        const RANKS = ['Aces', 'Kings', 'Queens', 'Jacks'];
+        const SHORT_RANKS = ['A', 'K', 'Q', 'J'];
+        const CONFIG = { seats: 4, mode: 'ai', difficulty: 'medium', variant: 'classic' };
+        let players = [], current = 0, round = 1, target = 0, lastClaim = null, selected = [], gameStarted = false, busy = false;
+        const $ = id => document.getElementById(id);
+        const seatChoices = $('seatChoices');
+        let shotsUsed = 0;
+        let scene3d, camera3d, renderer3d, tableGroup, cardGroup, cylinderGroup, animationFrame;
+
+        function cardTexture(card, back = false) {
+            const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 360;
+            const context = canvas.getContext('2d');
+            const cardGradient = context.createLinearGradient(0, 0, 256, 360);
+            cardGradient.addColorStop(0, back ? '#832f46' : '#fffdf3'); cardGradient.addColorStop(.52, back ? '#4f263b' : '#f3ead2'); cardGradient.addColorStop(1, back ? '#271c2e' : '#d8ccb0');
+            context.fillStyle = cardGradient; context.fillRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = back ? '#dcb568' : '#273a35'; context.lineWidth = 8; context.strokeRect(7, 7, 242, 346);
+            context.strokeStyle = back ? 'rgba(255,221,145,.82)' : 'rgba(255,255,255,.9)'; context.lineWidth = 3; context.strokeRect(18, 18, 220, 324);
+            if (back) {
+                context.strokeStyle = 'rgba(255,220,150,.68)'; context.lineWidth = 4; context.strokeRect(31, 31, 194, 298);
+                context.strokeStyle = 'rgba(255,220,150,.28)'; context.lineWidth = 2;
+                for (let x = 39; x < 220; x += 18) { context.beginPath(); context.moveTo(x, 39); context.lineTo(x - 18, 321); context.stroke(); context.beginPath(); context.moveTo(x, 321); context.lineTo(x + 18, 39); context.stroke(); }
+                context.fillStyle = '#e7bd72'; context.font = 'bold 26px Georgia'; context.textAlign = 'center'; context.fillText('LIAR', 128, 188); context.font = 'bold 11px Georgia'; context.fillText('BAR', 128, 207);
+            }
+            else {
+                const isRed = card.suit === '♥' || card.suit === '♦';
+                const ink = isRed ? '#b43d48' : '#182f35'; context.fillStyle = ink; context.font = 'bold 48px Georgia';
+                context.fillText(card.rankLabel || card.label, 22, 57); context.font = 'bold 38px Georgia'; context.fillText(card.suit || card.label, 27, 96);
+                context.save(); context.translate(128, 225); context.font = 'bold 112px Georgia'; context.textAlign = 'center'; context.fillText(card.suit || card.label, 0, 38); context.restore();
+                context.save(); context.translate(256, 360); context.rotate(Math.PI); context.font = 'bold 48px Georgia'; context.textAlign = 'left'; context.fillText(card.rankLabel || card.label, 22, 57); context.font = 'bold 38px Georgia'; context.fillText(card.suit || card.label, 27, 96); context.restore();
+            }
+            const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = 4; return texture;
+        }
+        function proceduralTexture(base, fleck, density = 900) {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
+            const context = canvas.getContext('2d'); context.fillStyle = base; context.fillRect(0, 0, 512, 512);
+            for (let index = 0; index < density; index++) { context.globalAlpha = .06 + Math.random() * .12; context.fillStyle = fleck; const size = Math.random() * 2.2 + .4; context.fillRect(Math.random() * 512, Math.random() * 512, size, size); }
+            context.globalAlpha = 1; const texture = new THREE.CanvasTexture(canvas); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(3, 3); texture.colorSpace = THREE.SRGBColorSpace; return texture;
+        }
+        function cardMesh(card, back = false) {
+            const material = new THREE.MeshStandardMaterial({ map: cardTexture(card, back), roughness: .55, metalness: .02 });
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(1.08, .06, 1.52), material);
+            mesh.rotation.x = -Math.PI / 2; return mesh;
+        }
+        function create3DScene() {
+            const canvas = $('table3d');
+            if (!window.THREE) { canvas.style.background = 'radial-gradient(circle, #1c5750, #0a2024)'; return; }
+            scene3d = new THREE.Scene(); scene3d.fog = new THREE.Fog('#091b20', 9, 18);
+            camera3d = new THREE.PerspectiveCamera(42, 2, .1, 100); camera3d.position.set(0, 8.7, 8.8); camera3d.lookAt(0, 0, 0);
+            renderer3d = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); renderer3d.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer3d.shadowMap.enabled = true;
+            scene3d.add(new THREE.HemisphereLight('#ffe7b0', '#10242b', 2.1)); const key = new THREE.DirectionalLight('#fff0c4', 3.3); key.position.set(-4, 8, 5); key.castShadow = true; scene3d.add(key);
+            const redLight = new THREE.PointLight('#f26b5e', 18, 10); redLight.position.set(4, 3, -2); scene3d.add(redLight);
+            const goldLight = new THREE.PointLight('#ffc857', 12, 8); goldLight.position.set(-4, 2, 2); scene3d.add(goldLight);
+            tableGroup = new THREE.Group(); scene3d.add(tableGroup);
+            const felt = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 5.4, .34, 64), new THREE.MeshStandardMaterial({ map: proceduralTexture('#174b45', '#8cc7a7', 1400), roughness: .96 })); felt.scale.z = .72; felt.receiveShadow = true; tableGroup.add(felt);
+            const rimMaterial = new THREE.MeshStandardMaterial({ map: proceduralTexture('#3a1d19', '#c07843', 900), roughness: .62, metalness: .12 });
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(3.75, .7, 16, 64), rimMaterial); rim.scale.z = .72; rim.rotation.x = Math.PI / 2; rim.position.y = .18; rim.castShadow = true; tableGroup.add(rim);
+            const brass = new THREE.Mesh(new THREE.TorusGeometry(4.42, .045, 8, 64), new THREE.MeshStandardMaterial({ color: '#d3a64d', metalness: .9, roughness: .22 })); brass.scale.z = .72; brass.rotation.x = Math.PI / 2; brass.position.y = .42; tableGroup.add(brass);
+            cardGroup = new THREE.Group(); tableGroup.add(cardGroup); cylinderGroup = new THREE.Group(); cylinderGroup.position.set(0, .45, .1); tableGroup.add(cylinderGroup);
+            window.addEventListener('resize', resize3D); resize3D(); animate3D(); update3DScene();
+        }
+        function resize3D() { if (!renderer3d) return; const canvas = $('table3d'); const width = canvas.clientWidth || 900; const height = canvas.clientHeight || 400; renderer3d.setSize(width, height, false); camera3d.aspect = width / height; camera3d.updateProjectionMatrix(); }
+        function update3DScene() {
+            if (!renderer3d) return;
+            cardGroup.clear();
+            const active = players[current]; const visibleCards = active && active.isHuman ? active.hand.slice(0, 7) : [];
+            visibleCards.forEach((card, index) => { const mesh = cardMesh({ label: card.label, rankLabel: card.label, suit: card.suit }, false); mesh.position.set((index - (visibleCards.length - 1) / 2) * 1.18, .28, 2.15); mesh.rotation.z = (index - 2) * .045; cardGroup.add(mesh); });
+            if (lastClaim && lastClaim.cards) lastClaim.cards.forEach((card, index) => { const mesh = cardMesh({ label: card.wild ? '★' : SHORT_RANKS[card.rank], rankLabel: card.wild ? '★' : SHORT_RANKS[card.rank], suit: card.suit }, !lastClaim.revealed); mesh.position.set((index - (lastClaim.cards.length - 1) / 2) * 1.15, .31, -.25); mesh.rotation.z = (index - 1) * .08; cardGroup.add(mesh); });
+            cylinderGroup.clear(); const chamberBase = new THREE.Mesh(new THREE.CylinderGeometry(.7, .7, .42, 32), new THREE.MeshStandardMaterial({ color: '#252b2d', metalness: .85, roughness: .22 })); chamberBase.rotation.x = Math.PI / 2; cylinderGroup.add(chamberBase);
+            for (let index = 0; index < 6; index++) { const angle = index * Math.PI / 3; const chamber = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, .46, 16), new THREE.MeshStandardMaterial({ color: index < shotsUsed ? '#f26b5e' : '#0b1113', metalness: .6 })); chamber.rotation.x = Math.PI / 2; chamber.position.set(Math.cos(angle) * .42, 0, Math.sin(angle) * .42); cylinderGroup.add(chamber); }
+            cylinderGroup.rotation.y = shotsUsed * Math.PI / 3;
+        }
+        function advanceShot() { shotsUsed = (shotsUsed + 1) % 7; if (shotsUsed === 6) { shotsUsed = 0; setStatus('The six-shot cylinder reloads.'); } $('shotCount').textContent = `${shotsUsed} / 6`; $('shotRack').innerHTML = Array.from({ length: 6 }, (_, index) => `<span class="shot${index < shotsUsed ? ' live' : ''}"></span>`).join(''); update3DScene(); }
+        function animate3D() { animationFrame = requestAnimationFrame(animate3D); if (tableGroup) { tableGroup.rotation.y += .0008; } if (renderer3d) renderer3d.render(scene3d, camera3d); }
+
+        function makeButton(text, className, onClick) {
+            const button = document.createElement('button');
+            button.className = className;
+            button.textContent = text;
+            button.addEventListener('click', onClick);
+            return button;
+        }
+        function activePlayers() { return players.filter(player => player.lives > 0); }
+        function nextActive(index) {
+            for (let step = 1; step <= players.length; step++) {
+                const next = (index + step) % players.length;
+                if (players[next].lives > 0) return next;
+            }
+            return index;
+        }
+        function shuffle(cards) {
+            for (let i = cards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [cards[i], cards[j]] = [cards[j], cards[i]]; }
+            return cards;
+        }
+        function buildDeck() {
+            const deck = [];
+            const suits = ['♠', '♥', '♦', '♣'];
+            RANKS.forEach((rank, rankIndex) => { for (let copy = 0; copy < 8; copy++) deck.push({ rank: rankIndex, label: SHORT_RANKS[rankIndex], suit: suits[copy % suits.length] }); });
+            if (CONFIG.variant === 'chaos') deck.push({ rank: -1, label: '★', wild: true }, { rank: -1, label: '★', wild: true });
+            return shuffle(deck);
+        }
+        function dealHands() {
+            const deck = buildDeck();
+            const handSize = CONFIG.variant === 'quick' ? 3 : 5;
+            players.forEach(player => { player.hand = []; player.lives = 3; });
+            for (let cardIndex = 0; cardIndex < handSize; cardIndex++) players.forEach(player => player.hand.push(deck.pop()));
+        }
+        function setupPlayers() {
+            players = Array.from({ length: CONFIG.seats }, (_, index) => ({
+                id: index, name: CONFIG.mode === 'ai' && index > 0 ? `AI ${index}` : `Player ${index + 1}`,
+                isHuman: CONFIG.mode === 'local' || index === 0, lives: 3, hand: []
+            }));
+        }
+        function renderSetup() {
+            seatChoices.innerHTML = '';
+            for (let count = 2; count <= 6; count++) {
+                const button = makeButton(String(count), `choice-btn${CONFIG.seats === count ? ' active' : ''}`, () => { CONFIG.seats = count; renderSetup(); });
+                seatChoices.appendChild(button);
+            }
+            document.querySelectorAll('[data-mode]').forEach(button => button.classList.toggle('active', button.dataset.mode === CONFIG.mode));
+            document.querySelectorAll('[data-difficulty]').forEach(button => button.classList.toggle('active', button.dataset.difficulty === CONFIG.difficulty));
+            document.querySelectorAll('[data-variant]').forEach(button => button.classList.toggle('active', button.dataset.variant === CONFIG.variant));
+            $('difficultyRow').classList.toggle('hidden', CONFIG.mode !== 'ai');
+        }
+        function renderPlayers() {
+            $('playersGrid').innerHTML = players.map((player, index) => {
+                const activeClass = index === current && player.lives > 0 ? ' active' : '';
+                const outClass = player.lives <= 0 ? ' out' : '';
+                const hearts = '●'.repeat(Math.max(0, player.lives)) + '○'.repeat(3 - Math.max(0, player.lives));
+                return `<div class="player-seat${activeClass}${outClass}"><div class="seat-name">${player.name}</div><div class="seat-type">${player.isHuman ? 'Human' : 'AI'}</div><div class="seat-lives lives" aria-label="${player.lives} lives">${hearts}</div></div>`;
+            }).join('');
+        }
+        function renderHand() {
+            const player = players[current];
+            const hand = $('hand');
+            $('handTitle').textContent = player && player.isHuman ? `${player.name}'s hand` : 'Hidden hand';
+            $('selectionCount').textContent = player && player.isHuman ? `${selected.length} selected` : 'AI thinking';
+            if (!player || !player.isHuman) {
+                hand.innerHTML = Array.from({ length: player ? player.hand.length : 0 }, () => '<div class="card hidden-card">?</div>').join('');
+                return;
+            }
+            hand.innerHTML = player.hand.map((card, index) => `<button class="card${card.wild ? ' wild' : ''}${selected.includes(index) ? ' selected' : ''}" data-card-index="${index}" aria-pressed="${selected.includes(index)}">${card.label}</button>`).join('');
+            hand.querySelectorAll('[data-card-index]').forEach(button => button.addEventListener('click', () => toggleCard(Number(button.dataset.cardIndex))));
+        }
+        function renderTable() {
+            $('targetRank').textContent = `Target rank: ${RANKS[target]}`;
+            $('roundLabel').textContent = `Round ${round} · ${CONFIG.variant[0].toUpperCase() + CONFIG.variant.slice(1)}`;
+            if (lastClaim) {
+                $('claimMain').textContent = `${lastClaim.playerName} claims ${lastClaim.count} × ${RANKS[lastClaim.rank]}`;
+                $('claimDetail').textContent = lastClaim.revealed ? lastClaim.revealText : 'The table is deciding whether to call Liar.';
+            } else {
+                $('claimMain').textContent = 'No claim yet';
+                $('claimDetail').textContent = 'The first player sets the pace.';
+            }
+            renderPlayers(); renderHand(); update3DScene();
+        }
+        function setStatus(text) { $('status').textContent = text; }
+        function toggleCard(index) {
+            if (busy || !gameStarted || !players[current].isHuman || lastClaim && false) return;
+            if (selected.includes(index)) selected = selected.filter(value => value !== index);
+            else if (selected.length < 3) selected.push(index);
+            renderHand(); renderControls();
+        }
+        function renderControls() {
+            const controls = $('controls'); controls.innerHTML = '';
+            if (!gameStarted || busy) return;
+            const player = players[current];
+            if (!player.isHuman) return;
+            if (lastClaim) controls.appendChild(makeButton('Call Liar', 'action-btn challenge', challenge));
+            controls.appendChild(makeButton(lastClaim ? 'Play a counter-claim' : 'Play claim', 'action-btn primary', playClaim));
+            if (!selected.length) controls.lastChild.disabled = true;
+        }
+        function chooseCardsForAI(player) {
+            const truthful = player.hand.map((card, index) => card.rank === target || card.wild ? index : -1).filter(index => index >= 0);
+            let tellTruth;
+            if (CONFIG.difficulty === 'easy') tellTruth = Math.random() > .35;
+            else if (CONFIG.difficulty === 'hard') tellTruth = Math.random() > .2;
+            else tellTruth = Math.random() > .27;
+            let candidates = tellTruth && truthful.length ? truthful : player.hand.map((_, index) => index);
+            const count = Math.min(candidates.length, 1 + Math.floor(Math.random() * Math.min(3, candidates.length)));
+            return shuffle(candidates.slice()).slice(0, count).sort((a, b) => b - a);
+        }
+        function shouldChallenge(player) {
+            if (!lastClaim) return false;
+            const honestyChance = lastClaim.count / 3;
+            const difficultyBias = CONFIG.difficulty === 'easy' ? -.25 : CONFIG.difficulty === 'hard' ? .18 : 0;
+            return Math.random() < Math.max(.1, .38 - honestyChance * .18 + difficultyBias);
+        }
+        function playClaim() {
+            if (busy || !gameStarted || !players[current].isHuman || !selected.length) return;
+            commitClaim(current, selected.slice().sort((a, b) => b - a));
+        }
+        function commitClaim(playerIndex, cardIndexes) {
+            const player = players[playerIndex];
+            const cards = cardIndexes.map(index => player.hand[index]);
+            cardIndexes.forEach(index => player.hand.splice(index, 1));
+            if (player.hand.length === 0) player.hand = buildDeck().slice(0, CONFIG.variant === 'quick' ? 3 : 5);
+            lastClaim = { playerIndex, playerName: player.name, rank: target, count: cards.length, cards, revealed: false };
+            selected = []; current = nextActive(playerIndex); renderTable(); renderControls();
+            setStatus(`${player.name} made a claim. ${players[current].name}, play or call Liar.`);
+            if (!players[current].isHuman) scheduleAI();
+        }
+        function challenge() {
+            if (busy || !gameStarted || !lastClaim || !players[current].isHuman) return;
+            resolveChallenge(current);
+        }
+        function resolveChallenge(challengerIndex) {
+            busy = true;
+            advanceShot();
+            const claim = lastClaim;
+            const truthful = claim.cards.every(card => card.rank === claim.rank || card.wild);
+            const loserIndex = truthful ? challengerIndex : claim.playerIndex;
+            const loser = players[loserIndex];
+            loser.lives--;
+            claim.revealed = true;
+            claim.revealText = truthful ? `Truth! ${loser.name} loses a life for the challenge.` : `Bluff! ${loser.name} loses a life.`;
+            renderTable(); setStatus(claim.revealText);
+            window.setTimeout(() => {
+                busy = false;
+                if (CONFIG.variant === 'chaos') target = (target + 1 + Math.floor(Math.random() * 3)) % RANKS.length;
+                if (activePlayers().length <= 1) { finishGame(); return; }
+                round++;
+                lastClaim = null;
+                current = nextActive(loserIndex);
+                players.forEach(player => { if (player.hand.length === 0 && player.lives > 0) player.hand = buildDeck().slice(0, CONFIG.variant === 'quick' ? 3 : 5); });
+                renderTable(); setStatus(`${players[current].name}'s turn. Make the next claim.`); renderControls();
+                if (!players[current].isHuman) scheduleAI();
+            }, 1000);
+        }
+        function aiTurn() {
+            if (!gameStarted || busy || players[current].isHuman) return;
+            const player = players[current];
+            if (lastClaim && shouldChallenge(player)) { resolveChallenge(current); return; }
+            commitClaim(current, chooseCardsForAI(player));
+        }
+        function scheduleAI() { busy = true; setStatus(`${players[current].name} is thinking...`); window.setTimeout(() => { busy = false; aiTurn(); }, CONFIG.difficulty === 'hard' ? 700 : 450); }
+        function finishGame() {
+            const winner = activePlayers()[0];
+            gameStarted = false; busy = false; renderTable(); renderControls();
+            $('winnerTitle').textContent = `${winner.name} wins the table!`;
+            $('winnerText').textContent = 'Everyone else ran out of lives. Deal a fresh hand to play again.';
+            $('gameOverOverlay').classList.remove('hidden');
+        }
+        function startGame() {
+            $('gameOverOverlay').classList.add('hidden'); setupPlayers(); dealHands(); current = 0; round = 1; target = Math.floor(Math.random() * RANKS.length); lastClaim = null; selected = []; shotsUsed = 0; gameStarted = true; busy = false;
+            $('shotCount').textContent = '0 / 6'; $('shotRack').innerHTML = Array.from({ length: 6 }, () => '<span class="shot"></span>').join('');
+            renderTable(); setStatus(`${players[current].name}'s turn. Select cards and make a claim.`); renderControls();
+        }
+        document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => { CONFIG.mode = button.dataset.mode; renderSetup(); }));
+        document.querySelectorAll('[data-difficulty]').forEach(button => button.addEventListener('click', () => { CONFIG.difficulty = button.dataset.difficulty; renderSetup(); }));
+        document.querySelectorAll('[data-variant]').forEach(button => button.addEventListener('click', () => { CONFIG.variant = button.dataset.variant; renderSetup(); }));
+        $('newGameBtn').addEventListener('click', startGame);
+        $('playAgainBtn').addEventListener('click', startGame);
+        $('fullscreenBtn').addEventListener('click', () => document.documentElement.requestFullscreen?.());
+        renderSetup(); setupPlayers(); create3DScene(); renderTable(); renderControls();
+    </script>
+</body>
+</html>
