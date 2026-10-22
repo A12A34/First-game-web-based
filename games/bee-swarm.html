@@ -191,6 +191,16 @@
         .field-tab.active { background: rgba(0,217,255,0.2); border-color: #00d9ff; color: #fff; }
         .field-tab.locked { opacity: 0.3; cursor: not-allowed; }
 
+        .event-banner { min-height: 26px; margin: 7px 0 0; color: #fff; text-align: center; font-size: 0.8rem; font-weight: 700; }
+        .event-banner.active { color: #ffd54f; text-shadow: 0 0 10px rgba(255,213,79,.65); }
+        .mission-panel { margin-top: 10px; max-height: 205px; overflow-y: auto; }
+        .mission-card { padding: 8px; margin: 6px 0; border: 1px solid rgba(0,217,255,.22); border-radius: 9px; font-size: .72rem; background: rgba(0,217,255,.04); }
+        .mission-card strong { color: #00d9ff; }.mission-progress { color: #ddd; margin-top: 3px; }.mission-reward { color: #ffc107; margin-top: 3px; }
+        .token { position: absolute; transform: translate(-50%,-50%); border: 2px solid currentColor; border-radius: 50%; width: 32px; height: 32px; display:flex; align-items:center; justify-content:center; background:rgba(10,15,35,.82); box-shadow:0 0 12px currentColor; font-size:16px; cursor:pointer; z-index:6; animation: token-pop .25s ease-out, token-pulse 1s infinite alternate; touch-action:manipulation; }
+        @keyframes token-pop { from { transform:translate(-50%,-50%) scale(.3); } to { transform:translate(-50%,-50%) scale(1); } }
+        @keyframes token-pulse { to { filter:brightness(1.45); } }
+        .bee-modal-content { max-width: 470px; text-align:center; }.food-actions { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:12px; }.food-actions button { border:1px solid rgba(255,255,255,.22); border-radius:8px; padding:7px; background:rgba(255,255,255,.08); color:#fff; cursor:pointer; font:inherit; font-size:.75rem; }.food-actions button:hover:not(:disabled) { border-color:#ffc107; }.food-actions button:disabled { opacity:.35; cursor:not-allowed; }
+
         .shop-tabs {
             display: flex;
             gap: 4px;
@@ -387,6 +397,7 @@
                         <canvas id="fieldCanvas" width="700" height="400"></canvas>
                     </div>
                     <div class="collection-status" id="collectionStatus" aria-live="polite"></div>
+                    <div class="event-banner" id="eventBanner"></div>
                     <div class="field-tabs" id="fieldTabs"></div>
                 </div>
 
@@ -396,10 +407,13 @@
                         <button class="tab-btn" data-shop="tickets">Ticket</button>
                         <button class="tab-btn" data-shop="upgrades">Upgrades</button>
                         <button class="tab-btn" data-shop="fields">Fields</button>
+                        <button class="tab-btn" data-shop="items">Items</button>
                     </div>
                     <div class="shop-content" id="shopContent"></div>
                 </div>
             </div>
+
+            <div class="panel mission-panel" id="missionPanel"></div>
 
             <div class="instructions">
                 <h3>How to Play</h3>
@@ -427,6 +441,16 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="beeModal">
+        <div class="modal bee-modal-content">
+            <div class="hatch-bee-icon" id="detailBeeIcon">🐝</div>
+            <div class="hatch-bee-name" id="detailBeeName"></div>
+            <div class="hatch-bee-stats" id="detailBeeStats"></div>
+            <div class="food-actions" id="foodActions"></div>
+            <button class="btn btn-primary" id="beeCloseBtn">Done</button>
+        </div>
+    </div>
+
     <script>
     (function() {
         'use strict';
@@ -443,6 +467,38 @@
             gatherBoost:    { name: 'Gather Boost',     desc: '25% chance for 2x next gather', emoji: '\uD83D\uDE80' },
             speedAura:      { name: 'Speed Aura',       desc: '10% chance to boost all bees', emoji: '\uD83C\uDF00' }
         };
+
+        var FOOD = {
+            treat: { name: 'Treat', emoji: '🍪', bond: 10 },
+            sunflowerSeed: { name: 'Sunflower Seed', emoji: '🌻', bond: 30 },
+            strawberry: { name: 'Strawberry', emoji: '🍓', bond: 30 },
+            pineapple: { name: 'Pineapple', emoji: '🍍', bond: 30 },
+            starTreat: { name: 'Star Treat', emoji: '⭐', bond: 250, guaranteedGift: true }
+        };
+        var FAVORITES = ['sunflowerSeed', 'strawberry', 'pineapple'];
+        var EVENT_TYPES = [
+            { id: 'bloom', name: 'Field Bloom', emoji: '🌸', duration: 450, desc: 'Flowers give 2x pollen.', pollen: 2 },
+            { id: 'storm', name: 'Token Storm', emoji: '🌪️', duration: 350, desc: 'Tokens rain across the field.', tokenRate: .35 },
+            { id: 'rush', name: 'Honey Rush', emoji: '🍯', duration: 400, desc: 'Conversion tokens are stronger.', honey: 2 },
+            { id: 'meteor', name: 'Meteor Shower', emoji: '☄️', duration: 300, desc: 'Rare reward tokens appear.', rare: true }
+        ];
+        var QUESTLINES = [
+            { id: 'brown', bear: 'Brown Bear', quests: [
+                { title: 'First Steps', type: 'pollen', target: 500, reward: { honey: 250, treat: 3 } },
+                { title: 'Token Practice', type: 'tokens', target: 8, reward: { tickets: 2, sunflowerSeed: 4 } },
+                { title: 'Growing Hive', type: 'bees', target: 5, reward: { honey: 1200, treat: 8 } }
+            ] },
+            { id: 'mother', bear: 'Mother Bear', quests: [
+                { title: 'Sweet Conversion', type: 'honey', target: 5000, reward: { honey: 1500, strawberry: 6 } },
+                { title: 'Field Explorer', type: 'fields', target: 4, reward: { tickets: 5, pineapple: 6 } },
+                { title: 'Well Fed', type: 'levels', target: 8, reward: { honey: 10000, starTreat: 1 } }
+            ] },
+            { id: 'science', bear: 'Science Bear', quests: [
+                { title: 'Token Research', type: 'tokens', target: 60, reward: { honey: 25000, tickets: 12 } },
+                { title: 'Festival Data', type: 'events', target: 3, reward: { honey: 80000, treat: 30 } },
+                { title: 'Gifted Discovery', type: 'gifted', target: 1, reward: { honey: 250000, starTreat: 1 } }
+            ] }
+        ];
 
         // ===================== DATA =====================
 
@@ -485,7 +541,20 @@
             // Event (3)
             festive:   { name: 'Festive Bee',   rarity: 'Event',     color: '#FF0000', gatherAmount: 120, gatherSpeed: 1.4, ability: 'pollenGift' },
             puppy:     { name: 'Puppy Bee',     rarity: 'Event',     color: '#D2691E', gatherAmount: 100, gatherSpeed: 1.6, ability: 'honeyGift' },
-            bear:      { name: 'Bear Bee',      rarity: 'Event',     color: '#8B4513', gatherAmount: 140, gatherSpeed: 1.1, ability: 'gatherBoost' }
+            bear:      { name: 'Bear Bee',      rarity: 'Event',     color: '#8B4513', gatherAmount: 140, gatherSpeed: 1.1, ability: 'gatherBoost' },
+            bomber:    { name: 'Bomber Bee',    rarity: 'Common',    color: '#f2c94c', gatherAmount: 15,  gatherSpeed: 1.0, ability: 'bombToken' },
+            honey:     { name: 'Honey Bee',     rarity: 'Common',    color: '#f5b700', gatherAmount: 13,  gatherSpeed: 1.05, ability: 'honeyToken' },
+            bucko:     { name: 'Bucko Bee',     rarity: 'Rare',      color: '#3388ff', gatherAmount: 27,  gatherSpeed: 1.05, ability: 'blueBoost' },
+            riley:     { name: 'Riley Bee',     rarity: 'Rare',      color: '#ef5350', gatherAmount: 29,  gatherSpeed: 1.0, ability: 'redBoost' },
+            rage:      { name: 'Rage Bee',      rarity: 'Rare',      color: '#e53935', gatherAmount: 25,  gatherSpeed: 1.25, ability: 'criticalToken' },
+            demo:      { name: 'Demo Bee',      rarity: 'Rare',      color: '#ff7043', gatherAmount: 31,  gatherSpeed: .95, ability: 'bombToken' },
+            baby:      { name: 'Baby Bee',      rarity: 'Epic',      color: '#ffb6d9', gatherAmount: 37,  gatherSpeed: 1.25, ability: 'foodToken' },
+            carpenter: { name: 'Carpenter Bee', rarity: 'Epic',      color: '#9c6b45', gatherAmount: 48,  gatherSpeed: 1.1, ability: 'pollenToken' },
+            bubble:    { name: 'Bubble Bee',    rarity: 'Epic',      color: '#64b5f6', gatherAmount: 44,  gatherSpeed: 1.35, ability: 'conversionToken' },
+            shy:       { name: 'Shy Bee',       rarity: 'Legendary', color: '#f06292', gatherAmount: 90,  gatherSpeed: 1.55, ability: 'criticalToken' },
+            vector:    { name: 'Vector Bee',    rarity: 'Legendary', color: '#76ff03', gatherAmount: 115, gatherSpeed: 1.35, ability: 'tokenGift' },
+            tadpole:   { name: 'Tadpole Bee',   rarity: 'Mythic',    color: '#5dade2', gatherAmount: 175, gatherSpeed: 1.7, ability: 'pollenToken' },
+            tabby:     { name: 'Tabby Bee',     rarity: 'Event',     color: '#c8a27a', gatherAmount: 155, gatherSpeed: 1.8, ability: 'haste' }
         };
 
         var RARITY_COLORS = {
@@ -507,7 +576,13 @@
             { id: 'rose',       name: 'Rose Field',        flowerColor: '#FF1493', bgColor: '#2e121a', pollenBase: 50,  unlockCost: 100000 },
             { id: 'spider',     name: 'Spider Field',      flowerColor: '#6A0DAD', bgColor: '#0e0a2e', pollenBase: 120, unlockCost: 500000 },
             { id: 'bamboo',     name: 'Bamboo Field',      flowerColor: '#228B22', bgColor: '#0a2e0a', pollenBase: 300, unlockCost: 2000000 },
-            { id: 'pineapple',  name: 'Pineapple Field',   flowerColor: '#FFD700', bgColor: '#2e2a0a', pollenBase: 800, unlockCost: 10000000 }
+            { id: 'pineapple',  name: 'Pineapple Field',   flowerColor: '#FFD700', bgColor: '#2e2a0a', pollenBase: 800, unlockCost: 10000000 },
+            { id: 'clover', name: 'Clover Field', flowerColor: '#7CFC00', bgColor: '#103516', pollenBase: 1800, unlockCost: 30000000 },
+            { id: 'strawberry', name: 'Strawberry Field', flowerColor: '#ff3d5a', bgColor: '#351015', pollenBase: 4500, unlockCost: 90000000 },
+            { id: 'cactus', name: 'Cactus Field', flowerColor: '#56c271', bgColor: '#183b1b', pollenBase: 12000, unlockCost: 250000000 },
+            { id: 'pumpkin', name: 'Pumpkin Field', flowerColor: '#ff8c00', bgColor: '#3b2110', pollenBase: 35000, unlockCost: 800000000 },
+            { id: 'pineTree', name: 'Pine Tree Field', flowerColor: '#54c8ff', bgColor: '#102c3c', pollenBase: 100000, unlockCost: 2500000000 },
+            { id: 'mountain', name: 'Mountain Field', flowerColor: '#e8e8ff', bgColor: '#252945', pollenBase: 300000, unlockCost: 8000000000 }
         ];
 
         var EGGS = [
@@ -532,7 +607,13 @@
             { id: 'convert1', name: 'Honey Converter', emoji: '\uD83C\uDF6F', baseCost: 400,   costScale: 2.0, maxLevel: 15, effect: 0.10, desc: '+10% honey rate' },
             { id: 'click1',   name: 'Collector Gloves',emoji: '\uD83E\uDDE4', baseCost: 150,   costScale: 1.5, maxLevel: 25, effect: 5,    desc: '+5 pollen per click' },
             { id: 'bag1',     name: 'Bigger Bag',      emoji: '\uD83C\uDF92', baseCost: 250,   costScale: 2.0, maxLevel: 20, effect: 50,   desc: '+50 bag capacity' },
-            { id: 'auto1',    name: 'Auto Converter',  emoji: '\uD83D\uDD04', baseCost: 5000,  costScale: 1,   maxLevel: 1,  effect: 1,    desc: 'Auto-convert when full' }
+            { id: 'auto1',    name: 'Auto Converter',  emoji: '\uD83D\uDD04', baseCost: 5000,  costScale: 1,   maxLevel: 1,  effect: 1,    desc: 'Auto-convert when full' },
+            { id: 'token1', name: 'Token Magnet', emoji: '🧲', baseCost: 2500, costScale: 2.1, maxLevel: 10, effect: .10, desc: '+10% token duration' },
+            { id: 'luck1', name: 'Token Luck', emoji: '🍀', baseCost: 5000, costScale: 2.2, maxLevel: 10, effect: .05, desc: '+5% token spawn chance' },
+            { id: 'crit1', name: 'Critical Pollen', emoji: '💥', baseCost: 8000, costScale: 2.3, maxLevel: 10, effect: .08, desc: '+8% critical pollen chance' },
+            { id: 'food1', name: 'Forager Kit', emoji: '🍓', baseCost: 12000, costScale: 2.2, maxLevel: 8, effect: .12, desc: '+12% food drop chance' },
+            { id: 'event1', name: 'Event Charm', emoji: '✨', baseCost: 30000, costScale: 2.5, maxLevel: 5, effect: .15, desc: '+15% event rewards' },
+            { id: 'quest1', name: 'Quest Satchel', emoji: '📜', baseCost: 45000, costScale: 2.4, maxLevel: 5, effect: .10, desc: '+10% quest rewards' }
         ];
 
         // ===================== STATE =====================
@@ -552,6 +633,9 @@
             totalPollenCollected: 0,
             totalBeesHatched: 1,
             totalClicks: 0,
+            inventory: { treat: 5, sunflowerSeed: 0, strawberry: 0, pineapple: 0, starTreat: 0 },
+            missions: {},
+            stats: { tokens: 0, events: 0, fields: 1 },
             lastSave: Date.now()
         };
 
@@ -564,6 +648,10 @@
         var speedAuraTicks = 0;
         var currentShopTab = 'eggs';
         var currentMobileView = 'field';
+        var tokens = [];
+        var activeEvent = null;
+        var eventCooldown = 900;
+        var selectedBeeIndex = null;
 
         // ===================== DOM REFS =====================
 
@@ -592,6 +680,14 @@
         var hivePanel = document.getElementById('hivePanel');
         var shopPanel = document.getElementById('shopPanel');
         var fieldSection = document.getElementById('fieldSection');
+        var eventBanner = document.getElementById('eventBanner');
+        var missionPanel = document.getElementById('missionPanel');
+        var beeModal = document.getElementById('beeModal');
+        var detailBeeIcon = document.getElementById('detailBeeIcon');
+        var detailBeeName = document.getElementById('detailBeeName');
+        var detailBeeStats = document.getElementById('detailBeeStats');
+        var foodActions = document.getElementById('foodActions');
+        var beeCloseBtn = document.getElementById('beeCloseBtn');
 
         // ===================== HELPERS =====================
 
@@ -614,6 +710,8 @@
             var m = 1;
             m += getUpgradeLevel('pollen1') * 0.10;
             m += getUpgradeLevel('pollen2') * 0.25;
+            m += getGiftedPollenBonus();
+            m *= getEventPollenMultiplier();
             return m;
         }
 
@@ -641,6 +739,20 @@
             return 25 + getUpgradeLevel('hive1') * 5;
         }
 
+        function getBeeLevel(bee) { return bee.level || 1; }
+        function getBeeBondNeed(bee) { return 100 * getBeeLevel(bee); }
+        function getBeeFavorite(bee) { return bee.favorite || FAVORITES[Object.keys(BEE_TYPES).indexOf(bee.typeId) % FAVORITES.length]; }
+        function getGiftedTypes() {
+            var types = {};
+            gs.bees.forEach(function(bee) { if (bee.gifted) types[bee.typeId] = true; });
+            return types;
+        }
+        function getGiftedPollenBonus() { return Object.keys(getGiftedTypes()).length * 0.05; }
+        function getEventPollenMultiplier() { return activeEvent && activeEvent.pollen ? activeEvent.pollen : 1; }
+        function getTokenDuration() { return 5000 * (1 + getUpgradeLevel('token1') * .10); }
+        function getFoodDropChance() { return .025 * (1 + getUpgradeLevel('food1') * .12); }
+        function getQuestRewardMultiplier() { return 1 + getUpgradeLevel('quest1') * .10; }
+
         function getTicketReward(rarity) {
             switch (rarity) {
                 case 'Rare': return 1;
@@ -664,6 +776,43 @@
             var pool = Object.keys(BEE_TYPES).filter(function(k) { return BEE_TYPES[k].rarity === rarity; });
             return pool[Math.floor(Math.random() * pool.length)];
         }
+
+        function spawnToken(type, x, y) {
+            var def = {
+                pollenToken: { emoji: '🌸', color: '#ffeb3b' }, honeyToken: { emoji: '🍯', color: '#ffc107' },
+                criticalToken: { emoji: '💥', color: '#ff5252' }, conversionToken: { emoji: '🔄', color: '#ff9800' },
+                foodToken: { emoji: '🍓', color: '#ff80ab' }, ticketToken: { emoji: '🎟️', color: '#e040fb' },
+                bombToken: { emoji: '💣', color: '#ff7043' }, eventToken: { emoji: '✨', color: '#80deea' }
+            }[type] || { emoji: '✨', color: '#fff' };
+            var rect = canvas.getBoundingClientRect();
+            var el = document.createElement('button');
+            el.type = 'button'; el.className = 'token'; el.textContent = def.emoji; el.style.color = def.color;
+            el.style.left = (rect.left + x / canvas.width * rect.width) + 'px';
+            el.style.top = (rect.top + y / canvas.height * rect.height) + 'px';
+            document.body.appendChild(el);
+            var token = { type: type, el: el, expires: Date.now() + getTokenDuration(), claimed: false };
+            tokens.push(token);
+            el.addEventListener('pointerdown', function(e) { e.preventDefault(); e.stopPropagation(); claimToken(token); });
+        }
+
+        function claimToken(token) {
+            if (token.claimed) return;
+            token.claimed = true;
+            var strength = 1 + getUpgradeLevel('event1') * .15;
+            var amount = Math.floor(FIELDS[gs.currentField].pollenBase * 25 * strength);
+            if (token.type === 'honeyToken' || token.type === 'conversionToken') { gs.honey += amount; gs.totalHoneyEarned += amount; }
+            else if (token.type === 'ticketToken') { gs.tickets++; gs.totalTicketsEarned++; }
+            else if (token.type === 'foodToken') { addFood(FAVORITES[Math.floor(Math.random() * FAVORITES.length)], 1); }
+            else if (token.type === 'criticalToken') { collectPollen(amount * 3); }
+            else if (token.type === 'bombToken') { collectPollen(amount * 2); }
+            else { collectPollen(amount); }
+            gs.stats.tokens++;
+            token.el.remove();
+            updateMissions();
+            collectionStatus.textContent = 'Token collected!';
+        }
+
+        function addFood(id, count) { gs.inventory[id] = (gs.inventory[id] || 0) + count; }
 
         // ===================== CANVAS RENDERING =====================
 
@@ -695,6 +844,9 @@
             for (var i = 0; i < gs.bees.length; i++) {
                 var bee = gs.bees[i];
                 var data = BEE_TYPES[bee.typeId];
+                if (!bee.level) bee.level = 1;
+                if (bee.bond === undefined) bee.bond = 0;
+                if (!bee.favorite) bee.favorite = getBeeFavorite(bee);
                 beeInstances.push({
                     x: canvas.width / 2 + (Math.random() - 0.5) * 100,
                     y: canvas.height - 20,
@@ -702,9 +854,10 @@
                     phase: 'toFlower',
                     gatherTimer: 0,
                     typeId: bee.typeId,
-                    speed: data.gatherSpeed,
-                    gatherAmount: data.gatherAmount,
+                    speed: data.gatherSpeed * (1 + (bee.level - 1) * .04) * (bee.gifted ? 1.15 : 1),
+                    gatherAmount: data.gatherAmount * (1 + (bee.level - 1) * .08) * (bee.gifted ? 1.5 : 1),
                     color: data.color,
+                    gifted: Boolean(bee.gifted),
                     boosted: false
                 });
             }
@@ -958,6 +1111,10 @@
             ctx.moveTo(x + 8, y - 2);
             ctx.lineTo(x + 11, y - 5);
             ctx.stroke();
+            if (b.gifted) {
+                ctx.fillStyle = '#fff176'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText('★', x, y - 13);
+            }
         }
 
         // ===================== BEE AI =====================
@@ -1042,6 +1199,11 @@
             if (!data.ability) return;
             var ability = data.ability;
 
+            if (Math.random() < .06 + getUpgradeLevel('luck1') * .05) {
+                var tokenType = { bombToken:'bombToken', honeyToken:'honeyToken', criticalToken:'criticalToken', foodToken:'foodToken', pollenToken:'pollenToken', conversionToken:'conversionToken' }[ability];
+                if (tokenType) spawnToken(tokenType, b.x, b.y);
+            }
+
             if (ability === 'pollenGift' && Math.random() < 0.20) {
                 collectPollen(amount);
                 spawnAbilityParticles(b, '#FFD700', '\uD83C\uDF38');
@@ -1081,6 +1243,10 @@
                 speedAuraTicks = 50;
                 spawnAbilityParticles(b, '#00d9ff', '\uD83C\uDF00');
             }
+
+            if (ability === 'blueBoost' || ability === 'redBoost') {
+                if (Math.random() < .10) spawnToken('pollenToken', b.x, b.y);
+            }
         }
 
         function spawnAbilityParticles(b, color, emoji) {
@@ -1102,6 +1268,70 @@
             var dispX = b.x * scaleX + rect.left;
             var dispY = b.y * scaleY + rect.top - 10;
             showFloatText(dispX, dispY, emoji, color);
+        }
+
+        function getMissionProgress(type) {
+            if (type === 'pollen') return gs.totalPollenCollected;
+            if (type === 'honey') return gs.totalHoneyEarned;
+            if (type === 'tokens' || type === 'events' || type === 'fields') return gs.stats[type] || 0;
+            if (type === 'bees') return gs.bees.length;
+            if (type === 'levels') return gs.bees.reduce(function(sum, bee) { return sum + getBeeLevel(bee) - 1; }, 0);
+            if (type === 'gifted') return gs.bees.filter(function(bee) { return bee.gifted; }).length;
+            return 0;
+        }
+        function rewardText(reward) { return Object.keys(reward).map(function(k) { return '+' + reward[k] + ' ' + (FOOD[k] ? FOOD[k].name : k); }).join(', '); }
+        function giveReward(reward) {
+            var mult = getQuestRewardMultiplier();
+            Object.keys(reward).forEach(function(key) {
+                var n = Math.floor(reward[key] * mult);
+                if (key === 'honey') { gs.honey += n; gs.totalHoneyEarned += n; }
+                else if (key === 'tickets') { gs.tickets += n; gs.totalTicketsEarned += n; }
+                else addFood(key, n);
+            });
+        }
+        function renderMissions() {
+            var html = '<div class="panel-title">🐻 Bear Missions</div>';
+            QUESTLINES.forEach(function(line) {
+                var step = gs.missions[line.id] || 0;
+                if (step >= line.quests.length) { html += '<div class="mission-card"><strong>' + line.bear + '</strong><br>Questline complete ✓</div>'; return; }
+                var q = line.quests[step], progress = getMissionProgress(q.type), complete = progress >= q.target;
+                html += '<div class="mission-card"><strong>' + line.bear + ': ' + q.title + '</strong><div class="mission-progress">' + Math.min(Math.floor(progress), q.target) + ' / ' + q.target + ' ' + q.type + '</div><div class="mission-reward">' + rewardText(q.reward) + '</div>' + (complete ? '<button class="btn btn-primary" style="margin-top:6px;padding:5px 10px" data-claim="' + line.id + '">Claim</button>' : '') + '</div>';
+            });
+            missionPanel.innerHTML = html;
+            missionPanel.querySelectorAll('[data-claim]').forEach(function(button) { button.addEventListener('click', function() { claimMission(this.dataset.claim); }); });
+        }
+        function claimMission(id) {
+            var line = QUESTLINES.find(function(q) { return q.id === id; }), step = gs.missions[id] || 0, quest = line.quests[step];
+            if (getMissionProgress(quest.type) < quest.target) return;
+            giveReward(quest.reward); gs.missions[id] = step + 1; renderMissions(); renderShop();
+        }
+        function updateMissions() { renderMissions(); }
+        function startEvent() {
+            activeEvent = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)]; activeEvent.left = activeEvent.duration;
+            gs.stats.events++; eventBanner.className = 'event-banner active'; eventBanner.textContent = activeEvent.emoji + ' ' + activeEvent.name + ': ' + activeEvent.desc;
+            if (activeEvent.id === 'meteor') { for (var i = 0; i < 8; i++) spawnToken('eventToken', 50 + Math.random() * 600, 70 + Math.random() * 250); }
+            updateMissions();
+        }
+        function updateEvents() {
+            tokens.slice().forEach(function(token) { if (!token.claimed && Date.now() >= token.expires) { token.claimed = true; token.el.remove(); } });
+            tokens = tokens.filter(function(token) { return !token.claimed; });
+            if (activeEvent) {
+                activeEvent.left--;
+                if (activeEvent.tokenRate && Math.random() < activeEvent.tokenRate) spawnToken(Math.random() < .25 ? 'ticketToken' : 'pollenToken', 40 + Math.random() * 620, 65 + Math.random() * 270);
+                if (activeEvent.left <= 0) { activeEvent = null; eventCooldown = 900; eventBanner.className = 'event-banner'; eventBanner.textContent = 'Event complete — rewards are yours!'; }
+            } else if (--eventCooldown <= 0) startEvent();
+        }
+        function openBeeDetail(index) {
+            selectedBeeIndex = index; var bee = gs.bees[index], data = BEE_TYPES[bee.typeId];
+            detailBeeIcon.textContent = bee.gifted ? '⭐🐝' : '🐝'; detailBeeName.textContent = data.name + (bee.gifted ? ' — Gifted' : ''); detailBeeName.style.color = data.color;
+            detailBeeStats.innerHTML = 'Level ' + getBeeLevel(bee) + ' · Bond ' + Math.floor(bee.bond || 0) + ' / ' + getBeeBondNeed(bee) + '<br>Favorite food: ' + FOOD[getBeeFavorite(bee)].emoji + ' ' + FOOD[getBeeFavorite(bee)].name + '<br>' + (bee.gifted ? 'Gifted: +50% gather and unique hive bonus.' : 'Feed favorite food for bonus bond and a gifted chance.');
+            foodActions.innerHTML = Object.keys(FOOD).map(function(id) { return '<button data-food="' + id + '" ' + (!(gs.inventory[id] || 0) || bee.gifted && id === 'starTreat' ? 'disabled' : '') + '>' + FOOD[id].emoji + ' ' + FOOD[id].name + ' (' + (gs.inventory[id] || 0) + ')</button>'; }).join('');
+            foodActions.querySelectorAll('[data-food]').forEach(function(btn) { btn.addEventListener('click', function() { feedBee(selectedBeeIndex, this.dataset.food); }); }); beeModal.classList.add('active');
+        }
+        function feedBee(index, foodId) {
+            var bee = gs.bees[index], food = FOOD[foodId]; if (!bee || !food || !(gs.inventory[foodId] > 0)) return;
+            gs.inventory[foodId]--; if (food.guaranteedGift) bee.gifted = true; else { bee.bond = (bee.bond || 0) + food.bond * (foodId === getBeeFavorite(bee) ? 3 : 1); while (bee.bond >= getBeeBondNeed(bee)) { bee.bond -= getBeeBondNeed(bee); bee.level = getBeeLevel(bee) + 1; } if (foodId === getBeeFavorite(bee) && Math.random() < .015) bee.gifted = true; }
+            initBeeInstances(); updateMissions(); openBeeDetail(index); renderHive(); renderShop();
         }
 
         // ===================== MECHANICS =====================
@@ -1235,10 +1465,13 @@
             }
 
             var amount = getClickPollen() * field.pollenBase * getPollenMultiplier() * target.pollen;
+            if (Math.random() < getUpgradeLevel('crit1') * .08) amount *= 2;
+            if (Math.random() < getFoodDropChance()) { addFood(FAVORITES[Math.floor(Math.random() * FAVORITES.length)], 1); collectionStatus.textContent = 'You found food!'; }
             var added = collectPollen(amount);
             target.pollen = 0;
             target.regenTimer = 0;
             gs.totalClicks++;
+            updateMissions();
 
             var dispX = (x / scaleX) + rect.left;
             var dispY = (y / scaleY) + rect.top;
@@ -1296,11 +1529,11 @@
                         abilityText = '<br><span style="color:#00ff88">' + ABILITY_INFO[data.ability].emoji + ' ' + ABILITY_INFO[data.ability].name + '</span>';
                     }
                     html += '<div class="hive-slot filled rarity-' + data.rarity + '" data-hive-idx="' + i + '">' +
-                        '<span style="color:' + data.color + '">&#x1F41D;</span>' +
+                        '<span style="color:' + data.color + '">' + (bee.gifted ? '⭐' : '&#x1F41D;') + '</span>' +
                         '<div class="hive-tooltip">' +
                         '<strong style="color:' + RARITY_COLORS[data.rarity] + '">' + data.name + '</strong><br>' +
                         '<span class="rarity-' + data.rarity + '">' + data.rarity + '</span><br>' +
-                        'Gather: ' + data.gatherAmount + ' | Speed: ' + data.gatherSpeed + 'x' +
+                        'Lv. ' + getBeeLevel(bee) + (bee.gifted ? ' · Gifted' : '') + '<br>Gather: ' + data.gatherAmount + ' | Speed: ' + data.gatherSpeed + 'x' +
                         abilityText +
                         '</div></div>';
                 } else {
@@ -1311,6 +1544,7 @@
 
             // Touch support for hive tooltips
             hiveGrid.querySelectorAll('.hive-slot.filled').forEach(function(el) {
+                el.addEventListener('click', function() { openBeeDetail(parseInt(this.dataset.hiveIdx)); });
                 el.addEventListener('touchstart', function(e) {
                     e.preventDefault();
                     // Close any open tooltips
@@ -1324,7 +1558,14 @@
             if (currentShopTab === 'eggs') renderShopEggs();
             else if (currentShopTab === 'tickets') renderShopTickets();
             else if (currentShopTab === 'upgrades') renderShopUpgrades();
-            else renderShopFields();
+            else if (currentShopTab === 'fields') renderShopFields();
+            else renderShopItems();
+        }
+
+        function renderShopItems() {
+            var html = '<div style="text-align:center;margin-bottom:8px;color:#ffc107;font-weight:700">Inventory</div>';
+            Object.keys(FOOD).forEach(function(id) { var item = FOOD[id]; html += '<div class="shop-item"><div class="shop-item-header"><span class="shop-item-name">' + item.emoji + ' ' + item.name + '</span><span class="shop-item-cost">' + (gs.inventory[id] || 0) + '</span></div><div class="shop-item-desc">' + (item.guaranteedGift ? 'Guarantees the selected bee becomes Gifted.' : '+' + item.bond + ' bond; favorite food gives 3x bond and a gifted chance.') + '</div></div>'; });
+            html += '<div class="shop-item"><div class="shop-item-desc">Open a bee in your hive to feed it. Food drops from flowers, tokens, events, and bear missions.</div></div>'; shopContent.innerHTML = html;
         }
 
         function renderShopEggs() {
