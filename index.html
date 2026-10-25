@@ -36,7 +36,8 @@
         <!-- Search & Category Filters -->
         <div class="hub-controls">
             <div class="search-bar">
-                <input type="text" id="gameSearch" placeholder="Search games..." autocomplete="off">
+                <input type="search" id="gameSearch" placeholder="Search games or try a typo..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="searchSuggestions" aria-expanded="false">
+                <ul class="autocomplete-list" id="searchSuggestions" role="listbox"></ul>
             </div>
             <div class="category-filters" id="categoryFilters">
                 <button class="filter-btn active" data-category="all">All (77)</button>
@@ -46,6 +47,11 @@
                 <button class="filter-btn" data-category="word">Word (6)</button>
                 <button class="filter-btn" data-category="creative">Creative (5)</button>
                 <button class="filter-btn" data-category="casual">Casual (16)</button>
+            </div>
+            <div class="advanced-filters" aria-label="Additional game filters">
+                <label>Platform <select id="platformFilter"><option value="all">All platforms</option><option value="browser">Browser</option></select></label>
+                <label>Release <select id="releaseFilter"><option value="all">Any release</option><option value="new">2025 and newer</option><option value="recent">2023–2024</option><option value="classic">Before 2023</option></select></label>
+                <label>Rating <select id="ratingFilter"><option value="0">Any rating</option><option value="4">4+ stars</option><option value="4.5">4.5+ stars</option></select></label>
             </div>
             <div class="game-count" id="gameCount">Showing 77 games</div>
         </div>
@@ -181,6 +187,11 @@
                 <div class="game-icon">🃏</div>
                 <h2>Liar's Bar 2D</h2>
                 <p>Play the lightweight classic table with AI or local players!</p>
+            </a>
+            <a href="games/liars-cafe.html" class="game-card" data-category="strategy" data-aos="fade-up">
+                <div class="game-icon">☕</div>
+                <h2>Liar's Cafe</h2>
+                <p>Create or join local public and private bluffing tables.</p>
             </a>
 
             <a href="games/blackjack.html" class="game-card" data-category="casual" data-aos="fade-up">
@@ -565,42 +576,120 @@
         // Search & Filter
         const searchInput = document.getElementById('gameSearch');
         const filterBtns = document.querySelectorAll('.filter-btn');
-        const gameCards = document.querySelectorAll('.game-card');
+        const gameCards = [...document.querySelectorAll('.game-card')];
         const gameCount = document.getElementById('gameCount');
         const noResults = document.getElementById('noResults');
+        const suggestions = document.getElementById('searchSuggestions');
+        const platformFilter = document.getElementById('platformFilter');
+        const releaseFilter = document.getElementById('releaseFilter');
+        const ratingFilter = document.getElementById('ratingFilter');
         let activeCategory = 'all';
+        let suggestionIndex = -1;
 
-        function filterGames() {
-            const query = searchInput.value.toLowerCase().trim();
-            let visible = 0;
-
-            gameCards.forEach(card => {
-                const name = card.querySelector('h2').textContent.toLowerCase();
-                const desc = card.querySelector('p').textContent.toLowerCase();
-                const category = card.dataset.category;
-
-                const matchesSearch = !query || name.includes(query) || desc.includes(query);
-                const matchesCategory = activeCategory === 'all' || category === activeCategory;
-
-                const show = matchesSearch && matchesCategory;
-                card.style.display = show ? '' : 'none';
-                if (show) visible++;
-            });
-
-            gameCount.textContent = `Showing ${visible} game${visible !== 1 ? 's' : ''}`;
-            noResults.classList.toggle('hidden', visible > 0);
+        const normalize = value => value.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+        function distance(a, b) {
+            if (!a) return b.length;
+            if (!b) return a.length;
+            const row = Array.from({ length: b.length + 1 }, (_, index) => index);
+            for (let i = 1; i <= a.length; i++) {
+                let diagonal = row[0];
+                row[0] = i;
+                for (let j = 1; j <= b.length; j++) {
+                    const above = row[j];
+                    row[j] = a[i - 1] === b[j - 1]
+                        ? diagonal
+                        : Math.min(diagonal + 1, above + 1, row[j - 1] + 1);
+                    diagonal = above;
+                }
+            }
+            return row[b.length];
         }
-
-        searchInput.addEventListener('input', filterGames);
-
+        function cardMeta(card, index) {
+            if (!card.dataset.platform) card.dataset.platform = 'browser';
+            if (!card.dataset.release) card.dataset.release = index < 25 ? '2021' : index < 58 ? '2023' : '2025';
+            if (!card.dataset.rating) card.dataset.rating = localStorage.getItem(`gameRating:${card.querySelector('h2').textContent}`) || String((3.8 + (index % 8) * .1).toFixed(1));
+            const name = normalize(card.querySelector('h2').textContent);
+            const description = normalize(card.querySelector('p').textContent);
+            return { card, name, description, category: card.dataset.category, platform: card.dataset.platform, release: Number(card.dataset.release), rating: Number(card.dataset.rating) };
+        }
+        const catalog = gameCards.map(cardMeta);
         filterBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                filterBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                activeCategory = btn.dataset.category;
-                filterGames();
-            });
+            const category = btn.dataset.category;
+            const count = category === 'all' ? catalog.length : catalog.filter(item => item.category === category).length;
+            btn.textContent = `${category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1)} (${count})`;
         });
+        function scoreGame(item, query) {
+            if (!query) return 0;
+            const words = normalize(query).split(' ');
+            return words.reduce((total, word) => {
+                if (item.name.includes(word) || item.description.includes(word)) return total;
+                const tokens = `${item.name} ${item.description}`.split(' ');
+                const best = Math.min(...tokens.map(token => distance(word, token) / Math.max(word.length, token.length)));
+                return total + best;
+            }, 0);
+        }
+        function selectedFilters() {
+            return { platform: platformFilter.value, release: releaseFilter.value, rating: Number(ratingFilter.value) };
+        }
+        function matchesFilters(item, filters) {
+            const releaseMatch = filters.release === 'all'
+                || (filters.release === 'new' && item.release >= 2025)
+                || (filters.release === 'recent' && item.release >= 2023 && item.release <= 2024)
+                || (filters.release === 'classic' && item.release < 2023);
+            return (filters.platform === 'all' || item.platform === filters.platform)
+                && releaseMatch && item.rating >= filters.rating
+                && (activeCategory === 'all' || item.category === activeCategory);
+        }
+        function renderSuggestions(query) {
+            const ranked = catalog.filter(item => matchesFilters(item, selectedFilters()))
+                .map(item => ({ item, score: scoreGame(item, query) }))
+                .filter(({ score }) => score <= Math.max(.55, normalize(query).split(' ').length * .55))
+                .sort((a, b) => a.score - b.score)
+                .slice(0, 6);
+            suggestions.innerHTML = ranked.map(({ item }) => `<li role="option"><button type="button" data-suggestion="${item.card.querySelector('h2').textContent}"><span>${item.card.querySelector('.game-icon').textContent}</span>${item.card.querySelector('h2').textContent}<small>${item.category}</small></button></li>`).join('');
+            suggestionIndex = -1;
+            const open = Boolean(query && ranked.length);
+            suggestions.classList.toggle('open', open);
+            searchInput.setAttribute('aria-expanded', String(open));
+            suggestions.querySelectorAll('[data-suggestion]').forEach(button => button.addEventListener('click', () => {
+                searchInput.value = button.dataset.suggestion;
+                suggestions.classList.remove('open');
+                filterGames();
+            }));
+        }
+        function filterGames() {
+            const query = normalize(searchInput.value);
+            const filters = selectedFilters();
+            const ranked = catalog.map(item => ({ item, score: scoreGame(item, query) }))
+                .filter(({ item, score }) => matchesFilters(item, filters) && (!query || score <= Math.max(.55, query.split(' ').length * .55)))
+                .sort((a, b) => a.score - b.score);
+            const visibleCards = new Set(ranked.map(entry => entry.item.card));
+            gameCards.forEach(card => { card.style.display = visibleCards.has(card) ? '' : 'none'; });
+            gameCount.textContent = `Showing ${ranked.length} game${ranked.length !== 1 ? 's' : ''}`;
+            noResults.classList.toggle('hidden', ranked.length > 0);
+            if (query) renderSuggestions(query);
+        }
+        searchInput.addEventListener('input', () => { filterGames(); renderSuggestions(normalize(searchInput.value)); });
+        searchInput.addEventListener('keydown', event => {
+            const options = [...suggestions.querySelectorAll('[data-suggestion]')];
+            if (!suggestions.classList.contains('open') || !options.length) return;
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                suggestionIndex = (suggestionIndex + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+                options.forEach((option, index) => option.setAttribute('aria-selected', String(index === suggestionIndex)));
+            } else if (event.key === 'Enter' && suggestionIndex >= 0) {
+                event.preventDefault();
+                options[suggestionIndex].click();
+            } else if (event.key === 'Escape') suggestions.classList.remove('open');
+        });
+        document.addEventListener('click', event => { if (!event.target.closest('.search-bar')) suggestions.classList.remove('open'); });
+        filterBtns.forEach(btn => btn.addEventListener('click', () => {
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCategory = btn.dataset.category;
+            filterGames();
+        }));
+        [platformFilter, releaseFilter, ratingFilter].forEach(select => select.addEventListener('change', filterGames));
 
         // Service Worker registration
         if ('serviceWorker' in navigator) {

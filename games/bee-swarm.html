@@ -193,6 +193,17 @@
 
         .event-banner { min-height: 26px; margin: 7px 0 0; color: #fff; text-align: center; font-size: 0.8rem; font-weight: 700; }
         .event-banner.active { color: #ffd54f; text-shadow: 0 0 10px rgba(255,213,79,.65); }
+        .world-hud { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:6px 0 4px; font-size:.72rem; color:#d7eaff; }
+        .world-chip { padding:5px 9px; border:1px solid rgba(255,255,255,.16); border-radius:999px; background:rgba(8,18,42,.48); box-shadow:0 2px 10px rgba(0,0,0,.16); }
+        .world-chip strong { color:#fff; }
+        .story-panel { margin-top:10px; }
+        .story-copy { color:#d5dbea; font-size:.76rem; line-height:1.45; text-align:center; }
+        .story-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin-top:8px; }
+        .story-actions button, .feedback-form button { padding:6px 10px; border:1px solid rgba(0,217,255,.35); border-radius:8px; background:rgba(0,217,255,.1); color:#fff; cursor:pointer; font:inherit; font-size:.72rem; }
+        .story-actions button:hover, .feedback-form button:hover { background:rgba(0,217,255,.25); transform:translateY(-1px); }
+        .feedback-form { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:7px; }
+        .feedback-form input, .feedback-form select { min-width:120px; flex:1; padding:7px 8px; border:1px solid rgba(255,255,255,.18); border-radius:7px; background:rgba(0,0,0,.25); color:#fff; font:inherit; font-size:.72rem; }
+        .feedback-note { color:#8fa6c8; font-size:.66rem; text-align:center; margin-top:5px; }
         .mission-panel { margin-top: 10px; max-height: 205px; overflow-y: auto; }
         .mission-card { padding: 8px; margin: 6px 0; border: 1px solid rgba(0,217,255,.22); border-radius: 9px; font-size: .72rem; background: rgba(0,217,255,.04); }
         .mission-card strong { color: #00d9ff; }.mission-progress { color: #ddd; margin-top: 3px; }.mission-reward { color: #ffc107; margin-top: 3px; }
@@ -344,6 +355,18 @@
             .stats-bar { gap: 6px; }
             .stat-box { padding: 6px 8px; min-width: 60px; }
             .stat-value { font-size: 0.95rem; }
+            .game-container { width:100%; max-width:100%; }
+            .shop-tabs { overflow-x:auto; padding-bottom:3px; }
+            .tab-btn { min-width:68px; white-space:nowrap; }
+            .world-hud { padding:0 5px; }
+        }
+        @media (max-width: 520px) {
+            .stats-bar { display:grid; grid-template-columns:repeat(2,1fr); }
+            .stat-box { min-width:0; }
+            .canvas-wrapper { border-radius:9px; }
+            .field-tabs { max-height:86px; overflow-y:auto; }
+            .field-tab { flex:1 0 auto; }
+            .modal { padding:20px 14px; }
         }
     </style>
 </head>
@@ -398,6 +421,12 @@
                     </div>
                     <div class="collection-status" id="collectionStatus" aria-live="polite"></div>
                     <div class="event-banner" id="eventBanner"></div>
+                    <div class="world-hud" aria-live="polite">
+                        <span class="world-chip" id="clockDisplay">☀️ 08:00</span>
+                        <span class="world-chip" id="seasonDisplay">🌱 Spring</span>
+                        <span class="world-chip" id="weatherDisplay">🌤️ Clear</span>
+                        <span class="world-chip" id="windDisplay">🍃 Wind 0</span>
+                    </div>
                     <div class="field-tabs" id="fieldTabs"></div>
                 </div>
 
@@ -408,16 +437,28 @@
                         <button class="tab-btn" data-shop="upgrades">Upgrades</button>
                         <button class="tab-btn" data-shop="fields">Fields</button>
                         <button class="tab-btn" data-shop="items">Items</button>
+                        <button class="tab-btn" data-shop="store">Store</button>
                     </div>
                     <div class="shop-content" id="shopContent"></div>
                 </div>
             </div>
 
             <div class="panel mission-panel" id="missionPanel"></div>
+            <div class="panel story-panel" id="storyPanel"></div>
+            <div class="panel story-panel">
+                <div class="panel-title">💬 Community Feedback</div>
+                <div class="story-copy">Report a problem or suggest a new bee, field, or quest. Notes are saved on this device.</div>
+                <form class="feedback-form" id="feedbackForm">
+                    <select id="feedbackType" aria-label="Feedback type"><option>Suggestion</option><option>Bug report</option><option>Balance idea</option></select>
+                    <input id="feedbackText" maxlength="160" placeholder="Share your idea..." required aria-label="Feedback message">
+                    <button type="submit">Send feedback</button>
+                </form>
+                <div class="feedback-note" id="feedbackNote">Your feedback stays local in this browser.</div>
+            </div>
 
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Tap a flower to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then spend honey on eggs to hatch new bees, upgrades, and unlocking new fields. Earn <strong style="color:#e040fb">Tickets</strong> by hatching rare bees! Spend tickets on powerful special eggs. Keyboard: 1-8 switch fields, C to convert, S to save.</p>
+                <p>Tap a flower to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then buy eggs, upgrades, and new fields. Bought eggs stay in <strong>Items</strong> until you use them; full hives can replace a selected bee. Visit the <strong>Store</strong> for food and field boosts. Earn <strong style="color:#e040fb">Tickets</strong> by hatching rare bees! Keyboard: 1-8 switch fields, C to convert, S to save.</p>
             </div>
         </div>
     </div>
@@ -447,6 +488,7 @@
             <div class="hatch-bee-name" id="detailBeeName"></div>
             <div class="hatch-bee-stats" id="detailBeeStats"></div>
             <div class="food-actions" id="foodActions"></div>
+            <button class="btn btn-secondary" id="replaceBeeBtn" style="display:none;margin:8px auto;">Replace this bee</button>
             <button class="btn btn-primary" id="beeCloseBtn">Done</button>
         </div>
     </div>
@@ -473,7 +515,9 @@
             sunflowerSeed: { name: 'Sunflower Seed', emoji: '🌻', bond: 30 },
             strawberry: { name: 'Strawberry', emoji: '🍓', bond: 30 },
             pineapple: { name: 'Pineapple', emoji: '🍍', bond: 30 },
-            starTreat: { name: 'Star Treat', emoji: '⭐', bond: 250, guaranteedGift: true }
+            starTreat: { name: 'Star Treat', emoji: '⭐', bond: 250, guaranteedGift: true },
+            blueberry: { name: 'Blueberry', emoji: '🫐', bond: 35 },
+            royalJelly: { name: 'Royal Jelly', emoji: '🧪', bond: 60 }
         };
         var FAVORITES = ['sunflowerSeed', 'strawberry', 'pineapple'];
         var EVENT_TYPES = [
@@ -481,6 +525,33 @@
             { id: 'storm', name: 'Token Storm', emoji: '🌪️', duration: 350, desc: 'Tokens rain across the field.', tokenRate: .35 },
             { id: 'rush', name: 'Honey Rush', emoji: '🍯', duration: 400, desc: 'Conversion tokens are stronger.', honey: 2 },
             { id: 'meteor', name: 'Meteor Shower', emoji: '☄️', duration: 300, desc: 'Rare reward tokens appear.', rare: true }
+        ];
+        var WEATHER_TYPES = [
+            { id:'clear', name:'Clear', emoji:'🌤️', duration:520, pollen:1, visibility:0, wind:0 },
+            { id:'rain', name:'Rain', emoji:'🌧️', duration:420, pollen:1.12, visibility:.04, wind:1 },
+            { id:'fog', name:'Misty Fog', emoji:'🌫️', duration:330, pollen:.92, visibility:.28, wind:0 },
+            { id:'snow', name:'Snowfall', emoji:'❄️', duration:380, pollen:.82, visibility:.12, wind:-1 },
+            { id:'storm', name:'Thunderstorm', emoji:'⛈️', duration:260, pollen:1.28, visibility:.1, wind:2 }
+        ];
+        var SEASONS = [
+            { name:'Spring', emoji:'🌱', flower:1.08, color:'#b7f7d1' },
+            { name:'Summer', emoji:'☀️', flower:1.18, color:'#ffe59a' },
+            { name:'Autumn', emoji:'🍂', flower:1.04, color:'#ffc27d' },
+            { name:'Winter', emoji:'❄️', flower:.88, color:'#c8e7ff' }
+        ];
+        var STORY_NPCS = [
+            { id:'brown', name:'Brown Bear', emoji:'🐻', lines:[
+                'The clouds are gathering. Will you keep collecting or guide the hive home?',
+                'A brave beekeeper watches the storm and learns from every choice.'
+            ] },
+            { id:'mother', name:'Mother Bear', emoji:'🐻‍❄️', lines:[
+                'Every season teaches the bees a new rhythm. Care for them and they will care for you.',
+                'Your hive remembers kindness. The next treat you find will be extra valuable.'
+            ] },
+            { id:'science', name:'Science Bear', emoji:'🔬', lines:[
+                'Weather is data! Study the wind, then choose a field where your bees can thrive.',
+                'Excellent observation. Your choices are changing the story of this meadow.'
+            ] }
         ];
         var QUESTLINES = [
             { id: 'brown', bear: 'Brown Bear', quests: [
@@ -582,14 +653,17 @@
             { id: 'cactus', name: 'Cactus Field', flowerColor: '#56c271', bgColor: '#183b1b', pollenBase: 12000, unlockCost: 250000000 },
             { id: 'pumpkin', name: 'Pumpkin Field', flowerColor: '#ff8c00', bgColor: '#3b2110', pollenBase: 35000, unlockCost: 800000000 },
             { id: 'pineTree', name: 'Pine Tree Field', flowerColor: '#54c8ff', bgColor: '#102c3c', pollenBase: 100000, unlockCost: 2500000000 },
-            { id: 'mountain', name: 'Mountain Field', flowerColor: '#e8e8ff', bgColor: '#252945', pollenBase: 300000, unlockCost: 8000000000 }
+            { id: 'mountain', name: 'Mountain Field', flowerColor: '#e8e8ff', bgColor: '#252945', pollenBase: 300000, unlockCost: 8000000000 },
+            { id: 'crystal', name: 'Crystal Cavern', flowerColor: '#9c7cff', bgColor: '#17123a', pollenBase: 900000, unlockCost: 25000000000 },
+            { id: 'marshmallow', name: 'Marshmallow Meadow', flowerColor: '#ffb6e6', bgColor: '#3a1836', pollenBase: 2500000, unlockCost: 90000000000 }
         ];
 
         var EGGS = [
             { id: 'basic',  name: 'Basic Egg',  emoji: '\uD83E\uDD5A', cost: 100,     currency: 'honey', rates: { Common: 0.70, Rare: 0.25, Epic: 0.05, Legendary: 0, Mythic: 0, Event: 0 } },
             { id: 'silver', name: 'Silver Egg', emoji: '\uD83E\uDE99', cost: 10000,   currency: 'honey', rates: { Common: 0, Rare: 0.60, Epic: 0.30, Legendary: 0.10, Mythic: 0, Event: 0 } },
             { id: 'gold',   name: 'Gold Egg',   emoji: '\u2728',       cost: 100000,  currency: 'honey', rates: { Common: 0, Rare: 0, Epic: 0.60, Legendary: 0.40, Mythic: 0, Event: 0 } },
-            { id: 'star',   name: 'Star Egg',   emoji: '\u2B50',       cost: 1000000, currency: 'honey', rates: { Common: 0, Rare: 0, Epic: 0, Legendary: 0.80, Mythic: 0.20, Event: 0 } }
+            { id: 'star',   name: 'Star Egg',   emoji: '\u2B50',       cost: 1000000, currency: 'honey', rates: { Common: 0, Rare: 0, Epic: 0, Legendary: 0.80, Mythic: 0.20, Event: 0 } },
+            { id: 'mythic_honey', name: 'Mythic Honey Egg', emoji: '🌌', cost: 25000000, currency: 'honey', rates: { Common: 0, Rare: 0, Epic: 0, Legendary: 0.35, Mythic: 0.65, Event: 0 } }
         ];
 
         var TICKET_EGGS = [
@@ -614,6 +688,16 @@
             { id: 'food1', name: 'Forager Kit', emoji: '🍓', baseCost: 12000, costScale: 2.2, maxLevel: 8, effect: .12, desc: '+12% food drop chance' },
             { id: 'event1', name: 'Event Charm', emoji: '✨', baseCost: 30000, costScale: 2.5, maxLevel: 5, effect: .15, desc: '+15% event rewards' },
             { id: 'quest1', name: 'Quest Satchel', emoji: '📜', baseCost: 45000, costScale: 2.4, maxLevel: 5, effect: .10, desc: '+10% quest rewards' }
+            ,{ id: 'field1', name: 'Field Mastery', emoji: '🌈', baseCost: 20000, costScale: 2.3, maxLevel: 12, effect: .08, desc: '+8% pollen in every field' }
+            ,{ id: 'bond1', name: 'Honeyed Bond', emoji: '💛', baseCost: 35000, costScale: 2.4, maxLevel: 10, effect: .10, desc: '+10% bee bond from food' }
+            ,{ id: 'capacity1', name: 'Royal Backpack', emoji: '🎒', baseCost: 100000, costScale: 2.5, maxLevel: 12, effect: 250, desc: '+250 pollen capacity' }
+        ];
+
+        var STORE_ITEMS = [
+            { id: 'royalJelly', name: 'Royal Jelly', emoji: '🧪', cost: 5000, currency: 'honey', amount: 1, desc: 'Feed a bee for extra bond.' },
+            { id: 'blueberry', name: 'Blueberry Pack', emoji: '🫐', cost: 2500, currency: 'honey', amount: 5, desc: 'Five blue favorite-food treats.' },
+            { id: 'starTreat', name: 'Star Treat', emoji: '⭐', cost: 250, currency: 'tickets', amount: 1, desc: 'Guarantees a bee becomes gifted.' },
+            { id: 'fieldBoost', name: 'Field Boost', emoji: '🌈', cost: 100, currency: 'tickets', amount: 1, desc: 'Instantly starts a Field Bloom event.' }
         ];
 
         // ===================== STATE =====================
@@ -628,14 +712,16 @@
             hiveSlots: 25,
             bees: [{ typeId: 'basic' }],
             currentField: 0,
-            unlockedFields: [true, false, false, false, false, false, false, false],
+            unlockedFields: [true].concat(Array(13).fill(false)),
             upgradeLevels: {},
             totalPollenCollected: 0,
             totalBeesHatched: 1,
             totalClicks: 0,
-            inventory: { treat: 5, sunflowerSeed: 0, strawberry: 0, pineapple: 0, starTreat: 0 },
+            inventory: { treat: 5, sunflowerSeed: 0, strawberry: 0, pineapple: 0, starTreat: 0, blueberry: 0, royalJelly: 0 },
+            eggs: {},
             missions: {},
             stats: { tokens: 0, events: 0, fields: 1 },
+            world: { time: 8, day: 1, season: 0, weather: 'clear', weatherTicks: 520, choices: 0, trust: {} },
             lastSave: Date.now()
         };
 
@@ -652,6 +738,8 @@
         var activeEvent = null;
         var eventCooldown = 900;
         var selectedBeeIndex = null;
+        var weatherParticles = [];
+        var thunderCooldown = 0;
 
         // ===================== DOM REFS =====================
 
@@ -668,6 +756,15 @@
         var collectionStatus = document.getElementById('collectionStatus');
         var shopContent = document.getElementById('shopContent');
         var fieldTabs = document.getElementById('fieldTabs');
+        var clockDisplay = document.getElementById('clockDisplay');
+        var seasonDisplay = document.getElementById('seasonDisplay');
+        var weatherDisplay = document.getElementById('weatherDisplay');
+        var windDisplay = document.getElementById('windDisplay');
+        var storyPanel = document.getElementById('storyPanel');
+        var feedbackForm = document.getElementById('feedbackForm');
+        var feedbackType = document.getElementById('feedbackType');
+        var feedbackText = document.getElementById('feedbackText');
+        var feedbackNote = document.getElementById('feedbackNote');
         var hatchModal = document.getElementById('hatchModal');
         var hatchBeeIcon = document.getElementById('hatchBeeIcon');
         var hatchBeeName = document.getElementById('hatchBeeName');
@@ -688,6 +785,7 @@
         var detailBeeStats = document.getElementById('detailBeeStats');
         var foodActions = document.getElementById('foodActions');
         var beeCloseBtn = document.getElementById('beeCloseBtn');
+        var replaceBeeBtn = document.getElementById('replaceBeeBtn');
 
         // ===================== HELPERS =====================
 
@@ -710,7 +808,9 @@
             var m = 1;
             m += getUpgradeLevel('pollen1') * 0.10;
             m += getUpgradeLevel('pollen2') * 0.25;
+            m += getUpgradeLevel('field1') * 0.08;
             m += getGiftedPollenBonus();
+            m *= getSeason().flower * getWeather().pollen;
             m *= getEventPollenMultiplier();
             return m;
         }
@@ -732,7 +832,7 @@
         }
 
         function getBagCapacity() {
-            return 100 + getUpgradeLevel('bag1') * 50;
+            return 100 + getUpgradeLevel('bag1') * 50 + getUpgradeLevel('capacity1') * 250;
         }
 
         function getHiveSlots() {
@@ -863,6 +963,105 @@
             }
         }
 
+        function getSeason() {
+            return SEASONS[gs.world.season % SEASONS.length];
+        }
+        function getWeather() {
+            return WEATHER_TYPES.find(function(weather) { return weather.id === gs.world.weather; }) || WEATHER_TYPES[0];
+        }
+        function getWorldLight() {
+            var sun = Math.sin((gs.world.time - 6) / 24 * Math.PI * 2);
+            return Math.max(0, Math.min(1, (sun + .2) / 1.2));
+        }
+        function updateWorld() {
+            if (!gs.world) gs.world = { time:8, day:1, season:0, weather:'clear', weatherTicks:520, choices:0, trust:{} };
+            gs.world.time += .004;
+            if (gs.world.time >= 24) {
+                gs.world.time = 0;
+                gs.world.day++;
+                if (gs.world.day % 7 === 0) gs.world.season = (gs.world.season + 1) % SEASONS.length;
+            }
+            gs.world.weatherTicks--;
+            if (gs.world.weatherTicks <= 0) {
+                var next = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+                gs.world.weather = next.id;
+                gs.world.weatherTicks = next.duration + Math.floor(Math.random() * 180);
+                if (next.id === 'storm') {
+                    collectionStatus.textContent = 'Thunder rolls across the meadow. The bees fly carefully!';
+                    playSound(90, .35, 'sawtooth');
+                } else {
+                    collectionStatus.textContent = next.emoji + ' ' + next.name + ' has arrived.';
+                }
+            }
+            var weather = getWeather();
+            if (weather.id === 'rain' || weather.id === 'snow' || weather.id === 'storm') {
+                if (Math.random() < (weather.id === 'storm' ? .55 : .25)) {
+                    weatherParticles.push({ x:Math.random()*canvas.width, y:-8, speed:weather.id === 'snow' ? 1.2 : 4 + Math.random()*3, drift:(Math.random()-.5), life:1 });
+                }
+            }
+            if (weather.id === 'storm' && --thunderCooldown <= 0) {
+                thunderCooldown = 100 + Math.floor(Math.random()*180);
+                playSound(60, .18, 'triangle');
+            }
+            renderWorldHud();
+            if (gameTime % 10 === 0) renderStory();
+        }
+        function renderWorldHud() {
+            var weather = getWeather(), season = getSeason();
+            var hours = Math.floor(gs.world.time), minutes = Math.floor((gs.world.time - hours) * 60);
+            clockDisplay.textContent = (getWorldLight() > .2 ? '☀️' : '🌙') + ' ' + String(hours).padStart(2,'0') + ':' + String(minutes).padStart(2,'0');
+            seasonDisplay.textContent = season.emoji + ' ' + season.name;
+            weatherDisplay.textContent = weather.emoji + ' ' + weather.name;
+            windDisplay.textContent = '🍃 Wind ' + (weather.wind > 0 ? '+' : '') + weather.wind;
+        }
+        function renderStory() {
+            var weather = getWeather(), npc = STORY_NPCS[gs.world.day % STORY_NPCS.length];
+            var trust = gs.world.trust[npc.id] || 0;
+            var line = npc.lines[(gs.world.choices + trust) % npc.lines.length];
+            storyPanel.innerHTML = '<div class="panel-title">' + npc.emoji + ' ' + npc.name + ' · Meadow Story</div>' +
+                '<div class="story-copy">' + line + '<br><span style="color:#8fa6c8">Weather: ' + weather.name + ' · Trust: ' + trust + '</span></div>' +
+                '<div class="story-actions"><button data-story-choice="observe">Observe the weather</button><button data-story-choice="gather">Keep gathering</button><button data-story-choice="help">Help the hive</button></div>';
+            storyPanel.querySelectorAll('[data-story-choice]').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var choice = this.dataset.storyChoice;
+                    gs.world.choices++;
+                    gs.world.trust[npc.id] = (gs.world.trust[npc.id] || 0) + (choice === 'help' ? 2 : 1);
+                    if (choice === 'observe') addFood('treat', 1);
+                    if (choice === 'gather') collectPollen(20 * FIELDS[gs.currentField].pollenBase);
+                    if (choice === 'help') { gs.tickets++; gs.totalTicketsEarned++; }
+                    collectionStatus.textContent = npc.name + ' noticed your choice.';
+                    renderStory(); renderShop(); updateDisplay(); saveGame();
+                });
+            });
+        }
+        function drawWeatherOverlay() {
+            var weather = getWeather(), light = getWorldLight(), season = getSeason();
+            ctx.save();
+            if (light < .45) {
+                ctx.fillStyle = 'rgba(5,10,35,' + (.42 - light * .35) + ')';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = 'rgba(255,235,170,.8)';
+                for (var moon = 0; moon < 18; moon++) ctx.fillRect((moon*97+40)%canvas.width, (moon*53+18)%120, 1.5, 1.5);
+            }
+            if (weather.visibility) {
+                ctx.fillStyle = weather.id === 'fog' ? 'rgba(210,225,235,' + weather.visibility + ')' : 'rgba(90,145,190,' + weather.visibility + ')';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            }
+            ctx.globalAlpha = .8;
+            weatherParticles.forEach(function(p) {
+                p.y += p.speed; p.x += p.drift + weather.wind * .4;
+                ctx.strokeStyle = weather.id === 'snow' ? '#fff' : '#8fc9ff';
+                ctx.lineWidth = weather.id === 'snow' ? 2 : 1;
+                ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x + weather.wind * 2,p.y + (weather.id === 'snow' ? 3 : 10)); ctx.stroke();
+            });
+            weatherParticles = weatherParticles.filter(function(p) { return p.y < canvas.height + 12; });
+            if (season.name === 'Autumn' && gameTime % 8 === 0) {
+                ctx.fillStyle = season.color;
+                ctx.fillRect((gameTime*3)%canvas.width, (gameTime*2)%canvas.height, 3, 3);
+            }
+            ctx.restore();
+        }
+
         function renderField() {
             var field = FIELDS[gs.currentField];
 
@@ -921,6 +1120,7 @@
                 ctx.fill();
                 ctx.globalAlpha = 1;
             }
+            drawWeatherOverlay();
         }
 
         function drawGround(field) {
@@ -1131,6 +1331,7 @@
                 var b = beeInstances[i];
                 var data = BEE_TYPES[b.typeId];
                 var beeSpeed = b.speed * speedMult * 2.5;
+                beeSpeed *= 1 + getWeather().wind * .025;
 
                 // Haste ability: passive speed bonus
                 if (data.ability === 'haste') beeSpeed *= 1.3;
@@ -1327,11 +1528,23 @@
             detailBeeStats.innerHTML = 'Level ' + getBeeLevel(bee) + ' · Bond ' + Math.floor(bee.bond || 0) + ' / ' + getBeeBondNeed(bee) + '<br>Favorite food: ' + FOOD[getBeeFavorite(bee)].emoji + ' ' + FOOD[getBeeFavorite(bee)].name + '<br>' + (bee.gifted ? 'Gifted: +50% gather and unique hive bonus.' : 'Feed favorite food for bonus bond and a gifted chance.');
             foodActions.innerHTML = Object.keys(FOOD).map(function(id) { return '<button data-food="' + id + '" ' + (!(gs.inventory[id] || 0) || bee.gifted && id === 'starTreat' ? 'disabled' : '') + '>' + FOOD[id].emoji + ' ' + FOOD[id].name + ' (' + (gs.inventory[id] || 0) + ')</button>'; }).join('');
             foodActions.querySelectorAll('[data-food]').forEach(function(btn) { btn.addEventListener('click', function() { feedBee(selectedBeeIndex, this.dataset.food); }); }); beeModal.classList.add('active');
+            replaceBeeBtn.style.display = pendingEgg ? 'block' : 'none';
+            replaceBeeBtn.textContent = pendingEgg ? 'Replace with ' + (EGGS.concat(TICKET_EGGS).find(function(e) { return e.id === pendingEgg; }) || {}).name : 'Replace this bee';
         }
         function feedBee(index, foodId) {
             var bee = gs.bees[index], food = FOOD[foodId]; if (!bee || !food || !(gs.inventory[foodId] > 0)) return;
-            gs.inventory[foodId]--; if (food.guaranteedGift) bee.gifted = true; else { bee.bond = (bee.bond || 0) + food.bond * (foodId === getBeeFavorite(bee) ? 3 : 1); while (bee.bond >= getBeeBondNeed(bee)) { bee.bond -= getBeeBondNeed(bee); bee.level = getBeeLevel(bee) + 1; } if (foodId === getBeeFavorite(bee) && Math.random() < .015) bee.gifted = true; }
+            gs.inventory[foodId]--; if (food.guaranteedGift) bee.gifted = true; else { bee.bond = (bee.bond || 0) + food.bond * (foodId === getBeeFavorite(bee) ? 3 : 1) * (1 + getUpgradeLevel('bond1') * .10); while (bee.bond >= getBeeBondNeed(bee)) { bee.bond -= getBeeBondNeed(bee); bee.level = getBeeLevel(bee) + 1; } if (foodId === getBeeFavorite(bee) && Math.random() < .015) bee.gifted = true; }
             initBeeInstances(); updateMissions(); openBeeDetail(index); renderHive(); renderShop();
+        }
+
+        function replaceSelectedBee() {
+            if (selectedBeeIndex === null || !pendingEgg || !(gs.eggs[pendingEgg] > 0)) return;
+            var egg = EGGS.find(function(e) { return e.id === pendingEgg; }) || TICKET_EGGS.find(function(e) { return e.id === pendingEgg; });
+            if (!egg) return;
+            gs.eggs[pendingEgg]--;
+            hatchBeeFromEgg(egg, selectedBeeIndex);
+            beeModal.classList.remove('active');
+            replaceBeeBtn.style.display = 'none';
         }
 
         // ===================== MECHANICS =====================
@@ -1377,8 +1590,6 @@
                 if (gs.honey < egg.cost) return;
             }
 
-            if (gs.bees.length >= getHiveSlots()) return;
-
             // Deduct cost
             if (egg.currency === 'tickets') {
                 gs.tickets -= egg.cost;
@@ -1386,18 +1597,42 @@
                 gs.honey -= egg.cost;
             }
 
-            var beeTypeId = rollBee(egg);
-            gs.bees.push({ typeId: beeTypeId });
-            gs.totalBeesHatched++;
+            gs.eggs[eggId] = (gs.eggs[eggId] || 0) + 1;
+            collectionStatus.textContent = egg.name + ' added to your Items.';
+            renderShop();
+            renderHive();
+            updateDisplay();
+            playSound(650, 0.12, 'sine');
+        }
 
-            // Award tickets for hatching
+        function useEgg(eggId) {
+            var egg = EGGS.find(function(e) { return e.id === eggId; }) || TICKET_EGGS.find(function(e) { return e.id === eggId; });
+            if (!egg || !(gs.eggs[eggId] > 0)) return;
+            if (gs.bees.length >= getHiveSlots()) {
+                pendingEgg = eggId;
+                collectionStatus.textContent = 'Hive full. Choose a bee in your hive to replace it.';
+                currentMobileView = 'hive';
+                hivePanel.classList.add('mobile-visible');
+                fieldSection.classList.add('mobile-hidden');
+                return;
+            }
+            gs.eggs[eggId]--;
+            hatchBeeFromEgg(egg);
+        }
+
+        var pendingEgg = null;
+        function hatchBeeFromEgg(egg, replaceIndex) {
+            var beeTypeId = rollBee(egg);
             var beeData = BEE_TYPES[beeTypeId];
             var ticketReward = getTicketReward(beeData.rarity);
+            if (replaceIndex === undefined) gs.bees.push({ typeId: beeTypeId });
+            else gs.bees[replaceIndex] = { typeId: beeTypeId };
+            gs.totalBeesHatched++;
             if (ticketReward > 0) {
                 gs.tickets += ticketReward;
                 gs.totalTicketsEarned += ticketReward;
             }
-
+            pendingEgg = null;
             initBeeInstances();
             showHatchModal(beeTypeId, ticketReward);
             playSound(800, 0.2, 'sine');
@@ -1432,6 +1667,8 @@
             gs.currentField = idx;
             initField();
             renderFieldTabs();
+            playSound(220 + idx * 35, .12, idx % 2 ? 'triangle' : 'sine');
+            collectionStatus.textContent = 'You arrived at ' + FIELDS[idx].name + '.';
         }
 
         // ===================== CANVAS CLICK =====================
@@ -1559,22 +1796,53 @@
             else if (currentShopTab === 'tickets') renderShopTickets();
             else if (currentShopTab === 'upgrades') renderShopUpgrades();
             else if (currentShopTab === 'fields') renderShopFields();
+            else if (currentShopTab === 'store') renderShopStore();
             else renderShopItems();
         }
 
         function renderShopItems() {
             var html = '<div style="text-align:center;margin-bottom:8px;color:#ffc107;font-weight:700">Inventory</div>';
+            var eggList = EGGS.concat(TICKET_EGGS).filter(function(egg) { return gs.eggs[egg.id] > 0; });
+            if (eggList.length) {
+                html += '<div class="shop-item"><div class="shop-item-name">🥚 Stored Eggs</div>';
+                eggList.forEach(function(egg) {
+                    html += '<button class="btn btn-primary" style="margin:4px 2px;padding:6px 8px;font-size:.7rem" data-use-egg="' + egg.id + '">' + egg.emoji + ' ' + egg.name + ' x' + gs.eggs[egg.id] + '</button>';
+                });
+                html += '<div class="shop-item-desc">Eggs remain here until you choose Use. If the hive is full, use one to replace an existing bee.</div></div>';
+            }
             Object.keys(FOOD).forEach(function(id) { var item = FOOD[id]; html += '<div class="shop-item"><div class="shop-item-header"><span class="shop-item-name">' + item.emoji + ' ' + item.name + '</span><span class="shop-item-cost">' + (gs.inventory[id] || 0) + '</span></div><div class="shop-item-desc">' + (item.guaranteedGift ? 'Guarantees the selected bee becomes Gifted.' : '+' + item.bond + ' bond; favorite food gives 3x bond and a gifted chance.') + '</div></div>'; });
             html += '<div class="shop-item"><div class="shop-item-desc">Open a bee in your hive to feed it. Food drops from flowers, tokens, events, and bear missions.</div></div>'; shopContent.innerHTML = html;
+            shopContent.querySelectorAll('[data-use-egg]').forEach(function(el) { el.addEventListener('click', function() { useEgg(this.dataset.useEgg); }); });
+        }
+
+        function renderShopStore() {
+            var html = '<div style="text-align:center;margin-bottom:8px;color:#00ff88;font-weight:700">Royal Market</div>';
+            STORE_ITEMS.forEach(function(item) {
+                var currencyIcon = item.currency === 'tickets' ? '🎟️' : '🍯';
+                html += '<div class="shop-item affordable" data-store-item="' + item.id + '"><div class="shop-item-header"><span class="shop-item-name">' + item.emoji + ' ' + item.name + '</span><span class="shop-item-cost">' + formatNumber(item.cost) + ' ' + currencyIcon + '</span></div><div class="shop-item-desc">' + item.desc + '</div></div>';
+            });
+            html += '<div class="shop-item"><div class="shop-item-desc">Special bees are found in ticket eggs. Buy food, royal jelly, and field powers here.</div></div>';
+            shopContent.innerHTML = html;
+            shopContent.querySelectorAll('[data-store-item]').forEach(function(el) { el.addEventListener('click', function() { buyStoreItem(this.dataset.storeItem); }); });
+        }
+
+        function buyStoreItem(itemId) {
+            var item = STORE_ITEMS.find(function(entry) { return entry.id === itemId; });
+            if (!item) return;
+            if (item.currency === 'tickets' ? gs.tickets < item.cost : gs.honey < item.cost) return;
+            if (item.currency === 'tickets') gs.tickets -= item.cost; else gs.honey -= item.cost;
+            if (item.id === 'fieldBoost') startEvent();
+            else addFood(item.id, item.amount);
+            collectionStatus.textContent = item.name + ' added to your Items.';
+            renderShop(); updateDisplay(); saveGame();
         }
 
         function renderShopEggs() {
             var html = '';
             for (var i = 0; i < EGGS.length; i++) {
                 var egg = EGGS[i];
-                var canBuy = gs.honey >= egg.cost && gs.bees.length < getHiveSlots();
-                var full = gs.bees.length >= getHiveSlots();
-                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') + (full ? ' locked' : '') + '" data-egg="' + egg.id + '">' +
+                var canBuy = gs.honey >= egg.cost;
+                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') + '" data-egg="' + egg.id + '">' +
                     '<div class="shop-item-header">' +
                     '<span class="shop-item-name">' + egg.emoji + ' ' + egg.name + '</span>' +
                     '<span class="shop-item-cost">' + formatNumber(egg.cost) + ' \uD83C\uDF6F</span>' +
@@ -1588,7 +1856,7 @@
                     }
                 }
                 html += rateStrs.join(' | ') + '</div>';
-                if (full) html += '<div class="shop-item-level" style="color:#ff6b6b;">Hive full!</div>';
+                html += '<div class="shop-item-level" style="color:#aaa;">Stored in Items after purchase</div>';
                 html += '</div>';
             }
             shopContent.innerHTML = html;
@@ -1601,9 +1869,8 @@
             var html = '<div style="text-align:center;margin-bottom:8px;"><span class="ticket-color" style="font-size:0.85rem;font-weight:700;">Your Tickets: ' + formatNumber(gs.tickets) + ' \uD83C\uDFAB</span></div>';
             for (var i = 0; i < TICKET_EGGS.length; i++) {
                 var egg = TICKET_EGGS[i];
-                var canBuy = gs.tickets >= egg.cost && gs.bees.length < getHiveSlots();
-                var full = gs.bees.length >= getHiveSlots();
-                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') + (full ? ' locked' : '') + '" data-egg="' + egg.id + '">' +
+                var canBuy = gs.tickets >= egg.cost;
+                html += '<div class="shop-item' + (canBuy ? ' affordable' : '') + '" data-egg="' + egg.id + '">' +
                     '<div class="shop-item-header">' +
                     '<span class="shop-item-name">' + egg.emoji + ' ' + egg.name + '</span>' +
                     '<span class="shop-item-cost ticket-cost">' + egg.cost + ' \uD83C\uDFAB</span>' +
@@ -1617,7 +1884,7 @@
                     }
                 }
                 html += rateStrs.join(' | ') + '</div>';
-                if (full) html += '<div class="shop-item-level" style="color:#ff6b6b;">Hive full!</div>';
+                html += '<div class="shop-item-level" style="color:#aaa;">Stored in Items after purchase</div>';
                 html += '</div>';
             }
 
@@ -1772,6 +2039,13 @@
                 // Ensure new fields exist for old saves
                 if (gs.tickets === undefined) gs.tickets = 0;
                 if (gs.totalTicketsEarned === undefined) gs.totalTicketsEarned = 0;
+                if (!gs.eggs) gs.eggs = {};
+                if (!gs.inventory) gs.inventory = {};
+                Object.keys(FOOD).forEach(function(id) { if (gs.inventory[id] === undefined) gs.inventory[id] = 0; });
+                while (gs.unlockedFields.length < FIELDS.length) gs.unlockedFields.push(false);
+                if (!gs.stats) gs.stats = { tokens: 0, events: 0, fields: 1 };
+                if (!gs.world) gs.world = { time:8, day:1, season:0, weather:'clear', weatherTicks:520, choices:0, trust:{} };
+                if (!gs.world.trust) gs.world.trust = {};
                 // Validate bee types exist
                 gs.bees = gs.bees.filter(function(bee) { return BEE_TYPES[bee.typeId]; });
                 if (gs.bees.length === 0) gs.bees = [{ typeId: 'basic' }];
@@ -1813,6 +2087,7 @@
         // ===================== GAME LOOP =====================
 
         function tick() {
+            updateWorld();
             updateBees();
             for (var i = 0; i < flowers.length; i++) {
                 var f = flowers[i];
@@ -1840,6 +2115,8 @@
         convertBtn.addEventListener('click', function() { convertPollen(); });
 
         hatchCloseBtn.addEventListener('click', function() { hatchModal.classList.remove('active'); });
+        beeCloseBtn.addEventListener('click', function() { beeModal.classList.remove('active'); });
+        replaceBeeBtn.addEventListener('click', replaceSelectedBee);
         hatchModal.addEventListener('touchstart', function(e) {
             if (e.target === hatchModal) {
                 hatchModal.classList.remove('active');
@@ -1847,6 +2124,16 @@
         }, { passive: true });
 
         resetBtn.addEventListener('click', resetGame);
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var message = feedbackText.value.trim();
+            if (!message) return;
+            var feedback = JSON.parse(localStorage.getItem('beeSwarmFeedback') || '[]');
+            feedback.push({ type: feedbackType.value, message: message, time: new Date().toISOString() });
+            localStorage.setItem('beeSwarmFeedback', JSON.stringify(feedback.slice(-20)));
+            feedbackText.value = '';
+            feedbackNote.textContent = 'Thanks! Your ' + feedbackType.value.toLowerCase() + ' was saved locally.';
+        });
 
         // Shop tabs
         document.querySelectorAll('.tab-btn').forEach(function(btn) {
@@ -1919,6 +2206,8 @@
             renderHive();
             renderFieldTabs();
             renderShop();
+            renderWorldHud();
+            renderStory();
             updateDisplay();
 
             setInterval(tick, 100);

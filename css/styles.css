@@ -299,11 +299,15 @@ header p {
 
 .search-bar {
     margin-bottom: 20px;
+    position: relative;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .search-bar input {
     width: 100%;
-    max-width: 500px;
+    max-width: none;
     padding: 15px 25px;
     border-radius: 30px;
     border: 2px solid rgba(255, 255, 255, 0.1);
@@ -314,6 +318,65 @@ header p {
     outline: none;
     transition: all 0.3s ease;
 }
+
+.autocomplete-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    display: none;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    text-align: left;
+    background: rgba(20, 28, 54, .98);
+    border: 1px solid rgba(0, 217, 255, .35);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(0,0,0,.35);
+}
+.autocomplete-list.open { display: block; }
+.autocomplete-list button {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+    align-items: center;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+.autocomplete-list button:hover,
+.autocomplete-list button[aria-selected="true"] { background: rgba(0, 217, 255, .18); }
+.autocomplete-list small { margin-left: auto; color: #8fa6c8; }
+
+.advanced-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin: -5px auto 15px;
+}
+.advanced-filters label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #a0a0a0;
+    font-size: .78rem;
+}
+.advanced-filters select {
+    padding: 7px 9px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px;
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    font: inherit;
+}
+.advanced-filters option { background: #1a1a2e; }
 
 .search-bar input:focus {
     border-color: #00d9ff;

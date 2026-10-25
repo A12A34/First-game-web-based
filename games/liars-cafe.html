@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liar's Cafe - Game Hub</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+        :root { --red:#f26b5e; --gold:#ffc857; --felt:#16443f; --ink:#f5f0df; --muted:#aab9ae; }
+        .cafe { width:min(100%,900px); display:grid; gap:14px; }
+        .panel { padding:18px; border:1px solid rgba(255,200,87,.22); border-radius:14px; background:rgba(5,22,25,.74); }
+        .panel h2 { color:var(--gold); margin:0 0 10px; font-size:1.05rem; }
+        .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+        .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0; }
+        input, select { flex:1; min-width:120px; padding:10px; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(0,0,0,.25); color:var(--ink); font:inherit; }
+        button { padding:9px 12px; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(255,255,255,.08); color:var(--ink); cursor:pointer; font:inherit; font-weight:700; }
+        button:hover { border-color:var(--gold); transform:translateY(-1px); }
+        button.primary { background:var(--red); border-color:var(--red); }
+        button.gold { background:var(--gold); border-color:var(--gold); color:#24322e; }
+        button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+        .rooms { display:grid; gap:8px; max-height:300px; overflow:auto; }
+        .room { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; border:1px solid rgba(255,255,255,.15); border-radius:9px; background:rgba(0,0,0,.16); }
+        .room small, .note { color:var(--muted); font-size:.75rem; }
+        .room.private { border-color:rgba(242,107,94,.45); }
+        .table { background:radial-gradient(circle at 50% 45%, #23645a, var(--felt)); min-height:300px; }
+        .players { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin:12px 0; }
+        .seat { padding:12px; min-height:70px; border:1px solid rgba(255,255,255,.18); border-radius:9px; background:rgba(0,0,0,.17); }
+        .seat.host { border-color:var(--gold); }
+        .status { min-height:30px; color:var(--muted); text-align:center; }
+        .source { color:var(--muted); font-size:.72rem; line-height:1.45; }
+        .source a { color:var(--gold); }
+        @media(max-width:600px) { .panel{padding:12px;} .room{align-items:flex-start; flex-direction:column;} .row button{flex:1;} }
+    </style>
+</head>
+<body>
+    <button class="fullscreen-btn" id="fullscreenBtn" title="Toggle fullscreen">⛶</button>
+    <div class="container">
+        <a href="../index.html" class="back-btn">← Back to Games</a>
+        <div class="game-container cafe">
+            <h1 class="game-title">☕ Liar's Cafe</h1>
+            <div class="panel">
+                <h2>Table lobby</h2>
+                <div class="row"><input id="playerName" maxlength="18" placeholder="Your name" value="Player"><input id="roomCode" maxlength="8" placeholder="Room code (optional)"><button class="gold" id="joinBtn">Join table</button></div>
+                <div class="row"><label><input type="checkbox" id="privateRoom"> Private table</label><select id="seatCount" aria-label="Seats"><option value="3">3 seats</option><option value="4" selected>4 seats</option><option value="5">5 seats</option><option value="6">6 seats</option></select><button class="primary" id="createBtn">Create table</button></div>
+                <div class="note" id="lobbyStatus">Create a public table or join one on this device.</div>
+            </div>
+            <div class="grid">
+                <div class="panel"><h2>Open tables</h2><div class="rooms" id="rooms"></div></div>
+                <div class="panel"><h2>How this version works</h2><p class="note">This static adaptation keeps the table-management loop playable offline. Rooms are saved in this browser, and starting a full table launches the existing Liar's Bar rules.</p><p class="source">Architecture inspired by <a href="https://github.com/weshallsah/Liars-bars" target="_blank" rel="noopener">weshallsah/Liars-bars</a>, used under its MIT license. This site does not connect to Linera or copy its backend.</p></div>
+            </div>
+            <div class="panel table" id="tablePanel" hidden>
+                <h2 id="tableTitle">Your table</h2><div class="players" id="players"></div><div class="status" id="tableStatus"></div>
+                <div class="row" style="justify-content:center"><button class="gold" id="startBtn">Start Liar's Bar</button><button id="leaveBtn">Leave table</button></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (() => {
+        'use strict';
+        const $ = id => document.getElementById(id), storageKey = 'liarsCafeRooms';
+        let rooms = JSON.parse(localStorage.getItem(storageKey) || '[]'), current = null;
+        const code = () => Math.random().toString(36).slice(2,8).toUpperCase();
+        const save = () => { localStorage.setItem(storageKey, JSON.stringify(rooms)); renderRooms(); renderTable(); };
+        function renderRooms() {
+            $('rooms').innerHTML = rooms.length ? rooms.map(room => `<div class="room${room.private?' private':''}"><div><strong>${room.private?'🔒 ':''}${room.code}</strong><br><small>${room.host} · ${room.players.length}/${room.seats} seats</small></div><button data-join="${room.code}">Join</button></div>`).join('') : '<div class="note">No tables yet. Create the first one.</div>';
+            document.querySelectorAll('[data-join]').forEach(button => button.onclick = () => join(button.dataset.join));
+        }
+        function renderTable() {
+            $('tablePanel').hidden = !current;
+            if (!current) return;
+            $('tableTitle').textContent = `☕ Table ${current.code}${current.private?' · Private':''}`;
+            $('players').innerHTML = current.players.map((player, index) => `<div class="seat${index===0?' host':''}"><strong>${player}</strong>${index===0?'<br><small>Host</small>':''}</div>`).join('');
+            $('tableStatus').textContent = current.players.length >= 2 ? 'The table is ready. The host can start the game.' : 'Invite another player on this device to start.';
+            $('startBtn').disabled = current.players.length < 2;
+        }
+        function create() {
+            const name = $('playerName').value.trim() || 'Player', room = { code:code(), host:name, private:$('privateRoom').checked, seats:Number($('seatCount').value), players:[name] };
+            rooms.push(room); current = room; $('lobbyStatus').textContent = `Created table ${room.code}. Share the code with another local player.`; save();
+        }
+        function join(roomCode) {
+            const room = rooms.find(item => item.code === roomCode.toUpperCase());
+            if (!room) { $('lobbyStatus').textContent = 'That table code was not found.'; return; }
+            if (room.players.length >= room.seats) { $('lobbyStatus').textContent = 'That table is full.'; return; }
+            const name = $('playerName').value.trim() || 'Player';
+            if (!room.players.includes(name)) room.players.push(name);
+            current = room; $('lobbyStatus').textContent = `Joined table ${room.code}.`; save();
+        }
+        $('createBtn').onclick = create;
+        $('joinBtn').onclick = () => join($('roomCode').value.trim());
+        $('leaveBtn').onclick = () => { if (current) { current.players = current.players.filter(name => name !== ($('playerName').value.trim() || 'Player')); if (!current.players.length) rooms = rooms.filter(room => room.code !== current.code); current = null; save(); } };
+        $('startBtn').onclick = () => { if (current) location.href = `liars-bar-2d.html?room=${encodeURIComponent(current.code)}`; };
+        $('fullscreenBtn').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {});
+        renderRooms(); renderTable();
+    })();
+    </script>
+</body>
+</html>
