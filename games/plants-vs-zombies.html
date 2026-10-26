@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        #container {
+            width: 950px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #bg {
+            margin-left: -100px;
+        }
+
+        .card {
+            z-index: 10;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #score {
+            position: absolute;
+            top: 57px;
+            left: 42px;
+            font-size: 30px;
+            color: black;
+            z-index: 20;
+        }
+    </style>
+</head>
+
+<body ondragstart="return false">
+    <div id="container">
+        <img id="bg" src="images/Background.jpg" alt="">
+        <img class="card" onclick="dragPeashooter(1)" src="images/Peashooter.png" alt="">
+        <img class="card" onclick="dragPeashooter(2)" style="left:100px" src="images/SnowPea.png" alt="">
+        <img class="card" onclick="dragPeashooter(3)" style="left: 200px;" src="images/SunFlower.png" alt="">
+        <img class="card" onclick="dragBomb(5)" style="left: 300px;" src="images/Jalapeno.png" alt="">
+        <img class="card" onclick="dragPeashooter(4)" style="left: 400px;" src="images/Repeater.png" alt="">
+        <img class="card" onclick="dragBomb(6)" style="left: 500px;" src="images/CherryBomb.png" alt="">
+        <img class="card" onclick="dragPeashooter(5)" style="left: 600px;" src="images/GatlingPea.png" alt="">
+        <img class="card" onclick="dragNut(7)" style="left: 700px;" src="images/TallNut.png" alt="">
+        <img class="card" onclick="dragPeashooter(8)" style="left: 800px;" src="images/TwinSunflower.png" alt="">
+        <img class="card" style="top: 60px;" src="images/SunBack.png">
+        <div id="score">2000</div>
+    </div>
+    <script src="sprites.js"></script>
+    <script>
+        var zombies = [];//僵尸数组
+        var counter = 0;//全局计数器
+        var duration = 1000;
+        var zbIndex = 0;//僵尸数组下标
+        var shooter = [];//射手数组
+        var nuts = [];//坚果数组
+        var bullets = []//子弹数组
+        var zbDieNo = 0;//一个都没打死
+        var suns = [];
+        var div = document.getElementById('score');
+        //主函数
+        window.onload = function () {
+            setInterval(() => {
+                addSprites();//生产精灵
+                spriteStep();//精灵走步
+                onHitting();//精灵碰撞
+            }, 100 / 8);//每隔12.5ms重绘画面
+        }
+
+        function score(score)
+         {
+            if (score < 0 && parseInt(div.innerHTML) < -score) {
+                return false;//种植失败
+            }
+            div.innerHTML = parseInt(div.innerHTML) + score;
+            return true
+        }
+
+        function shoot(peashooter) {
+            if (peashooter.type == 3 || peashooter.type == 8) {
+                suns.push(createSun(peashooter, suns.length, sun => {
+                    //太阳飘到最上面，太阳消失，加分
+                    suns = suns.filter(item => item.code != sun.code);
+                    container.removeChild(sun);
+                    score(50);
+                }))
+            } else {
+                for (var zombie of zombies) {
+                    if (zombie.offsetTop < peashooter.offsetTop && zombie.offsetTop > peashooter.offsetTop - 100
+                        && zombie.offsetLeft > peashooter.offsetLeft - 50) {
+                        bullets.push(createBullet(peashooter, bullets.length, bullet => {
+                            bullets = bullets.filter(item => item.code != bullet.code);
+                            container.removeChild(bullet);
+                        }
+                        ));
+                        break; //发现有一个僵尸在射手面前出现就开炮射击
+                    }
+                }
+            }
+        }
+        function ZombieDie(zombie) {
+            setTimeout(() => {
+                try{
+                    zombies = zombies.filter(item => item.id != zombie.id);
+                    container.removeChild(zombie);
+                    zbDieNo++;
+                    if (zbDieNo > 20) {
+                    alert('游戏胜利，进入下一关');
+                    window.location.reload();
+                    }
+                }catch(e){}
+                
+            }, 2300)
+        }
+
+        function boom(jala,type) {
+            if(type == 5){
+                for (var zombie of zombies) {
+                    if (jala.route == zombie.route) {
+                        zombie.src = 'images/BoomDie.gif'
+                        zombie.blood = 0;
+                        ZombieDie(zombie)
+                    }
+                }
+            }else if(type == 6){
+                
+                for (var zombie of zombies) {
+                    console.log(jala.offsetLeft)
+                    console.log(jala.offsetTop)
+                    console.log(zombie.offsetLeft)
+                    console.log(zombie.offsetTop)
+                    if (jala.offsetLeft - 150 < zombie.offsetLeft &&
+                    jala.offsetLeft + 150 > zombie.offsetLeft &&
+                    jala.offsetTop - 180 < zombie.offsetTop &&
+                    jala.offsetTop + 180 > zombie.offsetTop ) {
+                        zombie.src = 'images/BoomDie.gif'
+                        zombie.blood = 0;
+                        ZombieDie(zombie)
+                    }
+                }
+            }
+            
+        }
+
+        function dragNut(type){
+            createNut(type, nut => {
+                var result = score(-nut.score);
+                if (!result) {
+                    container.removeChild(nut);
+                    return;
+                }
+                nut.type = 7;
+                shooter.push(nut);
+
+            })
+        }
+        function dragBomb(type) {
+            createBomb(type, bomb => {
+                var result = score(-bomb.score);
+                if (!result) {
+                    container.removeChild(bomb);
+                    return;
+                }
+                if(type == 5){ //辣椒
+                    bomb.src = 'images/Jalapeno.gif'
+                    setTimeout(() => {
+                        bomb.style.left = '150px'
+                        bomb.style.top = bomb.offsetTop - 40 + 'px'
+                        bomb.src = 'images/JalapenoAttack.gif'
+                        boom(bomb,type);
+                    }, 700);//膨胀到最大变成一排火
+                }    
+                else{//樱桃
+                    bomb.src = 'images/CherryBomb.gif'
+                    setTimeout(() => {
+                        bomb.style.left = bomb.offsetLeft - 50 + 'px'
+                        bomb.style.top = bomb.offsetTop - 40 + 'px'
+                        bomb.src = 'images/Boom.gif' 
+                        boom(bomb,type);
+                    }, 700);//膨胀到最大变成一排火
+                }
+                setTimeout(() => {//爆炸后把辣椒从画面移除
+                    container.removeChild(bomb); //不用从数组删除
+                }, 1700);
+            })
+        }
+
+        function dragPeashooter(type) {//点击卡片调用drag
+            createPeashooter(type, peashooter => {//给射手发射添加定时器
+                var result = score(-peashooter.score);
+                if (!result) {
+                    container.removeChild(peashooter);
+                    return;
+                }
+                peashooter.timer = setInterval(() => {
+                    shoot(peashooter);
+                }, type == 3 || type == 8 ? 4000 : 2000)//每两秒一颗子弹
+                //双发射手
+                if (type == 4) {
+                    setTimeout(() => {
+                        peashooter.timer2 = setInterval(() => {
+                            shoot(peashooter);
+                        }, 2000);
+                        shoot(peashooter);
+                    }, 100)
+                }
+                //机枪射手
+                if (type == 5) {
+                    setTimeout(() => {
+                        peashooter.timer3 = setInterval(() => {
+                            shoot(peashooter);
+                        }, 2000);
+                        shoot(peashooter);
+                    }, 100)
+                    setTimeout(() => {
+                        peashooter.timer4 = setInterval(() => {
+                            shoot(peashooter);
+                        }, 2000);
+                        shoot(peashooter);
+                    }, 200)
+                    setTimeout(() => {
+                        peashooter.timer5 = setInterval(() => {
+                            shoot(peashooter);
+                        }, 2000);
+                        shoot(peashooter);
+                    }, 300)
+                }
+                //双生向日葵
+                if (type == 8) {
+                    setTimeout(() => {
+                        peashooter.timer6 = setInterval(() => {
+                            shoot(peashooter);
+                        }, 4000);
+                        shoot(peashooter);
+                    }, 100)
+                }
+                shoot(peashooter);//发射子弹
+                shooter.push(peashooter);//数组中存种到地里的豌豆射手     
+            });
+        }
+        //生产精灵
+        function addSprites() {
+            if (zbIndex > 20) {
+                return; //僵尸大于20，不再生产僵尸
+            }
+            counter++;//每12.5ms计数器++
+            if (parseInt(counter / duration) >= zbIndex) {
+                zombies.push(createZombie(zbIndex, () => {
+                    alert('戴夫的脑子被吃了');
+                    window.location.reload();
+                }));
+                if (zbIndex == 2) {
+                    duration = 100; //密集度变高
+                    counter = duration * zbIndex;
+                }
+                if (zbIndex == 10) {
+                    duration = 2000; //密集度稀松
+                    counter = duration * zbIndex;
+                }
+                if (zbIndex == 11) {
+                    duration = 100; //密集度变密
+                    counter = duration * zbIndex;
+                }
+                zbIndex++;
+            }
+        }
+        //精灵走步
+        function spriteStep() {
+            for (var zombie of zombies) {//僵尸
+                zombie.step();
+            }
+            for (var bullet of bullets) {//子弹
+                bullet.step();
+            }
+            for (var sun of suns) {
+                sun.step();
+            }
+        }
+        function hitZombie(bullet) {
+            for (var zombie of zombies) {
+                if (bullet.offsetLeft - 70 > zombie.offsetLeft &&
+                    bullet.offsetLeft - 140 < zombie.offsetLeft &&
+                    bullet.route == zombie.route) {
+                    zombie.blood--;
+                    if (bullet.type == 2) {
+                        zombie.speed = 1;
+                    }
+                    if (zombie.blood == 9) {
+                        zombie.src = zombie.src.endsWith('Zombie.gif') ? 'images/Zombie.gif' : 'images/ZombieAttack.gif';
+                    }
+                    if (zombie.blood == 0) {
+                        var head = createHead(zombie);
+                        zombie.src = zombie.src.endsWith('Zombie.gif') ?
+                            'images/ZombieLostHead.gif' : 'images/ZombieLostHeadAttack.gif';
+                        setTimeout(() => {
+                            zombie.src = 'images/ZombieDie.gif';
+                            container.removeChild(head);
+                        }, 1000);
+                        ZombieDie(zombie)
+                    } else {
+                        zombie.style.opacity = 0.7;
+                        setTimeout(() => {
+                            zombie.style.opacity = 1;
+                        }, 100);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        }
+        //精灵碰撞
+        function onHitting() {
+            for (var bullet of bullets) {
+                if (hitZombie(bullet)) {
+                    bullet.src = 'images/BulletHit.gif';
+                }
+            }
+            for (var zombie of zombies) {
+                var peashooter = eatPlantBy(zombie)
+                if (peashooter && zombie.src.endsWith('Zombie.gif')) {
+                    if (zombie.blood <= 9) {
+                        zombie.src = 'images/ZombieAttack.gif'
+                    } else if (zombie.status == 5) {
+                        zombie.src = 'images/BucketheadZombieAttack.gif';
+                    } else {
+                        zombie.src = 'images/ConeheadZombieAttack.gif';
+                    }
+                    peashooter.attack.push(zombie.id);
+                } else if (peashooter && peashooter.blood == 0) {
+                    if (peashooter.timer) clearInterval(peashooter.timer);
+                    if (peashooter.timer2) clearInterval(peashooter.timer2);
+                    shooter.splice(peashooter.index, 1)
+                    container.removeChild(peashooter);
+                    for (var id of peashooter.attack) {
+                        var zz = document.getElementById(id);
+                        if (zz && zz.blood <= 9) {
+                            zz.src = 'images/Zombie.gif';
+                        } else if (zz && zz.status == 5) {
+                            zz.src = 'images/BucketheadZombie.gif'
+                        } else if (zz) {
+                            zz.src = 'images/ConeheadZombie.gif';
+                        }
+                    }
+                } else if (peashooter) {//还有血
+                    peashooter.blood--;
+                    if(peashooter.type==7 && peashooter.blood<=600 && peashooter.blood>300)
+                        peashooter.src = 'images/TallnutCracked1.gif'
+                    if(peashooter.type==7 && peashooter.blood<=300 && peashooter.blood>0)
+                        peashooter.src = 'images/TallnutCracked2.gif'
+                }
+            }
+        }
+
+
+        function eatPlantBy(zombie) {
+            for (var i in shooter) {
+                var peashooter = shooter[i];//豌豆射手
+                if (peashooter.offsetLeft - 20 > zombie.offsetLeft &&
+                    peashooter.offsetLeft - 107 < zombie.offsetLeft &&
+                    peashooter.route == zombie.route) {
+                    peashooter.index = i;//下标
+                    return peashooter;//把撞到的植物返回
+                }
+            }
+            return null
+        }
+    </script>
+</body>
+
+</html>

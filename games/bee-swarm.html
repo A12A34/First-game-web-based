@@ -345,6 +345,28 @@
         }
         .reset-btn:hover { background: rgba(255,107,107,0.3); }
 
+        .swarm-command { width:100%; max-width:1300px; margin-top:12px; }
+        .command-grid { display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:10px; }
+        .command-card { background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:12px; }
+        .command-card h3 { color:#ffc107; font-size:.9rem; margin-bottom:8px; }
+        .bee-profile { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; max-height:190px; overflow:auto; }
+        .profile-card, .monster-card { border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:7px; font-size:.7rem; background:rgba(255,255,255,.04); }
+        .profile-card { cursor:pointer; }
+        .profile-card.selected { border-color:#00d9ff; background:rgba(0,217,255,.12); }
+        .profile-card strong, .monster-card strong { display:block; font-size:.78rem; margin-bottom:3px; }
+        .profile-card .bar, .monster-card .bar { height:5px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden; margin:4px 0; }
+        .profile-card .bar span, .monster-card .bar span { display:block; height:100%; background:linear-gradient(90deg,#00d9ff,#00ff88); }
+        .combat-list { display:grid; gap:6px; }
+        .monster-card { display:grid; grid-template-columns:1fr auto; align-items:center; gap:4px 8px; }
+        .monster-card .monster-meta { color:#aaa; }
+        .command-btn { border:1px solid rgba(0,217,255,.45); background:rgba(0,217,255,.12); color:#fff; border-radius:7px; padding:6px 9px; cursor:pointer; font:inherit; font-size:.7rem; }
+        .command-btn:hover { background:rgba(0,217,255,.25); }
+        .command-btn:disabled { opacity:.4; cursor:not-allowed; }
+        .command-note { color:#aab7ca; font-size:.7rem; line-height:1.4; margin-top:6px; }
+        .ability-token { color:#e040fb; font-weight:700; }
+        .gumbowder { color:#ff80ab; font-weight:700; }
+        @media (max-width:1000px) { .command-grid { grid-template-columns:1fr; } }
+
         @media (max-width: 1000px) {
             .game-layout { grid-template-columns: 1fr; }
             .hive-panel, .shop-panel { display: none; }
@@ -397,6 +419,14 @@
                     <div class="stat-label">Tickets &#x1F3AB;</div>
                 </div>
                 <div class="stat-box">
+                    <div class="stat-value" style="color:#ff80ab" id="gumbowderDisplay">0</div>
+                    <div class="stat-label">Gumbowder</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" style="color:#e040fb" id="abilityTokenDisplay">0</div>
+                    <div class="stat-label">Ability Tokens</div>
+                </div>
+                <div class="stat-box">
                     <div class="stat-value field-color" id="fieldDisplay">Dandelion</div>
                     <div class="stat-label">Field</div>
                 </div>
@@ -443,6 +473,30 @@
                 </div>
             </div>
 
+            <section class="panel swarm-command" aria-label="Swarm command center">
+                <div class="panel-title">🐝 Swarm Command Center</div>
+                <div class="command-grid">
+                    <div class="command-card">
+                        <h3>Bee Profiles &amp; Progress</h3>
+                        <div class="bee-profile" id="beeProfiles"></div>
+                        <div class="command-note" id="selectedBeeSummary">Select a bee to compare its health, speed, attack, and skills.</div>
+                    </div>
+                    <div class="command-card">
+                        <h3>Monster Hunts</h3>
+                        <div class="combat-list" id="monsterList"></div>
+                        <div class="command-note" id="combatLog">Defeat monsters to earn honey, gumbowder, and ability tokens.</div>
+                    </div>
+                    <div class="command-card">
+                        <h3>Hive Automation</h3>
+                        <button class="command-btn" id="autoFeedBtn" type="button"></button>
+                        <button class="command-btn" id="autoLevelBtn" type="button"></button>
+                        <button class="command-btn" id="abilityTokenBtn" type="button"></button>
+                        <button class="command-btn" id="gumbowderBtn" type="button"></button>
+                        <div class="command-note">Auto-feed uses favorite food first. Auto-level feeds only when a bee is close to its next level. Ability tokens unlock the next skill for the selected bee.</div>
+                    </div>
+                </div>
+            </section>
+
             <div class="panel mission-panel" id="missionPanel"></div>
             <div class="panel story-panel" id="storyPanel"></div>
             <div class="panel story-panel">
@@ -458,7 +512,7 @@
 
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Tap a flower to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then buy eggs, upgrades, and new fields. Bought eggs stay in <strong>Items</strong> until you use them; full hives can replace a selected bee. Visit the <strong>Store</strong> for food and field boosts. Earn <strong style="color:#e040fb">Tickets</strong> by hatching rare bees! Keyboard: 1-8 switch fields, C to convert, S to save.</p>
+                <p>Tap a flower to collect pollen. Your bees also collect pollen automatically! Convert pollen into honey, then buy eggs, upgrades, and new fields. Open a bee profile to track health, speed, attack, XP, and skills. Fight monsters in the <strong>Swarm Command Center</strong> for gumbowder and ability tokens, then enable auto-feed or unlock new skills. Bought eggs stay in <strong>Items</strong> until you use them; full hives can replace a selected bee. Visit the <strong>Store</strong> for food and field boosts. Earn <strong style="color:#e040fb">Tickets</strong> by hatching rare bees! Keyboard: 1-8 switch fields, C to convert, S to save.</p>
             </div>
         </div>
     </div>
@@ -700,6 +754,18 @@
             { id: 'fieldBoost', name: 'Field Boost', emoji: '🌈', cost: 100, currency: 'tickets', amount: 1, desc: 'Instantly starts a Field Bloom event.' }
         ];
 
+        var MONSTERS = [
+            { id:'ladybug', name:'Ladybug Scout', level:1, health:120, attack:18, rewardHoney:450, rewardGumbowder:2, rewardTokens:1, emoji:'🐞' },
+            { id:'rhino', name:'Rhino Beetle', level:3, health:420, attack:42, rewardHoney:1800, rewardGumbowder:5, rewardTokens:2, emoji:'🪲' },
+            { id:'mantis', name:'Mantis Guardian', level:6, health:1100, attack:86, rewardHoney:6500, rewardGumbowder:12, rewardTokens:5, emoji:'🦗' },
+            { id:'scorpion', name:'Scorpion Overlord', level:10, health:2800, attack:160, rewardHoney:24000, rewardGumbowder:30, rewardTokens:12, emoji:'🦂' }
+        ];
+        var BEE_SKILLS = [
+            { name:'Hardened Carapace', desc:'+15% max health', health:0.15 },
+            { name:'Battle Buzz', desc:'+20% attack power', attack:0.20 },
+            { name:'Swift Wings', desc:'+18% speed', speed:0.18 }
+        ];
+
         // ===================== STATE =====================
 
         var gs = {
@@ -720,6 +786,12 @@
             inventory: { treat: 5, sunflowerSeed: 0, strawberry: 0, pineapple: 0, starTreat: 0, blueberry: 0, royalJelly: 0 },
             eggs: {},
             missions: {},
+            gumbowder: 0,
+            abilityTokens: 0,
+            autoFeed: false,
+            autoFeedNext: false,
+            combatWins: 0,
+            combat: {},
             stats: { tokens: 0, events: 0, fields: 1 },
             world: { time: 8, day: 1, season: 0, weather: 'clear', weatherTicks: 520, choices: 0, trust: {} },
             lastSave: Date.now()
@@ -765,6 +837,16 @@
         var feedbackType = document.getElementById('feedbackType');
         var feedbackText = document.getElementById('feedbackText');
         var feedbackNote = document.getElementById('feedbackNote');
+        var gumbowderDisplay = document.getElementById('gumbowderDisplay');
+        var abilityTokenDisplay = document.getElementById('abilityTokenDisplay');
+        var beeProfiles = document.getElementById('beeProfiles');
+        var monsterList = document.getElementById('monsterList');
+        var selectedBeeSummary = document.getElementById('selectedBeeSummary');
+        var combatLog = document.getElementById('combatLog');
+        var autoFeedBtn = document.getElementById('autoFeedBtn');
+        var autoLevelBtn = document.getElementById('autoLevelBtn');
+        var abilityTokenBtn = document.getElementById('abilityTokenBtn');
+        var gumbowderBtn = document.getElementById('gumbowderBtn');
         var hatchModal = document.getElementById('hatchModal');
         var hatchBeeIcon = document.getElementById('hatchBeeIcon');
         var hatchBeeName = document.getElementById('hatchBeeName');
@@ -841,6 +923,29 @@
 
         function getBeeLevel(bee) { return bee.level || 1; }
         function getBeeBondNeed(bee) { return 100 * getBeeLevel(bee); }
+        function getBeeStats(bee) {
+            var data = BEE_TYPES[bee.typeId], level = getBeeLevel(bee), rarityBonus = { Common:0, Rare:8, Epic:18, Legendary:32, Mythic:50, Event:42 }[data.rarity] || 0;
+            var skills = bee.skills || [];
+            var health = (50 + rarityBonus + level * 14) * (bee.gifted ? 1.15 : 1);
+            var attack = (8 + data.gatherAmount * .9 + rarityBonus * .5 + level * 5) * (bee.gifted ? 1.25 : 1);
+            var speed = data.gatherSpeed * (1 + (level - 1) * .06) * (bee.gifted ? 1.1 : 1);
+            skills.forEach(function(skill) {
+                var effect = BEE_SKILLS[skill];
+                if (effect) { health *= 1 + (effect.health || 0); attack *= 1 + (effect.attack || 0); speed *= 1 + (effect.speed || 0); }
+            });
+            return { health:Math.floor(health), attack:Math.floor(attack), speed:speed, xp:bee.xp || 0, xpNeed:100 * level, skills:skills };
+        }
+        function addBeeXp(bee, amount) {
+            if (!bee) return;
+            bee.xp = (bee.xp || 0) + Math.max(1, Math.floor(amount));
+            while (bee.xp >= 100 * getBeeLevel(bee)) {
+                bee.xp -= 100 * getBeeLevel(bee);
+                bee.level = getBeeLevel(bee) + 1;
+                if (getBeeLevel(bee) >= 3 && !(bee.skills || []).includes(0)) bee.skills = (bee.skills || []).concat(0);
+                if (getBeeLevel(bee) >= 5 && !(bee.skills || []).includes(1)) bee.skills = (bee.skills || []).concat(1);
+                collectionStatus.textContent = BEE_TYPES[bee.typeId].name + ' reached level ' + bee.level + '!';
+            }
+        }
         function getBeeFavorite(bee) { return bee.favorite || FAVORITES[Object.keys(BEE_TYPES).indexOf(bee.typeId) % FAVORITES.length]; }
         function getGiftedTypes() {
             var types = {};
@@ -882,6 +987,7 @@
                 pollenToken: { emoji: '🌸', color: '#ffeb3b' }, honeyToken: { emoji: '🍯', color: '#ffc107' },
                 criticalToken: { emoji: '💥', color: '#ff5252' }, conversionToken: { emoji: '🔄', color: '#ff9800' },
                 foodToken: { emoji: '🍓', color: '#ff80ab' }, ticketToken: { emoji: '🎟️', color: '#e040fb' },
+                gumbowderToken: { emoji: '🧂', color: '#ff80ab' }, abilityToken: { emoji: '🔮', color: '#e040fb' },
                 bombToken: { emoji: '💣', color: '#ff7043' }, eventToken: { emoji: '✨', color: '#80deea' }
             }[type] || { emoji: '✨', color: '#fff' };
             var rect = canvas.getBoundingClientRect();
@@ -903,6 +1009,8 @@
             if (token.type === 'honeyToken' || token.type === 'conversionToken') { gs.honey += amount; gs.totalHoneyEarned += amount; }
             else if (token.type === 'ticketToken') { gs.tickets++; gs.totalTicketsEarned++; }
             else if (token.type === 'foodToken') { addFood(FAVORITES[Math.floor(Math.random() * FAVORITES.length)], 1); }
+            else if (token.type === 'gumbowderToken') { gs.gumbowder++; }
+            else if (token.type === 'abilityToken') { gs.abilityTokens++; }
             else if (token.type === 'criticalToken') { collectPollen(amount * 3); }
             else if (token.type === 'bombToken') { collectPollen(amount * 2); }
             else { collectPollen(amount); }
@@ -946,6 +1054,8 @@
                 var data = BEE_TYPES[bee.typeId];
                 if (!bee.level) bee.level = 1;
                 if (bee.bond === undefined) bee.bond = 0;
+                if (bee.xp === undefined) bee.xp = 0;
+                if (!bee.skills) bee.skills = [];
                 if (!bee.favorite) bee.favorite = getBeeFavorite(bee);
                 beeInstances.push({
                     x: canvas.width / 2 + (Math.random() - 0.5) * 100,
@@ -1365,6 +1475,7 @@
                         triggerAbility(b, data, amount, field);
 
                         collectPollen(amount);
+                        addBeeXp(gs.bees[i], amount * .12);
 
                         // Pollen particles
                         for (var j = 0; j < 4; j++) {
@@ -1504,7 +1615,9 @@
         function claimMission(id) {
             var line = QUESTLINES.find(function(q) { return q.id === id; }), step = gs.missions[id] || 0, quest = line.quests[step];
             if (getMissionProgress(quest.type) < quest.target) return;
-            giveReward(quest.reward); gs.missions[id] = step + 1; renderMissions(); renderShop();
+            giveReward(quest.reward);
+            gs.bees.forEach(function(bee) { addBeeXp(bee, 75 + quest.target * .05); });
+            gs.missions[id] = step + 1; renderMissions(); renderShop(); renderCommandCenter();
         }
         function updateMissions() { renderMissions(); }
         function startEvent() {
@@ -1518,14 +1631,18 @@
             tokens = tokens.filter(function(token) { return !token.claimed; });
             if (activeEvent) {
                 activeEvent.left--;
-                if (activeEvent.tokenRate && Math.random() < activeEvent.tokenRate) spawnToken(Math.random() < .25 ? 'ticketToken' : 'pollenToken', 40 + Math.random() * 620, 65 + Math.random() * 270);
+                if (activeEvent.tokenRate && Math.random() < activeEvent.tokenRate) {
+                    var eventToken = Math.random() < .08 ? 'gumbowderToken' : (Math.random() < .08 ? 'abilityToken' : (Math.random() < .25 ? 'ticketToken' : 'pollenToken'));
+                    spawnToken(eventToken, 40 + Math.random() * 620, 65 + Math.random() * 270);
+                }
                 if (activeEvent.left <= 0) { activeEvent = null; eventCooldown = 900; eventBanner.className = 'event-banner'; eventBanner.textContent = 'Event complete — rewards are yours!'; }
             } else if (--eventCooldown <= 0) startEvent();
         }
         function openBeeDetail(index) {
             selectedBeeIndex = index; var bee = gs.bees[index], data = BEE_TYPES[bee.typeId];
             detailBeeIcon.textContent = bee.gifted ? '⭐🐝' : '🐝'; detailBeeName.textContent = data.name + (bee.gifted ? ' — Gifted' : ''); detailBeeName.style.color = data.color;
-            detailBeeStats.innerHTML = 'Level ' + getBeeLevel(bee) + ' · Bond ' + Math.floor(bee.bond || 0) + ' / ' + getBeeBondNeed(bee) + '<br>Favorite food: ' + FOOD[getBeeFavorite(bee)].emoji + ' ' + FOOD[getBeeFavorite(bee)].name + '<br>' + (bee.gifted ? 'Gifted: +50% gather and unique hive bonus.' : 'Feed favorite food for bonus bond and a gifted chance.');
+            var profileStats = getBeeStats(bee);
+            detailBeeStats.innerHTML = 'Level ' + getBeeLevel(bee) + ' · Bond ' + Math.floor(bee.bond || 0) + ' / ' + getBeeBondNeed(bee) + '<br>❤️ Health: ' + profileStats.health + ' · ⚔ Attack: ' + profileStats.attack + ' · ⚡ Speed: ' + profileStats.speed.toFixed(2) + '<br>XP: ' + profileStats.xp + ' / ' + profileStats.xpNeed + '<br>Skills: ' + (profileStats.skills.length ? profileStats.skills.map(function(skill) { return BEE_SKILLS[skill].name; }).join(', ') : 'Unlock skills at levels 3 and 5, or spend an ability token.') + '<br>Favorite food: ' + FOOD[getBeeFavorite(bee)].emoji + ' ' + FOOD[getBeeFavorite(bee)].name + '<br>' + (bee.gifted ? 'Gifted: +50% gather and unique hive bonus.' : 'Feed favorite food for bonus bond and a gifted chance.');
             foodActions.innerHTML = Object.keys(FOOD).map(function(id) { return '<button data-food="' + id + '" ' + (!(gs.inventory[id] || 0) || bee.gifted && id === 'starTreat' ? 'disabled' : '') + '>' + FOOD[id].emoji + ' ' + FOOD[id].name + ' (' + (gs.inventory[id] || 0) + ')</button>'; }).join('');
             foodActions.querySelectorAll('[data-food]').forEach(function(btn) { btn.addEventListener('click', function() { feedBee(selectedBeeIndex, this.dataset.food); }); }); beeModal.classList.add('active');
             replaceBeeBtn.style.display = pendingEgg ? 'block' : 'none';
@@ -1535,6 +1652,96 @@
             var bee = gs.bees[index], food = FOOD[foodId]; if (!bee || !food || !(gs.inventory[foodId] > 0)) return;
             gs.inventory[foodId]--; if (food.guaranteedGift) bee.gifted = true; else { bee.bond = (bee.bond || 0) + food.bond * (foodId === getBeeFavorite(bee) ? 3 : 1) * (1 + getUpgradeLevel('bond1') * .10); while (bee.bond >= getBeeBondNeed(bee)) { bee.bond -= getBeeBondNeed(bee); bee.level = getBeeLevel(bee) + 1; } if (foodId === getBeeFavorite(bee) && Math.random() < .015) bee.gifted = true; }
             initBeeInstances(); updateMissions(); openBeeDetail(index); renderHive(); renderShop();
+        }
+
+        function renderCommandCenter() {
+            if (!beeProfiles || !monsterList) return;
+            beeProfiles.innerHTML = gs.bees.map(function(bee, index) {
+                var data = BEE_TYPES[bee.typeId], stats = getBeeStats(bee), pct = Math.min(100, stats.xp / stats.xpNeed * 100);
+                return '<div class="profile-card' + (selectedBeeIndex === index ? ' selected' : '') + '" data-profile="' + index + '">' +
+                    '<strong style="color:' + data.color + '">' + (bee.gifted ? '⭐ ' : '') + data.name + '</strong>' +
+                    '<span>Lv. ' + getBeeLevel(bee) + ' · HP ' + stats.health + '</span><br><span>⚔ ' + stats.attack + ' · ⚡ ' + stats.speed.toFixed(2) + '</span>' +
+                    '<div class="bar"><span style="width:' + pct + '%"></span></div><span>' + Math.floor(stats.xp) + ' / ' + stats.xpNeed + ' XP</span></div>';
+            }).join('');
+            beeProfiles.querySelectorAll('[data-profile]').forEach(function(card) {
+                card.addEventListener('click', function() { openBeeDetail(parseInt(this.dataset.profile)); renderCommandCenter(); });
+            });
+            var totalLevel = gs.bees.reduce(function(sum, bee) { return sum + getBeeLevel(bee); }, 0);
+            monsterList.innerHTML = MONSTERS.map(function(monster) {
+                var state = gs.combat[monster.id] || monster.health, locked = totalLevel < monster.level;
+                var pct = Math.max(0, state / monster.health * 100);
+                return '<div class="monster-card"><div><strong>' + monster.emoji + ' ' + monster.name + ' · Lv.' + monster.level + '</strong>' +
+                    '<span class="monster-meta">HP ' + Math.ceil(state) + '/' + monster.health + ' · Reward ' + formatNumber(monster.rewardHoney) + ' honey + ' + monster.rewardGumbowder + ' 🧂</span>' +
+                    '<div class="bar"><span style="width:' + pct + '%;background:linear-gradient(90deg,#ff6b6b,#ffc107)"></span></div></div>' +
+                    '<button class="command-btn" data-monster="' + monster.id + '"' + (locked ? ' disabled' : '') + '>' + (locked ? 'Locked' : 'Fight') + '</button></div>';
+            }).join('');
+            monsterList.querySelectorAll('[data-monster]').forEach(function(button) {
+                button.addEventListener('click', function() { fightMonster(this.dataset.monster); });
+            });
+            autoFeedBtn.textContent = 'Auto-feed: ' + (gs.autoFeed ? 'ON' : 'OFF');
+            autoLevelBtn.textContent = 'Auto-feed to next level: ' + (gs.autoFeedNext ? 'ON' : 'OFF');
+            abilityTokenBtn.textContent = 'Unlock skill (🔮 ' + gs.abilityTokens + ')';
+            gumbowderBtn.textContent = 'Polish hive (🧂 ' + gs.gumbowder + ')';
+            if (selectedBeeIndex !== null && gs.bees[selectedBeeIndex]) {
+                var selected = gs.bees[selectedBeeIndex], selectedStats = getBeeStats(selected), selectedData = BEE_TYPES[selected.typeId];
+                selectedBeeSummary.innerHTML = '<strong style="color:' + selectedData.color + '">' + selectedData.name + '</strong> — HP ' + selectedStats.health + ', Attack ' + selectedStats.attack + ', Speed ' + selectedStats.speed.toFixed(2) + '<br>Skills: ' + (selectedStats.skills.length ? selectedStats.skills.map(function(skill) { return BEE_SKILLS[skill].name; }).join(', ') : 'None yet');
+            }
+        }
+
+        function fightMonster(monsterId) {
+            var monster = MONSTERS.find(function(entry) { return entry.id === monsterId; });
+            if (!monster) return;
+            var totalAttack = gs.bees.reduce(function(sum, bee) { return sum + getBeeStats(bee).attack; }, 0);
+            var health = gs.combat[monsterId] || monster.health;
+            health -= Math.max(1, Math.floor(totalAttack * (0.85 + Math.random() * .3)));
+            gs.bees.forEach(function(bee) { addBeeXp(bee, monster.level * 12); });
+            if (health <= 0) {
+                var reward = Math.floor(monster.rewardHoney * (1 + gs.combatWins * .02));
+                gs.honey += reward; gs.totalHoneyEarned += reward;
+                gs.gumbowder += monster.rewardGumbowder; gs.abilityTokens += monster.rewardTokens;
+                gs.combatWins++; delete gs.combat[monsterId];
+                combatLog.textContent = monster.name + ' defeated! +' + formatNumber(reward) + ' honey, +' + monster.rewardGumbowder + ' gumbowder, +' + monster.rewardTokens + ' ability tokens.';
+            } else {
+                gs.combat[monsterId] = health;
+                combatLog.textContent = 'The swarm dealt damage to ' + monster.name + '. Keep attacking!';
+            }
+            renderCommandCenter(); renderHive(); updateDisplay(); saveGame();
+        }
+
+        function toggleAutomation() {
+            gs.autoFeed = !gs.autoFeed;
+            renderCommandCenter(); saveGame();
+        }
+        function toggleAutoLevel() {
+            gs.autoFeedNext = !gs.autoFeedNext;
+            renderCommandCenter(); saveGame();
+        }
+        function unlockNextSkill() {
+            var bee = gs.bees[selectedBeeIndex];
+            if (!bee || gs.abilityTokens < 1) return;
+            bee.skills = bee.skills || [];
+            var next = BEE_SKILLS.findIndex(function(skill, index) { return !bee.skills.includes(index); });
+            if (next < 0) { combatLog.textContent = 'This bee has every new ability.'; return; }
+            gs.abilityTokens--; bee.skills.push(next);
+            combatLog.textContent = bee.typeId + ' unlocked ' + BEE_SKILLS[next].name + '!';
+            renderCommandCenter(); renderHive(); saveGame();
+        }
+        function polishHive() {
+            if (gs.gumbowder < 5) return;
+            gs.gumbowder -= 5;
+            gs.bees.forEach(function(bee) { addBeeXp(bee, 40); });
+            combatLog.textContent = 'Gumbowder polish boosted every bee by 40 XP.';
+            renderCommandCenter(); renderHive(); saveGame();
+        }
+        function autoFeedBees() {
+            if (!gs.autoFeed && !gs.autoFeedNext) return;
+            gs.bees.forEach(function(bee, index) {
+                var need = getBeeBondNeed(bee), closeToLevel = (bee.xp || 0) >= need * .7;
+                if (!gs.autoFeedNext || closeToLevel) {
+                    var foodId = getBeeFavorite(bee);
+                    if ((gs.inventory[foodId] || 0) > 0) feedBee(index, foodId);
+                }
+            });
         }
 
         function replaceSelectedBee() {
@@ -1748,10 +1955,13 @@
             pollenDisplay.textContent = formatNumber(gs.pollen) + ' / ' + formatNumber(getBagCapacity());
             beeCountDisplay.textContent = gs.bees.length + ' / ' + getHiveSlots();
             ticketDisplay.textContent = formatNumber(gs.tickets);
+            gumbowderDisplay.textContent = formatNumber(gs.gumbowder);
+            abilityTokenDisplay.textContent = formatNumber(gs.abilityTokens);
             fieldDisplay.textContent = FIELDS[gs.currentField].name.replace(' Field', '');
             convertBtn.disabled = gs.pollen <= 0;
             var rate = getConvertRate();
             convertInfo.textContent = 'Rate: 1 pollen = ' + rate.toFixed(1) + ' honey';
+            if (gameTime % 5 === 0) renderCommandCenter();
         }
 
         function renderHive() {
@@ -1770,7 +1980,7 @@
                         '<div class="hive-tooltip">' +
                         '<strong style="color:' + RARITY_COLORS[data.rarity] + '">' + data.name + '</strong><br>' +
                         '<span class="rarity-' + data.rarity + '">' + data.rarity + '</span><br>' +
-                        'Lv. ' + getBeeLevel(bee) + (bee.gifted ? ' · Gifted' : '') + '<br>Gather: ' + data.gatherAmount + ' | Speed: ' + data.gatherSpeed + 'x' +
+                        'Lv. ' + getBeeLevel(bee) + (bee.gifted ? ' · Gifted' : '') + '<br>HP: ' + getBeeStats(bee).health + ' | Attack: ' + getBeeStats(bee).attack + '<br>Gather: ' + data.gatherAmount + ' | Speed: ' + getBeeStats(bee).speed.toFixed(2) + 'x' +
                         abilityText +
                         '</div></div>';
                 } else {
@@ -2044,11 +2254,18 @@
                 Object.keys(FOOD).forEach(function(id) { if (gs.inventory[id] === undefined) gs.inventory[id] = 0; });
                 while (gs.unlockedFields.length < FIELDS.length) gs.unlockedFields.push(false);
                 if (!gs.stats) gs.stats = { tokens: 0, events: 0, fields: 1 };
+                if (gs.gumbowder === undefined) gs.gumbowder = 0;
+                if (gs.abilityTokens === undefined) gs.abilityTokens = 0;
+                if (gs.autoFeed === undefined) gs.autoFeed = false;
+                if (gs.autoFeedNext === undefined) gs.autoFeedNext = false;
+                if (gs.combatWins === undefined) gs.combatWins = 0;
+                if (!gs.combat) gs.combat = {};
                 if (!gs.world) gs.world = { time:8, day:1, season:0, weather:'clear', weatherTicks:520, choices:0, trust:{} };
                 if (!gs.world.trust) gs.world.trust = {};
                 // Validate bee types exist
                 gs.bees = gs.bees.filter(function(bee) { return BEE_TYPES[bee.typeId]; });
                 if (gs.bees.length === 0) gs.bees = [{ typeId: 'basic' }];
+                gs.bees.forEach(function(bee) { if (!bee.skills) bee.skills = []; if (bee.xp === undefined) bee.xp = 0; });
                 // Calculate offline progress
                 var elapsed = (Date.now() - gs.lastSave) / 1000;
                 if (elapsed > 10) {
@@ -2089,6 +2306,7 @@
         function tick() {
             updateWorld();
             updateBees();
+            if (gameTime % 50 === 0) autoFeedBees();
             for (var i = 0; i < flowers.length; i++) {
                 var f = flowers[i];
                 if (f.pollen < f.maxPollen) {
@@ -2117,6 +2335,10 @@
         hatchCloseBtn.addEventListener('click', function() { hatchModal.classList.remove('active'); });
         beeCloseBtn.addEventListener('click', function() { beeModal.classList.remove('active'); });
         replaceBeeBtn.addEventListener('click', replaceSelectedBee);
+        autoFeedBtn.addEventListener('click', toggleAutomation);
+        autoLevelBtn.addEventListener('click', toggleAutoLevel);
+        abilityTokenBtn.addEventListener('click', unlockNextSkill);
+        gumbowderBtn.addEventListener('click', polishHive);
         hatchModal.addEventListener('touchstart', function(e) {
             if (e.target === hatchModal) {
                 hatchModal.classList.remove('active');
@@ -2208,6 +2430,7 @@
             renderShop();
             renderWorldHud();
             renderStory();
+            renderCommandCenter();
             updateDisplay();
 
             setInterval(tick, 100);
