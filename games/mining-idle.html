@@ -2,220 +2,266 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mining Idle - Game Hub</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/styles.css">
     <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { overflow-x: hidden; }
         .mining-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            max-width: 900px;
-            margin: 0 auto;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+            max-width: 1200px; margin: 0 auto; width: 100%;
         }
-        .resources {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
+        /* Top bar */
+        .top-bar {
+            display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+            width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 15px;
         }
         .resource {
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            text-align: center;
-            min-width: 100px;
-        }
-        .resource-icon {
-            font-size: 2rem;
-        }
-        .resource-count {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .resource-count.gold { color: #ffd700; }
-        .resource-count.iron { color: #a0a0a0; }
-        .resource-count.copper { color: #b87333; }
-        .resource-count.diamond { color: #b9f2ff; }
-        .resource-count.coal { color: #444; }
-        .resource-name {
-            font-size: 0.8rem;
-            color: #888;
-        }
-        .mine-area {
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .mine {
-            background: linear-gradient(180deg, #4a3728, #2a1f15);
-            border: 4px solid #5c4033;
-            border-radius: 15px;
-            padding: 20px;
-            width: 300px;
-            text-align: center;
-        }
-        .mine-title {
-            font-size: 1.3rem;
-            color: #ffd700;
-            margin-bottom: 15px;
-        }
-        .mine-rock {
-            font-size: 80px;
-            cursor: pointer;
-            transition: transform 0.1s;
-            user-select: none;
-        }
-        .mine-rock:hover {
-            transform: scale(1.05);
-        }
-        .mine-rock:active {
-            transform: scale(0.9);
-        }
-        .mine-rock.cracked::after {
-            content: '💥';
-            position: absolute;
-            animation: crack 0.3s ease-out;
-        }
-        @keyframes crack {
-            0% { opacity: 1; transform: scale(1); }
-            100% { opacity: 0; transform: scale(2); }
-        }
-        .mine-progress {
-            width: 100%;
-            height: 20px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 15px 0;
-        }
-        .mine-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00ff88, #00cc6a);
-            transition: width 0.1s;
-        }
-        .mine-stats {
-            font-size: 0.9rem;
-            color: #aaa;
-        }
-        .upgrades-section {
-            width: 100%;
-        }
-        .upgrades-title {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-            color: #ffd700;
-        }
-        .upgrades-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        .upgrade {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 15px;
-            cursor: pointer;
+            padding: 8px 14px; background: rgba(255,255,255,0.08); border-radius: 10px;
+            text-align: center; min-width: 80px; border: 1px solid rgba(255,255,255,0.1);
             transition: all 0.3s;
         }
-        .upgrade:hover:not(.locked) {
-            border-color: #ffd700;
-            transform: translateY(-3px);
+        .resource:hover { background: rgba(255,255,255,0.12); transform: translateY(-2px); }
+        .resource-icon { font-size: 1.5rem; }
+        .resource-count { font-size: 1.1rem; font-weight: bold; }
+        .resource-name { font-size: 0.7rem; color: #888; }
+        .resource-count.coal { color: #777; }
+        .resource-count.copper { color: #b87333; }
+        .resource-count.iron { color: #a0a0c0; }
+        .resource-count.gold { color: #ffd700; }
+        .resource-count.diamond { color: #b9f2ff; }
+        .resource-count.emerald { color: #50c878; }
+        .resource-count.ruby { color: #e0115f; }
+        .resource-count.sapphire { color: #0f52ba; }
+        .resource-count.platinum { color: #e5e4e2; }
+        .resource-count.uranium { color: #39ff14; }
+        .resource-count.mythril { color: #c4a7ff; }
+        .resource-count.money { color: #00ff88; }
+
+        /* Main layout */
+        .game-layout {
+            display: grid; grid-template-columns: 300px 1fr 300px; gap: 15px; width: 100%;
         }
-        .upgrade.locked {
-            opacity: 0.5;
-            cursor: not-allowed;
+        @media (max-width: 1000px) {
+            .game-layout { grid-template-columns: 1fr; }
         }
-        .upgrade-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
+
+        /* World selector */
+        .worlds-panel { display: flex; flex-direction: column; gap: 8px; }
+        .world-card {
+            background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px; padding: 12px; cursor: pointer; transition: all 0.3s;
+            position: relative; overflow: hidden;
         }
-        .upgrade-name {
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
-        .upgrade-level {
-            color: #00ff88;
-        }
-        .upgrade-cost {
-            display: flex;
-            gap: 10px;
-            font-size: 0.9rem;
-        }
-        .upgrade-cost span {
-            color: #ffd700;
-        }
-        .upgrade-effect {
-            font-size: 0.8rem;
-            color: #888;
-        }
-        .miners-display {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin: 15px 0;
-        }
-        .miner {
-            font-size: 2rem;
-            animation: mine 1s infinite;
-        }
-        @keyframes mine {
-            0%, 100% { transform: rotate(-10deg); }
-            50% { transform: rotate(10deg); }
-        }
-        .fullscreen-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            border-radius: 8px;
-            padding: 10px 15px;
-            cursor: pointer;
-            font-size: 1.5rem;
-        }
-        .float-text {
-            position: fixed;
-            pointer-events: none;
-            animation: float-up 1s ease-out forwards;
+        .world-card:hover:not(.locked) { border-color: #ffd700; transform: translateX(3px); }
+        .world-card.active { border-color: #00ff88; background: rgba(0,255,136,0.08); }
+        .world-card.locked { opacity: 0.4; cursor: not-allowed; }
+        .world-card.locked::after {
+            content: '🔒'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
             font-size: 1.2rem;
-            font-weight: bold;
         }
-        @keyframes float-up {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-50px); }
+        .world-name { font-weight: bold; font-size: 1rem; }
+        .world-desc { font-size: 0.7rem; color: #888; margin-top: 3px; }
+        .world-bonus { font-size: 0.7rem; color: #ffd700; margin-top: 3px; }
+        .world-unlock { font-size: 0.65rem; color: #ff6b6b; margin-top: 2px; }
+
+        /* Mine area */
+        .mine-panel { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .mine {
+            background: linear-gradient(180deg, var(--mine-top, #4a3728), var(--mine-bot, #2a1f15));
+            border: 3px solid var(--mine-border, #5c4033); border-radius: 15px;
+            padding: 20px; width: 100%; text-align: center; position: relative;
+            min-height: 300px; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 10px;
         }
-        .prestige-section {
-            background: linear-gradient(135deg, #4a0080, #800080);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
+        .mine-title { font-size: 1.2rem; color: #ffd700; }
+        .mine-depth { font-size: 0.8rem; color: #888; }
+        .mine-rock {
+            font-size: 80px; cursor: pointer; transition: transform 0.1s;
+            user-select: none; touch-action: manipulation;
+            filter: drop-shadow(0 0 10px rgba(255,200,0,0.2));
+        }
+        .mine-rock:hover { transform: scale(1.08); }
+        .mine-rock:active { transform: scale(0.88); }
+        .mine-progress {
+            width: 100%; height: 18px; background: rgba(0,0,0,0.4);
+            border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .mine-progress-fill {
+            height: 100%; background: linear-gradient(90deg, #00ff88, #00cc6a);
+            transition: width 0.1s; border-radius: 10px;
+        }
+        .mine-stats { font-size: 0.85rem; color: #aaa; display: flex; flex-direction: column; gap: 4px; }
+        .mine-stats span { color: #00ff88; font-weight: bold; }
+        .miners-display {
+            display: flex; gap: 5px; flex-wrap: wrap; justify-content: center;
+        }
+        .miner { font-size: 1.5rem; animation: mine 1s infinite; }
+        @keyframes mine { 0%,100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
+
+        /* Auto-sell indicator */
+        .auto-sell-bar {
+            display: flex; align-items: center; gap: 8px; padding: 8px 15px;
+            background: rgba(0,255,136,0.1); border-radius: 10px; border: 1px solid rgba(0,255,136,0.2);
             width: 100%;
         }
-        .prestige-title {
-            font-size: 1.3rem;
-            color: #ff88ff;
+        .auto-sell-bar label { font-size: 0.8rem; color: #00ff88; cursor: pointer; }
+        .money-rate { font-size: 0.75rem; color: #888; margin-left: auto; }
+
+        /* Right panel - tabs */
+        .right-panel { display: flex; flex-direction: column; gap: 10px; }
+        .panel-tabs {
+            display: flex; gap: 4px; flex-wrap: wrap;
         }
-        .prestige-points {
-            font-size: 2rem;
-            color: #ff88ff;
-            margin: 10px 0;
+        .panel-tab {
+            flex: 1; padding: 8px 6px; border: 2px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05); color: #aaa; border-radius: 8px;
+            cursor: pointer; transition: all 0.3s; font-weight: bold;
+            font-size: 0.7rem; text-align: center; min-width: 50px;
         }
-        .prestige-info {
-            font-size: 0.9rem;
-            color: #ccc;
-            margin-bottom: 15px;
+        .panel-tab:hover { border-color: #ffd700; }
+        .panel-tab.active { background: #ffd700; color: #000; border-color: #ffd700; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Upgrades */
+        .upgrades-grid { display: flex; flex-direction: column; gap: 8px; max-height: 500px; overflow-y: auto; }
+        .upgrade {
+            background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px; padding: 10px; cursor: pointer; transition: all 0.3s;
+        }
+        .upgrade:hover:not(.locked):not(.maxed) { border-color: #ffd700; transform: translateX(3px); }
+        .upgrade.locked { opacity: 0.45; cursor: not-allowed; }
+        .upgrade.maxed { border-color: rgba(0,255,136,0.3); background: rgba(0,255,136,0.05); }
+        .upgrade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .upgrade-name { font-size: 0.9rem; font-weight: bold; }
+        .upgrade-level { color: #00ff88; font-size: 0.8rem; }
+        .upgrade-cost { display: flex; gap: 8px; font-size: 0.8rem; flex-wrap: wrap; }
+        .upgrade-cost span { color: #ffd700; }
+        .upgrade-effect { font-size: 0.7rem; color: #888; margin-top: 3px; }
+
+        /* Achievements */
+        .achievements-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 5px;
+        }
+        .achievement {
+            width: 40px; height: 40px; background: rgba(255,255,255,0.08); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+            filter: grayscale(1) opacity(0.3); transition: all 0.3s; cursor: help; position: relative;
+        }
+        .achievement.unlocked { filter: none; box-shadow: 0 0 8px rgba(255,193,7,0.4); }
+        .achievement:hover::after {
+            content: attr(data-name) ' - ' attr(data-desc); position: absolute; bottom: 110%;
+            left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.95); color: #fff;
+            padding: 6px 10px; border-radius: 6px; font-size: 0.6rem; white-space: nowrap;
+            z-index: 100; max-width: 200px; white-space: normal; text-align: center;
+        }
+        .achievement-boost {
+            font-size: 0.8rem; color: #ffd700; margin-bottom: 8px; text-align: center;
+            padding: 6px; background: rgba(255,215,0,0.1); border-radius: 8px;
+        }
+
+        /* Managers */
+        .managers-grid { display: flex; flex-direction: column; gap: 8px; }
+        .manager-card {
+            background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px; padding: 10px; transition: all 0.3s;
+        }
+        .manager-card.hired { border-color: rgba(0,255,136,0.3); }
+        .manager-card.locked { opacity: 0.45; }
+        .manager-name { font-weight: bold; font-size: 0.9rem; }
+        .manager-effect { font-size: 0.75rem; color: #888; margin-top: 3px; }
+        .manager-cost { font-size: 0.8rem; color: #ffd700; margin-top: 5px; }
+        .manager-btn {
+            margin-top: 6px; padding: 5px 12px; border: none; border-radius: 8px;
+            background: #ffd700; color: #000; font-weight: bold; cursor: pointer;
+            font-size: 0.75rem; transition: all 0.3s;
+        }
+        .manager-btn:hover:not(:disabled) { transform: scale(1.05); }
+        .manager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-box {
+            text-align: center; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px;
+        }
+        .stat-value { color: #00ff88; font-weight: bold; font-size: 0.95rem; }
+        .stat-label { font-size: 0.65rem; color: #888; }
+
+        /* Prestige */
+        .prestige-section {
+            background: linear-gradient(135deg, rgba(74,0,128,0.3), rgba(128,0,128,0.3));
+            border-radius: 15px; padding: 15px; text-align: center; width: 100%;
+            border: 1px solid rgba(128,0,128,0.3);
+        }
+        .prestige-title { font-size: 1.1rem; color: #ff88ff; }
+        .prestige-points { font-size: 1.5rem; color: #ff88ff; margin: 8px 0; }
+        .prestige-info { font-size: 0.8rem; color: #ccc; margin-bottom: 10px; }
+
+        /* Float text */
+        .float-text {
+            position: fixed; pointer-events: none; animation: float-up 1s ease-out forwards;
+            font-size: 1rem; font-weight: bold; z-index: 1000;
+        }
+        @keyframes float-up { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+
+        /* Achievement popup */
+        .achievement-popup {
+            position: fixed; bottom: 20px; right: 20px; background: linear-gradient(135deg, #ffc107, #ff9800);
+            color: #000; padding: 12px 20px; border-radius: 12px; font-weight: bold;
+            animation: ach-slide 3s ease-in-out forwards; z-index: 1003;
+            box-shadow: 0 5px 20px rgba(255,193,7,0.5); font-size: 0.85rem;
+        }
+        @keyframes ach-slide {
+            0% { transform: translateX(100%); opacity: 0; }
+            10% { transform: translateX(0); opacity: 1; }
+            85% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+        }
+
+        .fullscreen-btn {
+            position: fixed; top: 15px; right: 15px; z-index: 1000;
+            background: rgba(255,255,255,0.2); border: none; border-radius: 8px;
+            padding: 8px 12px; cursor: pointer; font-size: 1.3rem; transition: all 0.3s;
+        }
+        .fullscreen-btn:hover { background: rgba(255,255,255,0.3); }
+
+        /* Ore value upgrade indicator */
+        .ore-quality {
+            font-size: 0.6rem; color: #ffd700; display: block;
+        }
+
+        /* Storage bar */
+        .storage-bar {
+            width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.05);
+            border-radius: 10px; display: flex; align-items: center; gap: 8px;
+        }
+        .storage-fill-bg {
+            flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;
+        }
+        .storage-fill {
+            height: 100%; background: linear-gradient(90deg, #00ff88, #ffcc00); border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .storage-text { font-size: 0.7rem; color: #888; white-space: nowrap; }
+
+        /* Expedition */
+        .expedition-card {
+            background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px; padding: 12px; margin-top: 8px;
+        }
+        .expedition-card.active { border-color: rgba(0,217,255,0.5); }
+        .exp-progress {
+            width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;
+            overflow: hidden; margin-top: 6px;
+        }
+        .exp-progress-fill {
+            height: 100%; background: linear-gradient(90deg, #00d9ff, #00ff88);
+            transition: width 0.5s;
         }
     </style>
 </head>
@@ -223,379 +269,965 @@
     <button id="fullscreenBtn" class="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
     <div class="container">
         <a href="../index.html" class="back-btn">← Back to Games</a>
-        
+
         <div class="game-container">
-            <h1 class="game-title">⛏️ Mining Idle</h1>
-            
+            <h1 class="game-title">⛏️ Mining Idle Tycoon</h1>
+
             <div class="mining-container">
-                <div class="resources">
-                    <div class="resource">
-                        <div class="resource-icon">🪨</div>
-                        <div class="resource-count coal" id="coal">0</div>
-                        <div class="resource-name">Coal</div>
+                <!-- Resources bar -->
+                <div class="top-bar" id="resourcesBar"></div>
+
+                <!-- Main game layout -->
+                <div class="game-layout">
+                    <!-- Left: Worlds -->
+                    <div class="worlds-panel">
+                        <h3 style="color: #ffd700; font-size: 1rem;">🌍 Mine Worlds</h3>
+                        <div id="worldsList"></div>
                     </div>
-                    <div class="resource">
-                        <div class="resource-icon">🥉</div>
-                        <div class="resource-count copper" id="copper">0</div>
-                        <div class="resource-name">Copper</div>
-                    </div>
-                    <div class="resource">
-                        <div class="resource-icon">🪙</div>
-                        <div class="resource-count iron" id="iron">0</div>
-                        <div class="resource-name">Iron</div>
-                    </div>
-                    <div class="resource">
-                        <div class="resource-icon">🥇</div>
-                        <div class="resource-count gold" id="gold">0</div>
-                        <div class="resource-name">Gold</div>
-                    </div>
-                    <div class="resource">
-                        <div class="resource-icon">💎</div>
-                        <div class="resource-count diamond" id="diamond">0</div>
-                        <div class="resource-name">Diamond</div>
-                    </div>
-                </div>
-                
-                <div class="mine-area">
-                    <div class="mine">
-                        <div class="mine-title">⛏️ The Mine</div>
-                        <div class="mine-rock" id="rock">🪨</div>
-                        <div class="mine-progress">
-                            <div class="mine-progress-fill" id="rockProgress" style="width: 100%"></div>
+
+                    <!-- Center: Mine -->
+                    <div class="mine-panel">
+                        <div class="mine" id="mineArea">
+                            <div class="mine-title" id="mineTitle">⛏️ Surface Mine</div>
+                            <div class="mine-depth" id="mineDepth">Depth: 0m</div>
+                            <div class="mine-rock" id="rock">🪨</div>
+                            <div class="mine-progress">
+                                <div class="mine-progress-fill" id="rockProgress" style="width: 100%"></div>
+                            </div>
+                            <div class="mine-stats">
+                                <div>⛏️ Click Power: <span id="clickPower">1</span></div>
+                                <div>⚙️ Auto Mining: <span id="autoMining">0</span>/sec</div>
+                                <div>💰 Ore Value: <span id="oreValue">x1.0</span></div>
+                            </div>
+                            <div class="miners-display" id="miners"></div>
                         </div>
-                        <div class="mine-stats">
-                            <div>Click Power: <span id="clickPower">1</span></div>
-                            <div>Auto Mining: <span id="autoMining">0</span>/sec</div>
+
+                        <!-- Auto sell toggle -->
+                        <div class="auto-sell-bar">
+                            <input type="checkbox" id="autoSellToggle">
+                            <label for="autoSellToggle">Auto-Sell Ores</label>
+                            <span class="money-rate" id="moneyRate">$0/sec</span>
                         </div>
-                        <div class="miners-display" id="miners"></div>
+
+                        <!-- Storage -->
+                        <div class="storage-bar">
+                            <span style="font-size:0.8rem;">📦</span>
+                            <div class="storage-fill-bg">
+                                <div class="storage-fill" id="storageFill" style="width: 0%"></div>
+                            </div>
+                            <span class="storage-text" id="storageText">0 / 500</span>
+                        </div>
+
+                        <!-- Prestige -->
+                        <div class="prestige-section">
+                            <div class="prestige-title">✨ Prestige</div>
+                            <div class="prestige-points">💫 <span id="prestigePoints">0</span> Gems</div>
+                            <div class="prestige-info">
+                                Reset for permanent bonuses! Gain <span id="prestigeGain">0</span> gems.
+                                <br><small>Each gem = +10% all production</small>
+                            </div>
+                            <button class="btn btn-primary" id="prestigeBtn">Prestige ✨</button>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="upgrades-section">
-                    <div class="upgrades-title">🔧 Upgrades</div>
-                    <div class="upgrades-grid" id="upgrades"></div>
-                </div>
-                
-                <div class="prestige-section">
-                    <div class="prestige-title">✨ Prestige</div>
-                    <div class="prestige-points">💫 <span id="prestigePoints">0</span> Gems</div>
-                    <div class="prestige-info">Reset for permanent bonuses! Gain <span id="prestigeGain">0</span> gems on prestige.</div>
-                    <button class="btn btn-primary" id="prestigeBtn">Prestige</button>
+
+                    <!-- Right: Tabs panel -->
+                    <div class="right-panel">
+                        <div class="panel-tabs">
+                            <div class="panel-tab active" data-tab="upgrades">🔧</div>
+                            <div class="panel-tab" data-tab="achievements">🏆</div>
+                            <div class="panel-tab" data-tab="managers">👔</div>
+                            <div class="panel-tab" data-tab="expeditions">🗺️</div>
+                            <div class="panel-tab" data-tab="stats">📊</div>
+                        </div>
+
+                        <div class="tab-content active" id="tab-upgrades">
+                            <div class="upgrades-grid" id="upgrades"></div>
+                        </div>
+                        <div class="tab-content" id="tab-achievements">
+                            <div class="achievement-boost" id="achievementBoost">🏆 Achievement Bonus: +0%</div>
+                            <div class="achievements-grid" id="achievementsGrid"></div>
+                        </div>
+                        <div class="tab-content" id="tab-managers">
+                            <div class="managers-grid" id="managersGrid"></div>
+                        </div>
+                        <div class="tab-content" id="tab-expeditions">
+                            <div id="expeditionsGrid"></div>
+                        </div>
+                        <div class="tab-content" id="tab-stats">
+                            <div class="stats-grid" id="statsGrid"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
+
             <div class="instructions">
                 <h3>How to Play</h3>
-                <p>Click rocks to mine resources! Buy upgrades to mine faster and unlock auto-miners. Prestige to gain permanent bonuses!</p>
+                <p>Click rocks to mine resources! Buy upgrades, hire managers, explore new worlds, and prestige for permanent bonuses. Sell ores for money to unlock more upgrades!</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Resources
-        let resources = {
-            coal: 0,
-            copper: 0,
-            iron: 0,
-            gold: 0,
-            diamond: 0
-        };
-        
-        // Game stats
-        let clickPower = 1;
-        let autoMining = 0;
-        let rockHealth = 100;
-        let maxRockHealth = 100;
-        let prestigePoints = 0;
-        let totalMined = 0;
-        
-        // Upgrades
-        const upgrades = [
-            { id: 'pickaxe', name: '⛏️ Better Pickaxe', baseCost: { coal: 10 }, effect: 'Click Power +1', level: 0, maxLevel: 50 },
-            { id: 'miner', name: '👷 Hire Miner', baseCost: { coal: 50 }, effect: 'Auto-mine +1/sec', level: 0, maxLevel: 100 },
-            { id: 'drill', name: '🔧 Mining Drill', baseCost: { coal: 200, copper: 20 }, effect: 'Auto-mine +5/sec', level: 0, maxLevel: 50 },
-            { id: 'dynamite', name: '🧨 Dynamite', baseCost: { coal: 500, iron: 50 }, effect: 'Click Power +10', level: 0, maxLevel: 25 },
-            { id: 'excavator', name: '🚜 Excavator', baseCost: { iron: 200, copper: 100 }, effect: 'Auto-mine +25/sec', level: 0, maxLevel: 20 },
-            { id: 'laser', name: '🔴 Laser Drill', baseCost: { gold: 100, diamond: 10 }, effect: 'Auto-mine +100/sec', level: 0, maxLevel: 10 }
+    (function() {
+        'use strict';
+
+        // ============ GAME DATA ============
+
+        const WORLDS = [
+            { id: 'surface', name: '🏔️ Surface Mine', desc: 'Beginner mine with basic ores', bonus: 'Normal rates', unlock: null, colors: { top: '#4a3728', bot: '#2a1f15', border: '#5c4033' }, rockEmoji: '🪨', oreMultiplier: 1 },
+            { id: 'cave', name: '🕳️ Deep Cave', desc: 'Deeper ores, better yields', bonus: '+50% ore drops', unlock: { totalMined: 500 }, colors: { top: '#2a2a3a', bot: '#1a1a2a', border: '#3a3a5a' }, rockEmoji: '🪨', oreMultiplier: 1.5 },
+            { id: 'volcano', name: '🌋 Volcanic Shaft', desc: 'Extreme heat, rare minerals', bonus: '+100% rare ores', unlock: { totalMined: 5000 }, colors: { top: '#5a2010', bot: '#3a1008', border: '#8a3020' }, rockEmoji: '🔥', oreMultiplier: 2 },
+            { id: 'crystal', name: '💎 Crystal Cavern', desc: 'Sparkling gems everywhere', bonus: '+200% gem drops', unlock: { totalMined: 25000 }, colors: { top: '#1a2a4a', bot: '#0a1a3a', border: '#3a5a8a' }, rockEmoji: '💎', oreMultiplier: 3 },
+            { id: 'abyss', name: '🌀 Abyssal Depths', desc: 'Ancient ores from the deep', bonus: '+300% all ores', unlock: { totalMined: 100000 }, colors: { top: '#1a0a2a', bot: '#0a0518', border: '#4a1a6a' }, rockEmoji: '🌀', oreMultiplier: 4 },
+            { id: 'alien', name: '👽 Alien Planet', desc: 'Exotic extraterrestrial minerals', bonus: '+500% all + Mythril', unlock: { totalMined: 500000 }, colors: { top: '#0a3a2a', bot: '#051a15', border: '#1a6a4a' }, rockEmoji: '🛸', oreMultiplier: 6 }
         ];
-        
-        // Resource drop rates based on rock depth
-        const dropRates = {
-            coal: { chance: 0.8, min: 1, max: 3 },
-            copper: { chance: 0.4, min: 1, max: 2 },
-            iron: { chance: 0.2, min: 1, max: 2 },
-            gold: { chance: 0.05, min: 1, max: 1 },
-            diamond: { chance: 0.01, min: 1, max: 1 }
+
+        const ORE_TYPES = [
+            { id: 'coal', name: 'Coal', icon: '🪨', color: '#777', baseValue: 1, baseChance: 0.8, baseMin: 2, baseMax: 5 },
+            { id: 'copper', name: 'Copper', icon: '🥉', color: '#b87333', baseValue: 3, baseChance: 0.5, baseMin: 1, baseMax: 3 },
+            { id: 'iron', name: 'Iron', icon: '🪙', color: '#a0a0c0', baseValue: 5, baseChance: 0.35, baseMin: 1, baseMax: 3 },
+            { id: 'gold', name: 'Gold', icon: '🥇', color: '#ffd700', baseValue: 15, baseChance: 0.12, baseMin: 1, baseMax: 2 },
+            { id: 'diamond', name: 'Diamond', icon: '💎', color: '#b9f2ff', baseValue: 50, baseChance: 0.04, baseMin: 1, baseMax: 1 },
+            { id: 'emerald', name: 'Emerald', icon: '🟢', color: '#50c878', baseValue: 40, baseChance: 0.06, baseMin: 1, baseMax: 2 },
+            { id: 'ruby', name: 'Ruby', icon: '🔴', color: '#e0115f', baseValue: 45, baseChance: 0.05, baseMin: 1, baseMax: 1 },
+            { id: 'sapphire', name: 'Sapphire', icon: '🔵', color: '#0f52ba', baseValue: 42, baseChance: 0.05, baseMin: 1, baseMax: 1 },
+            { id: 'platinum', name: 'Platinum', icon: '⬜', color: '#e5e4e2', baseValue: 80, baseChance: 0.025, baseMin: 1, baseMax: 1 },
+            { id: 'uranium', name: 'Uranium', icon: '☢️', color: '#39ff14', baseValue: 120, baseChance: 0.015, baseMin: 1, baseMax: 1 },
+            { id: 'mythril', name: 'Mythril', icon: '🟣', color: '#c4a7ff', baseValue: 200, baseChance: 0.008, baseMin: 1, baseMax: 1 }
+        ];
+
+        const UPGRADES = [
+            { id: 'pickaxe', name: '⛏️ Better Pickaxe', baseCost: { money: 10 }, effect: 'Click Power +1', type: 'click', value: 1, maxLevel: 100, costScale: 1.08 },
+            { id: 'miner', name: '👷 Hire Miner', baseCost: { money: 30 }, effect: 'Auto-mine +1/sec', type: 'auto', value: 1, maxLevel: 200, costScale: 1.08 },
+            { id: 'drill', name: '🔧 Mining Drill', baseCost: { money: 150 }, effect: 'Auto-mine +3/sec', type: 'auto', value: 3, maxLevel: 100, costScale: 1.10 },
+            { id: 'tnt', name: '🧨 TNT Blasting', baseCost: { money: 500 }, effect: 'Click Power +5', type: 'click', value: 5, maxLevel: 50, costScale: 1.10 },
+            { id: 'cart', name: '🛒 Mining Cart', baseCost: { money: 1200 }, effect: 'Storage +200', type: 'storage', value: 200, maxLevel: 50, costScale: 1.10 },
+            { id: 'excavator', name: '🚜 Excavator', baseCost: { money: 3000 }, effect: 'Auto-mine +10/sec', type: 'auto', value: 10, maxLevel: 50, costScale: 1.12 },
+            { id: 'smelter', name: '🔥 Smelter', baseCost: { money: 8000 }, effect: 'Ore Value +20%', type: 'oreValue', value: 0.2, maxLevel: 30, costScale: 1.12 },
+            { id: 'refinery', name: '🏭 Refinery', baseCost: { money: 20000 }, effect: 'Ore Value +50%', type: 'oreValue', value: 0.5, maxLevel: 20, costScale: 1.12 },
+            { id: 'shaft', name: '🕳️ Deep Shaft', baseCost: { money: 50000 }, effect: 'Auto-mine +50/sec', type: 'auto', value: 50, maxLevel: 30, costScale: 1.12 },
+            { id: 'coredrill', name: '🌡️ Core Drill', baseCost: { money: 150000 }, effect: 'Click +25, Auto +25/s', type: 'both', clickVal: 25, autoVal: 25, maxLevel: 20, costScale: 1.12 },
+            { id: 'quantum', name: '⚛️ Quantum Extractor', baseCost: { money: 500000 }, effect: 'Auto-mine +200/sec', type: 'auto', value: 200, maxLevel: 15, costScale: 1.12 },
+            { id: 'antimatter', name: '🌌 Antimatter Drill', baseCost: { money: 2000000 }, effect: 'Click +100, Auto +100', type: 'both', clickVal: 100, autoVal: 100, maxLevel: 10, costScale: 1.12 },
+            { id: 'elevator', name: '🛗 Elevator Speed', baseCost: { money: 5000 }, effect: 'Ore transport +30%', type: 'transport', value: 0.3, maxLevel: 20, costScale: 1.12 },
+            { id: 'warehouse', name: '🏗️ Warehouse', baseCost: { money: 15000 }, effect: 'Storage +1000', type: 'storage', value: 1000, maxLevel: 20, costScale: 1.12 }
+        ];
+
+        const MANAGERS = [
+            { id: 'foreman', name: '👷 Foreman Frank', effect: 'Auto-clicks 2x per second', cost: 5000, hired: false },
+            { id: 'geologist', name: '🔬 Geologist Gina', effect: '+25% rare ore chance', cost: 15000, hired: false },
+            { id: 'engineer', name: '🔧 Engineer Eddie', effect: 'Upgrades cost 15% less', cost: 30000, hired: false },
+            { id: 'tycoon', name: '💼 Tycoon Tim', effect: 'Auto-sell at +50% value', cost: 80000, hired: false },
+            { id: 'scientist', name: '🧪 Scientist Sara', effect: '+100% ore value', cost: 200000, hired: false },
+            { id: 'alien_mgr', name: '👽 Xel\'thorian', effect: '+200% all production', cost: 1000000, hired: false }
+        ];
+
+        const ACHIEVEMENTS = [
+            { id: 'first_click', name: 'First Strike', icon: '⛏️', desc: 'Mine your first rock', condition: s => s.totalClicks >= 1, boost: 2 },
+            { id: 'click100', name: 'Persistent Miner', icon: '💪', desc: 'Click 100 times', condition: s => s.totalClicks >= 100, boost: 2 },
+            { id: 'click1000', name: 'Click Maniac', icon: '🤜', desc: 'Click 1,000 times', condition: s => s.totalClicks >= 1000, boost: 3 },
+            { id: 'click10000', name: 'Click Legend', icon: '👊', desc: 'Click 10,000 times', condition: s => s.totalClicks >= 10000, boost: 5 },
+            { id: 'mine100', name: 'Apprentice Miner', icon: '🪨', desc: 'Mine 100 ores', condition: s => s.totalMined >= 100, boost: 2 },
+            { id: 'mine1000', name: 'Journeyman', icon: '⚒️', desc: 'Mine 1,000 ores', condition: s => s.totalMined >= 1000, boost: 3 },
+            { id: 'mine10000', name: 'Master Miner', icon: '🏆', desc: 'Mine 10,000 ores', condition: s => s.totalMined >= 10000, boost: 5 },
+            { id: 'mine100000', name: 'Mining Tycoon', icon: '👑', desc: 'Mine 100,000 ores', condition: s => s.totalMined >= 100000, boost: 8 },
+            { id: 'mine1m', name: 'Ore Overlord', icon: '🌟', desc: 'Mine 1,000,000 ores', condition: s => s.totalMined >= 1000000, boost: 10 },
+            { id: 'money1k', name: 'First Profit', icon: '💵', desc: 'Earn $1,000', condition: s => s.totalMoneyEarned >= 1000, boost: 2 },
+            { id: 'money100k', name: 'Getting Rich', icon: '💰', desc: 'Earn $100,000', condition: s => s.totalMoneyEarned >= 100000, boost: 5 },
+            { id: 'money1m', name: 'Millionaire', icon: '🤑', desc: 'Earn $1,000,000', condition: s => s.totalMoneyEarned >= 1000000, boost: 8 },
+            { id: 'diamond1', name: 'Gem Finder', icon: '💎', desc: 'Find your first diamond', condition: s => s.totalOresMined.diamond >= 1, boost: 3 },
+            { id: 'gold100', name: 'Gold Rush', icon: '🥇', desc: 'Mine 100 gold', condition: s => s.totalOresMined.gold >= 100, boost: 5 },
+            { id: 'ruby1', name: 'Ruby Hunter', icon: '🔴', desc: 'Find your first ruby', condition: s => s.totalOresMined.ruby >= 1, boost: 3 },
+            { id: 'emerald1', name: 'Emerald Seeker', icon: '🟢', desc: 'Find your first emerald', condition: s => s.totalOresMined.emerald >= 1, boost: 3 },
+            { id: 'platinum1', name: 'Platinum Discovery', icon: '⬜', desc: 'Find platinum', condition: s => s.totalOresMined.platinum >= 1, boost: 5 },
+            { id: 'uranium1', name: 'Nuclear Find', icon: '☢️', desc: 'Find uranium', condition: s => s.totalOresMined.uranium >= 1, boost: 5 },
+            { id: 'mythril1', name: 'Legendary Ore', icon: '🟣', desc: 'Find mythril', condition: s => s.totalOresMined.mythril >= 1, boost: 10 },
+            { id: 'world2', name: 'Explorer', icon: '🕳️', desc: 'Unlock Deep Cave', condition: s => s.worldsUnlocked >= 2, boost: 3 },
+            { id: 'world4', name: 'Adventurer', icon: '💎', desc: 'Unlock Crystal Cavern', condition: s => s.worldsUnlocked >= 4, boost: 5 },
+            { id: 'world6', name: 'Space Pioneer', icon: '👽', desc: 'Unlock Alien Planet', condition: s => s.worldsUnlocked >= 6, boost: 10 },
+            { id: 'prestige1', name: 'Reborn', icon: '✨', desc: 'Prestige once', condition: s => s.totalPrestiges >= 1, boost: 5 },
+            { id: 'prestige5', name: 'Ascended', icon: '🌅', desc: 'Prestige 5 times', condition: s => s.totalPrestiges >= 5, boost: 8 },
+            { id: 'manager1', name: 'Boss Mode', icon: '👔', desc: 'Hire a manager', condition: s => s.managersHired >= 1, boost: 3 },
+            { id: 'upgrade20', name: 'Upgraded', icon: '🔧', desc: 'Buy 20 upgrades', condition: s => s.totalUpgradesBought >= 20, boost: 3 },
+            { id: 'depth100', name: 'Deep Digger', icon: '🕳️', desc: 'Reach depth 100m', condition: s => s.maxDepth >= 100, boost: 3 },
+            { id: 'depth1000', name: 'Abyss Walker', icon: '🌀', desc: 'Reach depth 1,000m', condition: s => s.maxDepth >= 1000, boost: 5 },
+            { id: 'allores', name: 'Collector', icon: '🎖️', desc: 'Find all 11 ore types', condition: s => ORE_TYPES.every(o => (s.totalOresMined[o.id] || 0) >= 1), boost: 15 },
+            { id: 'expedition1', name: 'Adventurous', icon: '🗺️', desc: 'Complete an expedition', condition: s => s.expeditionsCompleted >= 1, boost: 5 }
+        ];
+
+        const EXPEDITIONS = [
+            { id: 'scout', name: '🔍 Scout Mission', desc: 'Explore nearby terrain', duration: 60, reward: { money: 500, ores: { coal: 50, copper: 20 } }, cost: 100 },
+            { id: 'prospect', name: '⛏️ Prospecting Trip', desc: 'Search for hidden veins', duration: 180, reward: { money: 2000, ores: { gold: 10, iron: 50 } }, cost: 500 },
+            { id: 'deep_dive', name: '🕳️ Deep Dive', desc: 'Descend into unknown depths', duration: 600, reward: { money: 10000, ores: { diamond: 5, ruby: 3, emerald: 3 } }, cost: 3000 },
+            { id: 'treasure', name: '🗺️ Treasure Hunt', desc: 'Follow an ancient map', duration: 1800, reward: { money: 50000, ores: { platinum: 5, sapphire: 10 } }, cost: 15000 },
+            { id: 'alien_exp', name: '🛸 Alien Artifact', desc: 'Investigate strange signals', duration: 3600, reward: { money: 200000, ores: { uranium: 10, mythril: 3 } }, cost: 80000 }
+        ];
+
+        // ============ GAME STATE ============
+        let state = {
+            resources: {},
+            money: 0,
+            clickPower: 1,
+            autoMining: 0,
+            oreValueMultiplier: 1,
+            transportMultiplier: 1,
+            storageCapacity: 500,
+            totalStored: 0,
+            rockHealth: 50,
+            maxRockHealth: 50,
+            depth: 0,
+            currentWorld: 'surface',
+            prestigePoints: 0,
+            totalMined: 0,
+            totalClicks: 0,
+            totalMoneyEarned: 0,
+            totalPrestiges: 0,
+            totalUpgradesBought: 0,
+            managersHired: 0,
+            expeditionsCompleted: 0,
+            maxDepth: 0,
+            worldsUnlocked: 1,
+            totalOresMined: {},
+            autoSell: false,
+            upgradeLevels: {},
+            achievements: {},
+            managers: {},
+            activeExpedition: null,
+            expeditionStart: 0,
+            startTime: Date.now(),
+            playTime: 0
         };
-        
-        function init() {
-            document.getElementById('rock').addEventListener('click', mineRock);
-            document.getElementById('prestigeBtn').addEventListener('click', prestige);
-            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-            
-            loadGame();
-            renderUpgrades();
-            updateDisplay();
-            
-            // Auto-mining loop
-            setInterval(() => {
-                if (autoMining > 0) {
-                    damageRock(autoMining / 10);
-                }
-            }, 100);
-            
-            // Save loop
-            setInterval(saveGame, 10000);
+
+        // Init resources
+        ORE_TYPES.forEach(o => { state.resources[o.id] = 0; state.totalOresMined[o.id] = 0; });
+        UPGRADES.forEach(u => state.upgradeLevels[u.id] = 0);
+        ACHIEVEMENTS.forEach(a => state.achievements[a.id] = false);
+        MANAGERS.forEach(m => state.managers[m.id] = false);
+
+        // ============ CORE FUNCTIONS ============
+
+        function getAchievementBoost() {
+            let boost = 0;
+            ACHIEVEMENTS.forEach(a => { if (state.achievements[a.id]) boost += a.boost; });
+            return boost;
         }
-        
-        function mineRock(e) {
-            const damage = clickPower * (1 + prestigePoints * 0.1);
-            damageRock(damage);
-            
-            // Visual effect
-            const rock = document.getElementById('rock');
-            rock.style.transform = 'scale(0.9)';
-            setTimeout(() => rock.style.transform = '', 100);
-            
-            // Float text
-            showFloatText(e.clientX, e.clientY, `-${Math.floor(damage)}`);
+
+        function getManagerBonus(type) {
+            if (type === 'rareChance' && state.managers.geologist) return 1.25;
+            if (type === 'upgradeCost' && state.managers.engineer) return 0.85;
+            if (type === 'sellValue' && state.managers.tycoon) return 1.5;
+            if (type === 'oreValue' && state.managers.scientist) return 2;
+            if (type === 'production' && state.managers.alien_mgr) return 3;
+            return 1;
         }
-        
-        function damageRock(damage) {
-            rockHealth -= damage;
-            
-            if (rockHealth <= 0) {
-                breakRock();
+
+        function getEffectiveClickPower() {
+            const achieveBonus = 1 + getAchievementBoost() / 100;
+            const prestigeBonus = 1 + state.prestigePoints * 0.1;
+            const prodBonus = getManagerBonus('production');
+            return Math.floor(state.clickPower * achieveBonus * prestigeBonus * prodBonus);
+        }
+
+        function getEffectiveAutoMining() {
+            const achieveBonus = 1 + getAchievementBoost() / 100;
+            const prestigeBonus = 1 + state.prestigePoints * 0.1;
+            const prodBonus = getManagerBonus('production');
+            return Math.floor(state.autoMining * achieveBonus * prestigeBonus * prodBonus);
+        }
+
+        function getOreValue(ore) {
+            const base = ore.baseValue;
+            const multiplier = state.oreValueMultiplier;
+            const managerBonus = getManagerBonus('oreValue');
+            const sellBonus = getManagerBonus('sellValue');
+            const achieveBonus = 1 + getAchievementBoost() / 200;
+            return Math.floor(base * multiplier * managerBonus * sellBonus * achieveBonus);
+        }
+
+        function getCurrentWorld() {
+            return WORLDS.find(w => w.id === state.currentWorld) || WORLDS[0];
+        }
+
+        function getUpgradeCost(upgrade) {
+            const level = state.upgradeLevels[upgrade.id] || 0;
+            const cost = {};
+            for (const [res, base] of Object.entries(upgrade.baseCost)) {
+                let c = Math.floor(base * Math.pow(upgrade.costScale, level));
+                if (getManagerBonus('upgradeCost') < 1) c = Math.floor(c * getManagerBonus('upgradeCost'));
+                cost[res] = c;
             }
-            
+            return cost;
+        }
+
+        function canAfford(cost) {
+            for (const [res, amt] of Object.entries(cost)) {
+                if (res === 'money') { if (state.money < amt) return false; }
+                else { if (state.resources[res] < amt) return false; }
+            }
+            return true;
+        }
+
+        function spendCost(cost) {
+            for (const [res, amt] of Object.entries(cost)) {
+                if (res === 'money') state.money -= amt;
+                else state.resources[res] -= amt;
+            }
+        }
+
+        // ============ MINING ============
+
+        function mineRock(e) {
+            const damage = getEffectiveClickPower();
+            state.totalClicks++;
+            damageRock(damage);
+
+            // Visual
+            const rock = document.getElementById('rock');
+            rock.style.transform = 'scale(0.88)';
+            setTimeout(() => rock.style.transform = '', 100);
+
+            if (e) showFloatText(e.clientX, e.clientY, `-${formatNum(damage)}`, '#ff6b6b');
+        }
+
+        function damageRock(damage) {
+            state.rockHealth -= damage;
+            if (state.rockHealth <= 0) breakRock();
             updateRockProgress();
         }
-        
+
         function breakRock() {
-            // Award resources
-            const prestigeBonus = 1 + prestigePoints * 0.2;
-            
-            for (const [resource, rates] of Object.entries(dropRates)) {
-                if (Math.random() < rates.chance * prestigeBonus) {
-                    const amount = Math.floor((rates.min + Math.random() * (rates.max - rates.min + 1)) * prestigeBonus);
-                    resources[resource] += amount;
-                    totalMined += amount;
+            const world = getCurrentWorld();
+            const achieveBonus = 1 + getAchievementBoost() / 100;
+            const prestigeBonus = 1 + state.prestigePoints * 0.2;
+            const rareBonus = getManagerBonus('rareChance');
+
+            ORE_TYPES.forEach(ore => {
+                let chance = ore.baseChance * world.oreMultiplier * rareBonus;
+                // Rarer ores unlock at deeper depths / higher worlds
+                if (['emerald','ruby','sapphire'].includes(ore.id) && WORLDS.indexOf(world) < 1) chance *= 0.1;
+                if (['platinum','uranium'].includes(ore.id) && WORLDS.indexOf(world) < 2) chance *= 0.05;
+                if (ore.id === 'mythril' && WORLDS.indexOf(world) < 4) chance *= 0.02;
+
+                if (Math.random() < chance) {
+                    let amount = Math.floor((ore.baseMin + Math.random() * (ore.baseMax - ore.baseMin + 1)) * prestigeBonus * achieveBonus);
+                    amount = Math.max(1, amount);
+
+                    // Check storage
+                    if (state.totalStored + amount > state.storageCapacity) {
+                        amount = Math.max(0, state.storageCapacity - state.totalStored);
+                    }
+                    if (amount > 0) {
+                        state.resources[ore.id] += amount;
+                        state.totalStored += amount;
+                        state.totalMined += amount;
+                        state.totalOresMined[ore.id] = (state.totalOresMined[ore.id] || 0) + amount;
+                    }
+                }
+            });
+
+            state.depth += 1;
+            if (state.depth > state.maxDepth) state.maxDepth = state.depth;
+
+            // Scale rock health gently
+            state.maxRockHealth = Math.min(state.maxRockHealth * 1.005, 50000);
+            state.rockHealth = state.maxRockHealth;
+
+            checkWorldUnlocks();
+            checkAchievements();
+            updateDisplay();
+        }
+
+        function updateRockProgress() {
+            const pct = Math.max(0, (state.rockHealth / state.maxRockHealth) * 100);
+            document.getElementById('rockProgress').style.width = pct + '%';
+        }
+
+        // ============ AUTO-SELL ============
+
+        function autoSellOres() {
+            if (!state.autoSell) return;
+            let earned = 0;
+            ORE_TYPES.forEach(ore => {
+                if (state.resources[ore.id] > 0) {
+                    const value = getOreValue(ore) * state.resources[ore.id];
+                    earned += value;
+                    state.totalStored -= state.resources[ore.id];
+                    state.resources[ore.id] = 0;
+                }
+            });
+            if (earned > 0) {
+                state.money += earned;
+                state.totalMoneyEarned += earned;
+            }
+        }
+
+        function sellAllOres() {
+            let earned = 0;
+            ORE_TYPES.forEach(ore => {
+                if (state.resources[ore.id] > 0) {
+                    earned += getOreValue(ore) * state.resources[ore.id];
+                    state.totalStored -= state.resources[ore.id];
+                    state.resources[ore.id] = 0;
+                }
+            });
+            state.money += earned;
+            state.totalMoneyEarned += earned;
+            updateDisplay();
+        }
+
+        // ============ UPGRADES ============
+
+        function buyUpgrade(upgrade) {
+            if (state.upgradeLevels[upgrade.id] >= upgrade.maxLevel) return;
+            const cost = getUpgradeCost(upgrade);
+            if (!canAfford(cost)) return;
+            spendCost(cost);
+            state.upgradeLevels[upgrade.id]++;
+            state.totalUpgradesBought++;
+
+            // Apply
+            switch (upgrade.type) {
+                case 'click': state.clickPower += upgrade.value; break;
+                case 'auto':
+                    state.autoMining += upgrade.value;
+                    if (upgrade.id === 'miner') addMinerVisual();
+                    break;
+                case 'both':
+                    state.clickPower += upgrade.clickVal;
+                    state.autoMining += upgrade.autoVal;
+                    break;
+                case 'oreValue': state.oreValueMultiplier += upgrade.value; break;
+                case 'storage': state.storageCapacity += upgrade.value; break;
+                case 'transport': state.transportMultiplier += upgrade.value; break;
+            }
+
+            checkAchievements();
+            renderUpgrades();
+            updateDisplay();
+            saveGame();
+        }
+
+        // ============ MANAGERS ============
+
+        function hireManager(manager) {
+            if (state.managers[manager.id] || state.money < manager.cost) return;
+            state.money -= manager.cost;
+            state.managers[manager.id] = true;
+            manager.hired = true;
+            state.managersHired++;
+            checkAchievements();
+            renderManagers();
+            updateDisplay();
+            saveGame();
+        }
+
+        // ============ EXPEDITIONS ============
+
+        function startExpedition(expedition) {
+            if (state.activeExpedition || state.money < expedition.cost) return;
+            state.money -= expedition.cost;
+            state.activeExpedition = expedition.id;
+            state.expeditionStart = Date.now();
+            renderExpeditions();
+            updateDisplay();
+            saveGame();
+        }
+
+        function checkExpeditionComplete() {
+            if (!state.activeExpedition) return;
+            const exp = EXPEDITIONS.find(e => e.id === state.activeExpedition);
+            if (!exp) return;
+            const elapsed = (Date.now() - state.expeditionStart) / 1000;
+            if (elapsed >= exp.duration) {
+                // Collect rewards
+                state.money += exp.reward.money;
+                state.totalMoneyEarned += exp.reward.money;
+                if (exp.reward.ores) {
+                    for (const [ore, amt] of Object.entries(exp.reward.ores)) {
+                        state.resources[ore] = (state.resources[ore] || 0) + amt;
+                        state.totalMined += amt;
+                        state.totalOresMined[ore] = (state.totalOresMined[ore] || 0) + amt;
+                    }
+                }
+                state.expeditionsCompleted++;
+                state.activeExpedition = null;
+                state.expeditionStart = 0;
+
+                // Show popup
+                showAchievementPopup(`🗺️ Expedition Complete! +$${formatNum(exp.reward.money)}`);
+                checkAchievements();
+                renderExpeditions();
+                updateDisplay();
+                saveGame();
+            }
+        }
+
+        // ============ WORLDS ============
+
+        function switchWorld(worldId) {
+            const world = WORLDS.find(w => w.id === worldId);
+            if (!world || isWorldLocked(world)) return;
+            state.currentWorld = worldId;
+            state.rockHealth = state.maxRockHealth;
+            state.depth = 0;
+            updateMineVisuals();
+            renderWorlds();
+            updateDisplay();
+            saveGame();
+        }
+
+        function isWorldLocked(world) {
+            if (!world.unlock) return false;
+            if (world.unlock.totalMined && state.totalMined < world.unlock.totalMined) return true;
+            return false;
+        }
+
+        function checkWorldUnlocks() {
+            let count = 0;
+            WORLDS.forEach(w => { if (!isWorldLocked(w)) count++; });
+            state.worldsUnlocked = count;
+        }
+
+        function updateMineVisuals() {
+            const world = getCurrentWorld();
+            const mine = document.getElementById('mineArea');
+            mine.style.setProperty('--mine-top', world.colors.top);
+            mine.style.setProperty('--mine-bot', world.colors.bot);
+            mine.style.setProperty('--mine-border', world.colors.border);
+            document.getElementById('rock').textContent = world.rockEmoji;
+            document.getElementById('mineTitle').textContent = world.name;
+        }
+
+        // ============ PRESTIGE ============
+
+        function calculatePrestigeGain() {
+            return Math.floor(Math.sqrt(state.totalMined / 500));
+        }
+
+        function prestige() {
+            const gain = calculatePrestigeGain();
+            if (gain < 1) return;
+            if (!confirm(`Prestige for ${gain} gems? This resets progress but gives permanent +${gain * 10}% production!`)) return;
+
+            state.prestigePoints += gain;
+            state.totalPrestiges++;
+
+            // Reset
+            ORE_TYPES.forEach(o => state.resources[o.id] = 0);
+            state.clickPower = 1;
+            state.autoMining = 0;
+            state.oreValueMultiplier = 1;
+            state.transportMultiplier = 1;
+            state.storageCapacity = 500;
+            state.totalStored = 0;
+            state.rockHealth = 50;
+            state.maxRockHealth = 50;
+            state.depth = 0;
+            state.currentWorld = 'surface';
+            // Keep: totalMined, totalClicks, money, achievements, managers, totalOresMined, etc.
+            // Reset money too for balance
+            state.money = 0;
+
+            UPGRADES.forEach(u => state.upgradeLevels[u.id] = 0);
+            document.getElementById('miners').innerHTML = '';
+
+            updateMineVisuals();
+            checkAchievements();
+            renderAll();
+            updateDisplay();
+            saveGame();
+        }
+
+        // ============ ACHIEVEMENTS ============
+
+        function checkAchievements() {
+            ACHIEVEMENTS.forEach(a => {
+                if (!state.achievements[a.id] && a.condition(state)) {
+                    state.achievements[a.id] = true;
+                    showAchievementPopup(`🏆 ${a.name} (+${a.boost}% boost)`);
+                    renderAchievements();
+                    saveGame();
+                }
+            });
+        }
+
+        function showAchievementPopup(text) {
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.textContent = text;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3500);
+        }
+
+        // ============ UI RENDERING ============
+
+        function renderResources() {
+            const bar = document.getElementById('resourcesBar');
+            bar.innerHTML = `<div class="resource"><div class="resource-icon">💰</div><div class="resource-count money" id="res_money">$${formatNum(state.money)}</div><div class="resource-name">Money</div></div>`;
+            ORE_TYPES.forEach(ore => {
+                if (state.totalOresMined[ore.id] > 0 || state.resources[ore.id] > 0 || ['coal','copper','iron','gold','diamond'].includes(ore.id)) {
+                    bar.innerHTML += `<div class="resource" onclick="window._sellOre('${ore.id}')"><div class="resource-icon">${ore.icon}</div><div class="resource-count ${ore.id}" id="res_${ore.id}">${formatNum(state.resources[ore.id])}</div><div class="resource-name">${ore.name}</div><span class="ore-quality">$${getOreValue(ore)}/ea</span></div>`;
+                }
+            });
+        }
+
+        // Expose sell function
+        window._sellOre = function(oreId) {
+            const ore = ORE_TYPES.find(o => o.id === oreId);
+            if (!ore || state.resources[oreId] <= 0) return;
+            const earned = getOreValue(ore) * state.resources[oreId];
+            state.money += earned;
+            state.totalMoneyEarned += earned;
+            state.totalStored -= state.resources[oreId];
+            state.resources[oreId] = 0;
+            updateDisplay();
+        };
+
+        function renderWorlds() {
+            const el = document.getElementById('worldsList');
+            el.innerHTML = '';
+            WORLDS.forEach(w => {
+                const locked = isWorldLocked(w);
+                const active = state.currentWorld === w.id;
+                const div = document.createElement('div');
+                div.className = 'world-card' + (locked ? ' locked' : '') + (active ? ' active' : '');
+                div.innerHTML = `
+                    <div class="world-name">${w.name}</div>
+                    <div class="world-desc">${w.desc}</div>
+                    <div class="world-bonus">${w.bonus}</div>
+                    ${locked ? `<div class="world-unlock">Need ${formatNum(w.unlock.totalMined)} total ores</div>` : ''}
+                `;
+                if (!locked) div.addEventListener('click', () => switchWorld(w.id));
+                el.appendChild(div);
+            });
+        }
+
+        function renderUpgrades() {
+            const container = document.getElementById('upgrades');
+            container.innerHTML = '';
+            UPGRADES.forEach(u => {
+                const level = state.upgradeLevels[u.id] || 0;
+                const maxed = level >= u.maxLevel;
+                const cost = getUpgradeCost(u);
+                const affordable = canAfford(cost);
+
+                const div = document.createElement('div');
+                div.className = 'upgrade' + (!affordable && !maxed ? ' locked' : '') + (maxed ? ' maxed' : '');
+                div.innerHTML = `
+                    <div class="upgrade-header">
+                        <span class="upgrade-name">${u.name}</span>
+                        <span class="upgrade-level">${maxed ? 'MAX' : 'Lv.' + level}</span>
+                    </div>
+                    <div class="upgrade-cost">${maxed ? '<span style="color:#00ff88">Maxed</span>' : Object.entries(cost).map(([r,a]) => `<span>${r === 'money' ? '$' : ''}${formatNum(a)}${r !== 'money' ? ' ' + r : ''}</span>`).join('')}</div>
+                    <div class="upgrade-effect">${u.effect}</div>
+                `;
+                if (!maxed) div.addEventListener('click', () => buyUpgrade(u));
+                container.appendChild(div);
+            });
+        }
+
+        function renderAchievements() {
+            const grid = document.getElementById('achievementsGrid');
+            grid.innerHTML = '';
+            const unlocked = ACHIEVEMENTS.filter(a => state.achievements[a.id]).length;
+            document.getElementById('achievementBoost').textContent = `🏆 Achievement Bonus: +${getAchievementBoost()}% (${unlocked}/${ACHIEVEMENTS.length})`;
+
+            ACHIEVEMENTS.forEach(a => {
+                const div = document.createElement('div');
+                div.className = 'achievement' + (state.achievements[a.id] ? ' unlocked' : '');
+                div.textContent = a.icon;
+                div.setAttribute('data-name', a.name);
+                div.setAttribute('data-desc', a.desc + ' (+' + a.boost + '%)');
+                grid.appendChild(div);
+            });
+        }
+
+        function renderManagers() {
+            const grid = document.getElementById('managersGrid');
+            grid.innerHTML = '';
+            MANAGERS.forEach(m => {
+                const hired = state.managers[m.id];
+                const affordable = state.money >= m.cost;
+                const div = document.createElement('div');
+                div.className = 'manager-card' + (hired ? ' hired' : '') + (!affordable && !hired ? ' locked' : '');
+                div.innerHTML = `
+                    <div class="manager-name">${m.name}</div>
+                    <div class="manager-effect">${m.effect}</div>
+                    ${hired ? '<div style="color:#00ff88;font-size:0.8rem;margin-top:5px;">✓ Hired</div>' :
+                    `<div class="manager-cost">$${formatNum(m.cost)}</div>
+                     <button class="manager-btn" ${!affordable ? 'disabled' : ''}>Hire</button>`}
+                `;
+                if (!hired) {
+                    const btn = div.querySelector('.manager-btn');
+                    if (btn) btn.addEventListener('click', () => hireManager(m));
+                }
+                grid.appendChild(div);
+            });
+        }
+
+        function renderExpeditions() {
+            const grid = document.getElementById('expeditionsGrid');
+            grid.innerHTML = '';
+
+            if (state.activeExpedition) {
+                const exp = EXPEDITIONS.find(e => e.id === state.activeExpedition);
+                if (exp) {
+                    const elapsed = (Date.now() - state.expeditionStart) / 1000;
+                    const pct = Math.min(100, (elapsed / exp.duration) * 100);
+                    const remaining = Math.max(0, exp.duration - elapsed);
+                    grid.innerHTML = `
+                        <div class="expedition-card active">
+                            <div style="font-weight:bold;font-size:0.9rem;">${exp.name}</div>
+                            <div style="font-size:0.75rem;color:#888;margin-top:4px;">In progress... ${formatTime(remaining)} remaining</div>
+                            <div class="exp-progress"><div class="exp-progress-fill" style="width:${pct}%"></div></div>
+                        </div>
+                    `;
+                    return;
                 }
             }
-            
-            // Reset rock
-            maxRockHealth = Math.min(maxRockHealth * 1.01, 10000);
-            rockHealth = maxRockHealth;
-            
-            updateDisplay();
+
+            EXPEDITIONS.forEach(exp => {
+                const affordable = state.money >= exp.cost;
+                const div = document.createElement('div');
+                div.className = 'expedition-card' + (!affordable ? ' locked' : '');
+                div.style.opacity = affordable ? '1' : '0.45';
+                div.innerHTML = `
+                    <div style="font-weight:bold;font-size:0.9rem;">${exp.name}</div>
+                    <div style="font-size:0.7rem;color:#888;margin-top:3px;">${exp.desc}</div>
+                    <div style="font-size:0.7rem;color:#ffd700;margin-top:3px;">⏱️ ${formatTime(exp.duration)} | 💰 Reward: $${formatNum(exp.reward.money)}</div>
+                    <div style="font-size:0.75rem;color:#ff6b6b;margin-top:3px;">Cost: $${formatNum(exp.cost)}</div>
+                    <button class="manager-btn" style="margin-top:6px;" ${!affordable ? 'disabled' : ''}>Start</button>
+                `;
+                const btn = div.querySelector('.manager-btn');
+                if (btn && affordable) btn.addEventListener('click', () => startExpedition(exp));
+                grid.appendChild(div);
+            });
+        }
+
+        function renderStats() {
+            const grid = document.getElementById('statsGrid');
+            const playTimeSec = state.playTime + (Date.now() - state.startTime) / 1000;
+            grid.innerHTML = `
+                <div class="stat-box"><div class="stat-value">${formatNum(state.totalMined)}</div><div class="stat-label">Total Ores Mined</div></div>
+                <div class="stat-box"><div class="stat-value">${formatNum(state.totalClicks)}</div><div class="stat-label">Total Clicks</div></div>
+                <div class="stat-box"><div class="stat-value">$${formatNum(state.totalMoneyEarned)}</div><div class="stat-label">Total $ Earned</div></div>
+                <div class="stat-box"><div class="stat-value">${formatNum(getEffectiveClickPower())}</div><div class="stat-label">Click Power</div></div>
+                <div class="stat-box"><div class="stat-value">${formatNum(getEffectiveAutoMining())}/s</div><div class="stat-label">Auto Mining</div></div>
+                <div class="stat-box"><div class="stat-value">x${state.oreValueMultiplier.toFixed(1)}</div><div class="stat-label">Ore Value</div></div>
+                <div class="stat-box"><div class="stat-value">${state.maxDepth}m</div><div class="stat-label">Max Depth</div></div>
+                <div class="stat-box"><div class="stat-value">${state.worldsUnlocked}/${WORLDS.length}</div><div class="stat-label">Worlds</div></div>
+                <div class="stat-box"><div class="stat-value">${state.totalPrestiges}</div><div class="stat-label">Prestiges</div></div>
+                <div class="stat-box"><div class="stat-value">+${getAchievementBoost()}%</div><div class="stat-label">Achieve Bonus</div></div>
+                <div class="stat-box"><div class="stat-value">${state.managersHired}/${MANAGERS.length}</div><div class="stat-label">Managers</div></div>
+                <div class="stat-box"><div class="stat-value">${formatTime(playTimeSec)}</div><div class="stat-label">Play Time</div></div>
+            `;
+        }
+
+        function updateDisplay() {
+            renderResources();
+
+            document.getElementById('clickPower').textContent = formatNum(getEffectiveClickPower());
+            document.getElementById('autoMining').textContent = formatNum(getEffectiveAutoMining());
+            document.getElementById('oreValue').textContent = 'x' + state.oreValueMultiplier.toFixed(1);
+            document.getElementById('mineDepth').textContent = `Depth: ${state.depth}m`;
+            document.getElementById('prestigePoints').textContent = formatNum(state.prestigePoints);
+            document.getElementById('prestigeGain').textContent = formatNum(calculatePrestigeGain());
+
+            // Storage
+            state.totalStored = ORE_TYPES.reduce((sum, o) => sum + state.resources[o.id], 0);
+            const storagePct = Math.min(100, (state.totalStored / state.storageCapacity) * 100);
+            document.getElementById('storageFill').style.width = storagePct + '%';
+            document.getElementById('storageText').textContent = `${formatNum(state.totalStored)} / ${formatNum(state.storageCapacity)}`;
+
+            // Money rate
+            let moneyPerSec = 0;
+            if (state.autoSell) {
+                ORE_TYPES.forEach(ore => {
+                    moneyPerSec += ore.baseChance * getCurrentWorld().oreMultiplier * getOreValue(ore) * (getEffectiveAutoMining() / state.maxRockHealth);
+                });
+            }
+            document.getElementById('moneyRate').textContent = `$${formatNum(Math.floor(moneyPerSec))}/sec`;
+        }
+
+        function renderAll() {
+            renderResources();
+            renderWorlds();
             renderUpgrades();
+            renderAchievements();
+            renderManagers();
+            renderExpeditions();
+            renderStats();
+            updateMineVisuals();
         }
-        
-        function updateRockProgress() {
-            const percent = (rockHealth / maxRockHealth) * 100;
-            document.getElementById('rockProgress').style.width = percent + '%';
+
+        // ============ HELPERS ============
+
+        function formatNum(n) {
+            if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+            if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+            if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+            return Math.floor(n).toString();
         }
-        
-        function showFloatText(x, y, text) {
+
+        function formatTime(seconds) {
+            seconds = Math.floor(seconds);
+            if (seconds >= 3600) return Math.floor(seconds/3600) + 'h ' + Math.floor((seconds%3600)/60) + 'm';
+            if (seconds >= 60) return Math.floor(seconds/60) + 'm ' + (seconds%60) + 's';
+            return seconds + 's';
+        }
+
+        function showFloatText(x, y, text, color) {
             const el = document.createElement('div');
             el.className = 'float-text';
             el.textContent = text;
             el.style.left = x + 'px';
             el.style.top = y + 'px';
-            el.style.color = '#ff6b6b';
+            el.style.color = color || '#ff6b6b';
             document.body.appendChild(el);
             setTimeout(() => el.remove(), 1000);
         }
-        
-        function renderUpgrades() {
-            const container = document.getElementById('upgrades');
-            container.innerHTML = '';
-            
-            upgrades.forEach(upgrade => {
-                const cost = getUpgradeCost(upgrade);
-                const canAfford = canAffordUpgrade(cost);
-                const maxed = upgrade.level >= upgrade.maxLevel;
-                
-                const div = document.createElement('div');
-                div.className = 'upgrade' + (!canAfford || maxed ? ' locked' : '');
-                div.innerHTML = `
-                    <div class="upgrade-header">
-                        <span class="upgrade-name">${upgrade.name}</span>
-                        <span class="upgrade-level">Lv. ${upgrade.level}${maxed ? ' MAX' : ''}</span>
-                    </div>
-                    <div class="upgrade-cost">
-                        ${Object.entries(cost).map(([res, amt]) => 
-                            `<span>${getResourceIcon(res)} ${formatNumber(amt)}</span>`
-                        ).join('')}
-                    </div>
-                    <div class="upgrade-effect">${upgrade.effect}</div>
-                `;
-                
-                if (!maxed) {
-                    div.addEventListener('click', () => buyUpgrade(upgrade));
-                }
-                
-                container.appendChild(div);
-            });
-        }
-        
-        function getUpgradeCost(upgrade) {
-            const cost = {};
-            for (const [resource, baseCost] of Object.entries(upgrade.baseCost)) {
-                cost[resource] = Math.floor(baseCost * Math.pow(1.15, upgrade.level));
-            }
-            return cost;
-        }
-        
-        function canAffordUpgrade(cost) {
-            for (const [resource, amount] of Object.entries(cost)) {
-                if (resources[resource] < amount) return false;
-            }
-            return true;
-        }
-        
-        function buyUpgrade(upgrade) {
-            if (upgrade.level >= upgrade.maxLevel) return;
-            
-            const cost = getUpgradeCost(upgrade);
-            if (!canAffordUpgrade(cost)) return;
-            
-            // Spend resources
-            for (const [resource, amount] of Object.entries(cost)) {
-                resources[resource] -= amount;
-            }
-            
-            upgrade.level++;
-            
-            // Apply effect
-            switch (upgrade.id) {
-                case 'pickaxe': clickPower += 1; break;
-                case 'miner': autoMining += 1; addMinerVisual(); break;
-                case 'drill': autoMining += 5; break;
-                case 'dynamite': clickPower += 10; break;
-                case 'excavator': autoMining += 25; break;
-                case 'laser': autoMining += 100; break;
-            }
-            
-            updateDisplay();
-            renderUpgrades();
-        }
-        
+
         function addMinerVisual() {
             const container = document.getElementById('miners');
-            if (container.children.length < 10) {
-                const miner = document.createElement('span');
-                miner.className = 'miner';
-                miner.textContent = '⛏️';
-                miner.style.animationDelay = Math.random() + 's';
-                container.appendChild(miner);
+            if (container.children.length < 12) {
+                const m = document.createElement('span');
+                m.className = 'miner';
+                m.textContent = '⛏️';
+                m.style.animationDelay = Math.random() + 's';
+                container.appendChild(m);
             }
         }
-        
-        function prestige() {
-            const gain = calculatePrestigeGain();
-            if (gain < 1) return;
-            
-            if (!confirm(`Prestige for ${gain} gems? This will reset your progress but give permanent bonuses!`)) return;
-            
-            prestigePoints += gain;
-            
-            // Reset
-            resources = { coal: 0, copper: 0, iron: 0, gold: 0, diamond: 0 };
-            clickPower = 1;
-            autoMining = 0;
-            rockHealth = 100;
-            maxRockHealth = 100;
-            totalMined = 0;
-            
-            upgrades.forEach(u => u.level = 0);
-            document.getElementById('miners').innerHTML = '';
-            
-            updateDisplay();
-            renderUpgrades();
-            saveGame();
-        }
-        
-        function calculatePrestigeGain() {
-            return Math.floor(Math.sqrt(totalMined / 1000));
-        }
-        
-        function updateDisplay() {
-            for (const resource of Object.keys(resources)) {
-                document.getElementById(resource).textContent = formatNumber(resources[resource]);
-            }
-            
-            document.getElementById('clickPower').textContent = formatNumber(Math.floor(clickPower * (1 + prestigePoints * 0.1)));
-            document.getElementById('autoMining').textContent = formatNumber(Math.floor(autoMining * (1 + prestigePoints * 0.1)));
-            document.getElementById('prestigePoints').textContent = formatNumber(prestigePoints);
-            document.getElementById('prestigeGain').textContent = formatNumber(calculatePrestigeGain());
-        }
-        
-        function getResourceIcon(resource) {
-            const icons = { coal: '🪨', copper: '🥉', iron: '🪙', gold: '🥇', diamond: '💎' };
-            return icons[resource] || '';
-        }
-        
-        function formatNumber(num) {
-            if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
-            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
-            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
-            return Math.floor(num).toString();
-        }
-        
+
+        // ============ SAVE / LOAD ============
+
         function saveGame() {
-            const save = {
-                resources,
-                clickPower,
-                autoMining,
-                rockHealth,
-                maxRockHealth,
-                prestigePoints,
-                totalMined,
-                upgrades: upgrades.map(u => u.level)
-            };
-            localStorage.setItem('miningIdleSave', JSON.stringify(save));
+            state.playTime += (Date.now() - state.startTime) / 1000;
+            state.startTime = Date.now();
+            localStorage.setItem('miningIdleSave2', JSON.stringify(state));
         }
-        
+
         function loadGame() {
-            const save = localStorage.getItem('miningIdleSave');
-            if (!save) return;
-            
+            const raw = localStorage.getItem('miningIdleSave2');
+            if (!raw) return;
             try {
-                const data = JSON.parse(save);
-                resources = data.resources || resources;
-                clickPower = data.clickPower || 1;
-                autoMining = data.autoMining || 0;
-                rockHealth = data.rockHealth || 100;
-                maxRockHealth = data.maxRockHealth || 100;
-                prestigePoints = data.prestigePoints || 0;
-                totalMined = data.totalMined || 0;
-                
-                if (data.upgrades) {
-                    data.upgrades.forEach((level, i) => {
-                        if (upgrades[i]) upgrades[i].level = level;
-                    });
+                const data = JSON.parse(raw);
+                // Merge carefully
+                for (const key of Object.keys(state)) {
+                    if (data[key] !== undefined) state[key] = data[key];
                 }
-                
-                // Recreate miner visuals
-                const minerCount = Math.min(upgrades[1].level, 10);
-                for (let i = 0; i < minerCount; i++) {
-                    addMinerVisual();
+                // Ensure new ores exist
+                ORE_TYPES.forEach(o => {
+                    if (state.resources[o.id] === undefined) state.resources[o.id] = 0;
+                    if (state.totalOresMined[o.id] === undefined) state.totalOresMined[o.id] = 0;
+                });
+                UPGRADES.forEach(u => { if (state.upgradeLevels[u.id] === undefined) state.upgradeLevels[u.id] = 0; });
+                ACHIEVEMENTS.forEach(a => { if (state.achievements[a.id] === undefined) state.achievements[a.id] = false; });
+                MANAGERS.forEach(m => { if (state.managers[m.id] === undefined) state.managers[m.id] = false; m.hired = state.managers[m.id]; });
+
+                // Restore miner visuals
+                const minerCount = Math.min(state.upgradeLevels.miner || 0, 12);
+                for (let i = 0; i < minerCount; i++) addMinerVisual();
+
+                // Offline progress
+                if (data.startTime) {
+                    const elapsed = (Date.now() - data.startTime) / 1000;
+                    if (elapsed > 30 && state.autoMining > 0) {
+                        const offlineRocks = Math.floor((getEffectiveAutoMining() * elapsed * 0.5) / state.maxRockHealth);
+                        if (offlineRocks > 0) {
+                            for (let i = 0; i < Math.min(offlineRocks, 10000); i++) breakRock();
+                            if (state.autoSell) autoSellOres();
+                            showAchievementPopup(`🌙 Welcome back! Mined ~${formatNum(offlineRocks)} rocks while away`);
+                        }
+                    }
                 }
-            } catch (e) {
-                console.error('Failed to load save:', e);
-            }
+                state.startTime = Date.now();
+            } catch(e) { console.error('Load failed:', e); }
         }
-        
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-            } else {
-                document.exitFullscreen();
+
+        // ============ GAME LOOP ============
+
+        function tick() {
+            // Auto mining
+            if (getEffectiveAutoMining() > 0) {
+                damageRock(getEffectiveAutoMining() / 10);
             }
+
+            // Foreman auto-click
+            if (state.managers.foreman) {
+                damageRock(getEffectiveClickPower() * 0.2);
+            }
+
+            // Auto-sell
+            autoSellOres();
+
+            // Check expeditions
+            checkExpeditionComplete();
         }
-        
+
+        // ============ INIT ============
+
+        function init() {
+            loadGame();
+
+            // Rock click
+            document.getElementById('rock').addEventListener('click', mineRock);
+
+            // Prestige
+            document.getElementById('prestigeBtn').addEventListener('click', prestige);
+
+            // Fullscreen
+            document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+                else document.exitFullscreen();
+            });
+
+            // Auto-sell toggle
+            document.getElementById('autoSellToggle').checked = state.autoSell;
+            document.getElementById('autoSellToggle').addEventListener('change', (e) => {
+                state.autoSell = e.target.checked;
+                saveGame();
+            });
+
+            // Tab switching
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+
+                    // Refresh content
+                    if (tab.dataset.tab === 'stats') renderStats();
+                    if (tab.dataset.tab === 'expeditions') renderExpeditions();
+                    if (tab.dataset.tab === 'managers') renderManagers();
+                });
+            });
+
+            checkWorldUnlocks();
+            renderAll();
+            updateDisplay();
+
+            // Game loop - 10 ticks/sec
+            setInterval(tick, 100);
+
+            // Display refresh
+            setInterval(() => {
+                updateDisplay();
+                renderUpgrades();
+                if (document.getElementById('tab-expeditions').classList.contains('active')) renderExpeditions();
+                if (document.getElementById('tab-managers').classList.contains('active')) renderManagers();
+            }, 1000);
+
+            // Save
+            setInterval(saveGame, 15000);
+
+            // Achievements check
+            setInterval(checkAchievements, 2000);
+        }
+
         init();
+    })();
     </script>
     <script src="../js/game-utils.js"></script>
     <script src="../js/accounts.js"></script>
